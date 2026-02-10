@@ -13,3 +13,6 @@ class Project(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     owner = relationship("User", backref="projects")
+    
+    branches = relationship("Branch", back_populates="project", cascade="all, delete-orphan")
+    commits = relationship("Commit", back_populates="project", cascade="all, delete-orphan")

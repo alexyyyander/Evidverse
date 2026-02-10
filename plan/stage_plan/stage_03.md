@@ -9,10 +9,10 @@
 3. **权限控制**: 确保只有项目拥有者可以修改项目。
 
 ## Todo List
-- [ ] 定义 Project 和 Branch 的 Pydantic Schemas。
-- [ ] 实现 `backend/app/services/project_service.py`。
-- [ ] 实现 `backend/app/api/v1/endpoints/projects.py`。
-- [ ] 实现 `POST /projects/` (创建项目，同时自动创建 `main` 分支)。
-- [ ] 实现 `GET /projects/` (获取我的项目)。
-- [ ] 实现 `GET /projects/{id}/branches`。
-- [ ] 编写 CRUD 单元测试。
+- [x] 定义 Project 和 Branch 的 Pydantic Schemas。
+- [x] 实现 `backend/app/services/project_service.py`。
+- [x] 实现 `backend/app/api/v1/endpoints/projects.py`。
+- [x] 实现 `POST /projects/` (创建项目，同时自动创建 `main` 分支)。
+- [x] 实现 `GET /projects/` (获取我的项目)。
+- [x] 实现 `GET /projects/{id}/branches`。
+- [x] 编写 CRUD 单元测试。

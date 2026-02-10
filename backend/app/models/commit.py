@@ -13,5 +13,5 @@ class Commit(Base):
     video_url = Column(String, nullable=True) # URL to generated video
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    project = relationship("Project", backref="commits")
+    project = relationship("Project", back_populates="commits")
     parent = relationship("Commit", remote_side=[id], backref="children")

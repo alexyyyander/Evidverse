@@ -4,15 +4,15 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Stage 03: 核心模型 CRUD](./stage_03.md)
+**Current Stage**: [Stage 04: 任务队列与存储](./stage_04.md)
 **Status**: 🚀 Ready to Start
 **Last Updated**: 2026-02-11
 
 ## 📅 Stage Roadmap
 - [x] **Stage 01**: 环境与数据库
 - [x] **Stage 02**: 用户认证
-- [ ] **Stage 03**: 核心模型 CRUD (Current)
-- [ ] **Stage 04**: 任务队列与存储
+- [x] **Stage 03**: 核心模型 CRUD
+- [ ] **Stage 04**: 任务队列与存储 (Current)
 - [ ] **Stage 05**: Seedance 集成
 - [ ] ... (See individual files for details)
 

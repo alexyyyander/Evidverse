@@ -10,5 +10,5 @@ class Branch(Base):
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     head_commit_id = Column(String, ForeignKey("commits.id"), nullable=True)
 
-    project = relationship("Project", backref="branches")
+    project = relationship("Project", back_populates="branches")
     head_commit = relationship("Commit")
