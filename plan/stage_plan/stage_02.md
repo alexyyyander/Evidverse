@@ -11,10 +11,10 @@
 5. **安全工具**: 密码哈希 (bcrypt) 和 JWT 编解码工具。
 
 ## Todo List
-- [ ] 实现 `backend/app/core/security.py` (密码哈希, Token 生成)。
-- [ ] 定义 Pydantic Schemas (`UserCreate`, `UserLogin`, `Token`).
-- [ ] 实现 `backend/app/api/deps.py` (获取当前用户依赖)。
-- [ ] 实现 `backend/app/api/v1/endpoints/auth.py`。
-- [ ] 实现 `backend/app/api/v1/endpoints/users.py`。
-- [ ] 注册路由到 `main.py`。
-- [ ] 编写测试用例验证注册和登录流程。
+- [x] 实现 `backend/app/core/security.py` (密码哈希, Token 生成)。
+- [x] 定义 Pydantic Schemas (`UserCreate`, `UserLogin`, `Token`).
+- [x] 实现 `backend/app/api/deps.py` (获取当前用户依赖)。
+- [x] 实现 `backend/app/api/v1/endpoints/auth.py`。
+- [x] 实现 `backend/app/api/v1/endpoints/users.py`。
+- [x] 注册路由到 `main.py`。
+- [x] 编写测试用例验证注册和登录流程。

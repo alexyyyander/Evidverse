@@ -4,14 +4,14 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Stage 02: 用户认证](./stage_02.md)
+**Current Stage**: [Stage 03: 核心模型 CRUD](./stage_03.md)
 **Status**: 🚀 Ready to Start
 **Last Updated**: 2026-02-11
 
 ## 📅 Stage Roadmap
 - [x] **Stage 01**: 环境与数据库
-- [ ] **Stage 02**: 用户认证 (Current)
-- [ ] **Stage 03**: 核心模型 CRUD
+- [x] **Stage 02**: 用户认证
+- [ ] **Stage 03**: 核心模型 CRUD (Current)
 - [ ] **Stage 04**: 任务队列与存储
 - [ ] **Stage 05**: Seedance 集成
 - [ ] ... (See individual files for details)
@@ -50,6 +50,9 @@ A: 确保在 `backend/app/models/__init__.py` 中导入了所有模型，并且�
 
 ### Q: 依赖安装慢？
 A: 尝试更换 PyPI 镜像源或 npm 镜像源。
+
+### Q: Passlib bcrypt 报错 `ValueError: password cannot be longer than 72 bytes`?
+A: 这是一个已知的 `passlib` 和新版 `bcrypt` 的兼容性问题。解决方案是将 `bcrypt` 降级到 `4.0.1`。
 
 ---
 *Maintainer: Vidgit Bot*
