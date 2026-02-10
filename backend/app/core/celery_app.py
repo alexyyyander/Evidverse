@@ -5,7 +5,7 @@ celery_app = Celery(
     "worker",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.workers.tasks"]
+    include=["app.workers.tasks", "app.workers.video_tasks"]
 )
 
 celery_app.conf.update(

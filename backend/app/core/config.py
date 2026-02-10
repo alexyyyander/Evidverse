@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     S3_BUCKET_NAME: str = "vidgit-bucket"
     S3_REGION_NAME: str = "us-east-1"
 
+    # Seedance AI
+    SEEDANCE_API_KEY: str = "sk-test-seedance-api-key"
+    SEEDANCE_API_URL: str = "https://api.seedance.com/v1"
+
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 
 settings = Settings()

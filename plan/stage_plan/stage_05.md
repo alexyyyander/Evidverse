@@ -9,8 +9,8 @@
 3. **回调/轮询**: 实现查询任务状态的逻辑。
 
 ## Todo List
-- [ ] 在 `ai_engine` 中实现 `SeedanceClient`。
-- [ ] 创建 `backend/app/workers/video_tasks.py`。
-- [ ] 实现 `generate_video_from_image` 任务。
-- [ ] 数据库中记录生成任务状态 (`TaskStatus` 表或 Redis)。
-- [ ] 编写集成测试：调用 Mock API 验证流程。
+- [x] 在 `ai_engine` 中实现 `SeedanceClient`。
+- [x] 创建 `backend/app/workers/video_tasks.py`。
+- [x] 实现 `generate_video_from_image` 任务。
+- [x] 数据库中记录生成任务状态 (`TaskStatus` 表或 Redis)。
+- [x] 编写集成测试：调用 Mock API 验证流程。
