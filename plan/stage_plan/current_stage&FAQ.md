@@ -4,7 +4,7 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Stage 08: 视频剪辑与合成](./stage_08.md)
+**Current Stage**: [Stage 09: 前端视频编辑器](./stage_09.md)
 **Status**: 🚀 Ready to Start
 **Last Updated**: 2026-02-11
 
@@ -16,7 +16,8 @@
 - [x] **Stage 05**: Seedance 集成
 - [x] **Stage 06**: Stable Diffusion 角色生成
 - [x] **Stage 07**: 角色一致性锚点 (MVP)
-- [ ] **Stage 08**: 视频剪辑与合成 (Current)
+- [x] **Stage 08**: 视频生成工作流编排
+- [ ] **Stage 09**: 前端视频编辑器 (Current)
 - [ ] ... (See individual files for details)
 
 ## 🛠️ Quick Actions

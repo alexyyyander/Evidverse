@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     STABILITY_API_KEY: str = "sk-test-stability-api-key"
     STABILITY_API_HOST: str = "https://api.stability.ai"
 
+    # OpenAI
+    OPENAI_API_KEY: str = "sk-test-openai-api-key"
+
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 
 settings = Settings()

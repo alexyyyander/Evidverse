@@ -9,7 +9,7 @@
 3. **全流程 API**: 一键生成视频片段。
 
 ## Todo List
-- [ ] 集成 OpenAI/Claude API。
-- [ ] 实现 `StoryGenerationService`。
-- [ ] 创建编排任务 `generate_clip_workflow`。
-- [ ] 处理中间失败的重试逻辑。
+- [x] 集成 OpenAI/Claude API。
+- [x] 实现 `StoryGenerationService`。
+- [x] 创建编排任务 `generate_clip_workflow`。
+- [x] 处理中间失败的重试逻辑。
