@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     SEEDANCE_API_KEY: str = "sk-test-seedance-api-key"
     SEEDANCE_API_URL: str = "https://api.seedance.com/v1"
 
+    # Stability AI (Stable Diffusion)
+    STABILITY_API_KEY: str = "sk-test-stability-api-key"
+    STABILITY_API_HOST: str = "https://api.stability.ai"
+
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 
 settings = Settings()

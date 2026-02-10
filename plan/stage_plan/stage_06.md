@@ -9,7 +9,7 @@
 3. **图片存储**: 生成的图片自动上传到 S3。
 
 ## Todo List
-- [ ] 在 `ai_engine` 中实现 `StableDiffusionPipeline` (或 API Client)。
-- [ ] 创建 `backend/app/workers/image_tasks.py`。
-- [ ] 实现 `POST /api/v1/generate/character` 接口。
-- [ ] 验证生成的图片质量和存储流程。
+- [x] 在 `ai_engine` 中实现 `StableDiffusionPipeline` (或 API Client)。
+- [x] 创建 `backend/app/workers/image_tasks.py`。
+- [x] 实现 `POST /api/v1/generate/character` 接口。
+- [x] 验证生成的图片质量和存储流程。
