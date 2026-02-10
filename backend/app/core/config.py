@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
+    # Database
     POSTGRES_SERVER: str
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
@@ -31,6 +32,17 @@ class Settings(BaseSettings):
             port=int(values.get("POSTGRES_PORT")),
             path=f"{values.get('POSTGRES_DB') or ''}",
         )
+    
+    # Celery
+    CELERY_BROKER_URL: str = "amqp://guest:guest@localhost:5672//"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
+
+    # Storage (S3/MinIO)
+    S3_ENDPOINT_URL: str = "http://localhost:9000"
+    S3_ACCESS_KEY: str = "minioadmin"
+    S3_SECRET_KEY: str = "minioadmin"
+    S3_BUCKET_NAME: str = "vidgit-bucket"
+    S3_REGION_NAME: str = "us-east-1"
 
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 

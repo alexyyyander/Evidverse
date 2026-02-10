@@ -9,9 +9,9 @@
 3. **文件上传 API**: 实现 `POST /upload/presigned-url` 或直接上传接口。
 
 ## Todo List
-- [ ] 配置 `backend/app/core/celery_app.py`。
-- [ ] 创建 `backend/app/workers/tasks.py` (定义一个测试任务)。
-- [ ] 配置 `backend/app/services/storage_service.py` (Boto3)。
-- [ ] 实现文件上传 API，支持上传图片和视频。
-- [ ] 验证 Worker 能成功消费任务。
-- [ ] 验证文件能成功上传到 S3/MinIO。
+- [x] 配置 `backend/app/core/celery_app.py`。
+- [x] 创建 `backend/app/workers/tasks.py` (定义一个测试任务)。
+- [x] 配置 `backend/app/services/storage_service.py` (Boto3)。
+- [x] 实现文件上传 API，支持上传图片和视频。
+- [x] 验证 Worker 能成功消费任务。
+- [x] 验证文件能成功上传到 S3/MinIO。

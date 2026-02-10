@@ -36,6 +36,32 @@ services:
       - "5672:5672"   # AMQP
       - "15672:15672" # Management UI
 
+  minio:
+    image: minio/minio
+    container_name: vidgit-minio
+    restart: always
+    command: server --console-address ":9001" /data
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    ports:
+      - "9000:9000" # API
+      - "9001:9001" # Console
+    volumes:
+      - minio_data:/data
+
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb myminio/vidgit-bucket;
+      /usr/bin/mc anonymous set public myminio/vidgit-bucket;
+      exit 0;
+      "
+
   # --- Application Services (Optional for Dev) ---
   # Uncomment these to run the full stack in Docker
   
@@ -50,10 +76,17 @@ services:
   #   environment:
   #     - DATABASE_URL=postgresql://vidgit:vidgit_password@db/vidgit_db
   #     - REDIS_URL=redis://redis:6379/0
+  #     - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
+  #     - CELERY_RESULT_BACKEND=redis://redis:6379/0
+  #     - S3_ENDPOINT_URL=http://minio:9000
+  #     - S3_ACCESS_KEY=minioadmin
+  #     - S3_SECRET_KEY=minioadmin
+  #     - S3_BUCKET_NAME=vidgit-bucket
   #   depends_on:
   #     - db
   #     - redis
   #     - rabbitmq
+  #     - minio
 
   # frontend:
   #   build: ./frontend
@@ -71,3 +104,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  minio_data:
