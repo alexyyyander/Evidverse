@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +8,7 @@ from app.models.user import User
 from app.schemas.project import Project, ProjectCreate, ProjectUpdate
 from app.schemas.branch import Branch
 from app.services.project_service import ProjectService
+from app.services.branch_service import branch_service
 
 router = APIRouter()
 
@@ -101,3 +102,38 @@ async def read_project_branches(
         raise HTTPException(status_code=403, detail="Not enough permissions")
     
     return await ProjectService.get_project_branches(db, project_id)
+
+@router.get("/{project_id}/graph", response_model=Dict[str, Any])
+async def read_project_graph(
+    project_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """
+    Get project commit graph.
+    """
+    project = await ProjectService.get_project(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    return await branch_service.get_project_graph(db, project_id)
+
+@router.get("/{project_id}/head", response_model=Dict[str, Any])
+async def read_project_head(
+    project_id: int,
+    branch_name: str = "main",
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """
+    Get HEAD state of a branch (default main).
+    """
+    project = await ProjectService.get_project(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    return await branch_service.get_head_state(db, project_id, branch_name)

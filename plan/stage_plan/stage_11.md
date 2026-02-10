@@ -1,17 +1,16 @@
-# Stage 11: 前端基础架构
+# Stage 11: Git 核心逻辑 - Branch & Checkout
 
 ## 目标
-搭建 Next.js 前端项目，配置基础样式和状态管理。
+实现多分支管理和版本切换。
 
 ## 功能列表
-1. **脚手架**: Next.js + TypeScript + Tailwind CSS。
-2. **组件库**: 集成 shadcn/ui 或其他 UI 库。
-3. **状态管理**: 配置 Zustand Store。
-4. **API Client**: 封装 Axios/Fetch 请求后端。
+1. **创建分支**: 从当前 Commit 创建新指针。
+2. **Checkout/Head**: 获取当前分支的 HEAD 状态或切换分支。
+3. **History API**: 获取项目的 Commit DAG 图。
 
 ## Todo List
-- [ ] 初始化 Next.js 项目 (已在 Stage 01 中包含 package.json，需完善配置)。
-- [ ] 安装 UI 组件库。
-- [ ] 实现 `auth-store` (管理登录态)。
-- [ ] 实现登录/注册页面。
-- [ ] 验证与后端的联通性。
+- [x] 实现 `BranchService.create_branch`。
+- [x] 实现 `POST /api/v1/branches/` 接口。
+- [x] 实现 `GET /api/v1/projects/{id}/graph` 接口 (返回 DAG 数据)。
+- [x] 实现 `GET /api/v1/projects/{id}/head` 接口 (解析 HEAD)。
+- [x] 编写测试用例验证分支管理。
