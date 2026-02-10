@@ -4,3 +4,4 @@ from .project import Project
 from .commit import Commit
 from .branch import Branch
 from .task import TaskStatus
+from .anchor import CharacterAnchor

@@ -9,8 +9,6 @@
 3. **一致性生成**: 基于 Anchor 生成新场景的图片。
 
 ## Todo List
-- [ ] 在 `ai_engine/anchors` 中实现一致性算法逻辑。
-- [ ] 如果使用 API，研究 API 的 "Character Reference" 参数。
-- [ ] 如果本地运行，集成 `ip-adapter`。
-- [ ] 实现 `POST /api/v1/anchors` 创建角色锚点。
-- [ ] 更新生成接口，支持传入 `anchor_id`。
+- [x] 在 `ai_engine/anchors` 中实现一致性算法逻辑。
+- [x] 实现 `POST /api/v1/anchors` 创建角色锚点。
+- [x] 更新生成接口，支持传入 `anchor_id`。

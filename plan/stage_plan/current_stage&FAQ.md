@@ -4,7 +4,7 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Stage 07: 语音生成与对齐](./stage_07.md)
+**Current Stage**: [Stage 08: 视频剪辑与合成](./stage_08.md)
 **Status**: 🚀 Ready to Start
 **Last Updated**: 2026-02-11
 
@@ -15,7 +15,8 @@
 - [x] **Stage 04**: 任务队列与存储
 - [x] **Stage 05**: Seedance 集成
 - [x] **Stage 06**: Stable Diffusion 角色生成
-- [ ] **Stage 07**: 语音生成与对齐 (Current)
+- [x] **Stage 07**: 角色一致性锚点 (MVP)
+- [ ] **Stage 08**: 视频剪辑与合成 (Current)
 - [ ] ... (See individual files for details)
 
 ## 🛠️ Quick Actions
