@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Play, Pause, Plus, Image as ImageIcon, Film, FileText, Settings } from "lucide-react";
+import { Play, Plus, Image as ImageIcon, Film, FileText, Settings, GitBranch } from "lucide-react";
 import api from "@/lib/api";
+import GitGraph from "@/components/GitGraph";
 
 export default function EditorPage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState("script");
@@ -15,20 +16,14 @@ export default function EditorPage({ params }: { params: { id: string } }) {
     if (!prompt) return;
     setIsGenerating(true);
     try {
-      // 1. Trigger generation
       const res = await api.post("/generate/clip", { topic: prompt });
       const taskId = res.data.task_id;
-      
-      // 2. Poll for status (Simplified for MVP, ideally use WebSocket or SWR)
-      // For now, we just simulate a wait or user has to refresh/check status
-      // In real app: Implementation of polling logic here
       console.log("Task started:", taskId);
       
-      // Mock result for demo immediately
+      // Mock result
       setTimeout(() => {
         const newClips = [
-          { id: 1, type: "video", url: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", thumbnail: "/placeholder.png" },
-          { id: 2, type: "video", url: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4", thumbnail: "/placeholder.png" }
+          { id: Date.now(), type: "video", url: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", thumbnail: "/placeholder.png" }
         ];
         setClips([...clips, ...newClips]);
         setIsGenerating(false);
@@ -48,14 +43,23 @@ export default function EditorPage({ params }: { params: { id: string } }) {
         <button
           onClick={() => setActiveTab("script")}
           className={`p-3 mb-2 rounded-xl transition-colors ${activeTab === "script" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+          title="Script"
         >
           <FileText size={20} />
         </button>
         <button
           onClick={() => setActiveTab("assets")}
           className={`p-3 mb-2 rounded-xl transition-colors ${activeTab === "assets" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+          title="Assets"
         >
           <ImageIcon size={20} />
+        </button>
+        <button
+          onClick={() => setActiveTab("history")}
+          className={`p-3 mb-2 rounded-xl transition-colors ${activeTab === "history" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+          title="History / Git Graph"
+        >
+          <GitBranch size={20} />
         </button>
         <div className="mt-auto">
           <button className="p-3 text-gray-400 hover:text-white">
@@ -64,8 +68,8 @@ export default function EditorPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* Panel (Script/Assets) */}
-      <div className="w-80 bg-gray-900 border-r border-gray-800 flex flex-col">
+      {/* Panel (Script/Assets/History) */}
+      <div className={`${activeTab === "history" ? "w-[600px]" : "w-80"} bg-gray-900 border-r border-gray-800 flex flex-col transition-all duration-300`}>
         <div className="p-4 border-b border-gray-800">
           <h2 className="font-semibold text-lg capitalize">{activeTab}</h2>
         </div>
@@ -103,18 +107,18 @@ export default function EditorPage({ params }: { params: { id: string } }) {
                   className="aspect-video bg-gray-800 rounded-lg overflow-hidden cursor-pointer hover:ring-2 ring-blue-500"
                   onClick={() => setCurrentClip(clip.url)}
                 >
-                  {/* Thumbnail would go here */}
                   <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">
                     Clip {idx + 1}
                   </div>
                 </div>
               ))}
-              {clips.length === 0 && (
-                <div className="col-span-2 text-center text-gray-500 text-sm py-10">
-                  No assets generated yet.
-                </div>
-              )}
             </div>
+          )}
+
+          {activeTab === "history" && (
+             <div className="h-full">
+                <GitGraph projectId={parseInt(params.id)} />
+             </div>
           )}
         </div>
       </div>
@@ -142,14 +146,9 @@ export default function EditorPage({ params }: { params: { id: string } }) {
               <button className="text-gray-400 hover:text-white"><Play size={16} /></button>
               <span className="text-xs text-gray-500">00:00 / 00:00</span>
             </div>
-            <div className="flex items-center gap-2">
-               <span className="text-xs text-gray-500">Scale</span>
-               {/* Zoom slider */}
-            </div>
           </div>
           
           <div className="flex-1 p-4 overflow-x-auto whitespace-nowrap relative">
-            {/* Tracks */}
             <div className="flex gap-1 h-24">
                {clips.map((clip, idx) => (
                  <div 
