@@ -1,14 +1,15 @@
-# Stage 10: Git 核心逻辑 - Branch & Checkout
+# Stage 10: Git 核心逻辑 - Commit
 
 ## 目标
-实现多分支管理和版本切换。
+实现视频版本的提交 (Commit) 逻辑，构建 DAG (有向无环图)。
 
 ## 功能列表
-1. **创建分支**: 从当前 Commit 创建新指针。
-2. **Checkout**: 切换当前工作区的 HEAD 到指定 Branch 或 Commit。
-3. **History API**: 获取当前分支的 Commit 历史树。
+1. **Commit 数据结构**: 包含 `parent_id`, `message`, `video_assets`, `timestamp`。
+2. **Hash 计算**: 基于内容计算 SHA 标识。
+3. **提交 API**: `POST /commits/`。
 
 ## Todo List
-- [ ] 实现 `POST /branches/` (从特定 Commit 创建)。
-- [ ] 实现 `GET /projects/{id}/graph` (返回 DAG 数据结构供前端渲染)。
-- [ ] 实现 `Checkout` 逻辑 (在无状态 API 中，这通常意味着返回指定 Commit 的数据)。
+- [x] 完善 `Commit` 模型，添加 `video_assets` 字段。
+- [x] 实现 `CommitService.create_commit` (含 Hash 计算)。
+- [x] 实现 `POST /commits/` 接口。
+- [x] 验证提交链条 (Parent -> Child)。

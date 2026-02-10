@@ -4,7 +4,7 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Stage 10: Git 核心逻辑 - Commit](./stage_10.md)
+**Current Stage**: [Stage 11: Git 核心逻辑 - Branch & Checkout](./stage_11.md)
 **Status**: 🚀 Ready to Start
 **Last Updated**: 2026-02-11
 
@@ -18,7 +18,8 @@
 - [x] **Stage 07**: 角色一致性锚点 (MVP)
 - [x] **Stage 08**: 视频生成工作流编排
 - [x] **Stage 09**: 前端视频编辑器
-- [ ] **Stage 10**: Git 核心逻辑 - Commit (Current)
+- [x] **Stage 10**: Git 核心逻辑 - Commit
+- [ ] **Stage 11**: Git 核心逻辑 - Branch & Checkout (Current)
 - [ ] ... (See individual files for details)
 
 ## 🛠️ Quick Actions
