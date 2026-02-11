@@ -10,14 +10,17 @@ ENV PYTHONUNBUFFERED=1
 ARG PIP_INDEX_URL
 ARG PIP_TRUSTED_HOST
 
-COPY requirements.txt .
+COPY backend/requirements.txt ./requirements.txt
 RUN set -eux; \
     PIP_FLAGS=""; \
     if [ -n "${PIP_INDEX_URL:-}" ]; then PIP_FLAGS="$PIP_FLAGS -i ${PIP_INDEX_URL}"; fi; \
     if [ -n "${PIP_TRUSTED_HOST:-}" ]; then PIP_FLAGS="$PIP_FLAGS --trusted-host ${PIP_TRUSTED_HOST}"; fi; \
     pip install --no-cache-dir $PIP_FLAGS -r requirements.txt
 
-COPY . .
+COPY backend/app ./app
+COPY backend/alembic ./alembic
+COPY backend/alembic.ini ./alembic.ini
+COPY ai_engine ./ai_engine
 
 RUN addgroup --system vidgit && adduser --system --group vidgit
 USER vidgit

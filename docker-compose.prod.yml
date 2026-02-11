@@ -42,16 +42,19 @@ services:
 
   backend:
     build: 
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
       args:
         PIP_INDEX_URL: ${PIP_INDEX_URL-}
         PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST-}
     container_name: vidgit-backend-prod
     restart: always
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-vidgit}:${POSTGRES_PASSWORD:-vidgit_password}@db/${POSTGRES_DB:-vidgit_db}
-      - REDIS_URL=redis://redis:6379/0
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-vidgit}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-vidgit_password}
+      - POSTGRES_DB=${POSTGRES_DB:-vidgit_db}
       - CELERY_BROKER_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672//
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - S3_ENDPOINT_URL=http://minio:9000
@@ -67,8 +70,8 @@ services:
 
   worker:
     build: 
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
       args:
         PIP_INDEX_URL: ${PIP_INDEX_URL-}
         PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST-}
@@ -76,8 +79,11 @@ services:
     restart: always
     command: celery -A app.core.celery_app worker --loglevel=info
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-vidgit}:${POSTGRES_PASSWORD:-vidgit_password}@db/${POSTGRES_DB:-vidgit_db}
-      - REDIS_URL=redis://redis:6379/0
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-vidgit}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-vidgit_password}
+      - POSTGRES_DB=${POSTGRES_DB:-vidgit_db}
       - CELERY_BROKER_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672//
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - S3_ENDPOINT_URL=http://minio:9000
