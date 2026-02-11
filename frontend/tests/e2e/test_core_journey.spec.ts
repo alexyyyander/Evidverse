@@ -14,7 +14,7 @@ test('visitor can navigate to discover page', async ({ page }) => {
   
   // 4. Check for project cards or empty state
   // We expect at least the container to be present
-  const container = page.locator('.max-w-7xl');
+  const container = page.locator('main .max-w-7xl').first();
   await expect(container).toBeVisible();
 });
 

@@ -17,13 +17,38 @@ export default function EditorPage({ params }: { params: { id: string } }) {
   const [currentClip, setCurrentClip] = useState<string | null>(null);
   
   const { setProjectId, loadFromBackend } = useTimelineStore();
+  const projectId = Number(params.id);
 
   useEffect(() => {
-    if (params.id) {
-      setProjectId(parseInt(params.id));
-      loadFromBackend();
-    }
-  }, [params.id]);
+    if (!Number.isFinite(projectId)) return;
+    setProjectId(projectId);
+    loadFromBackend();
+  }, [projectId, setProjectId, loadFromBackend]);
+
+  if (!Number.isFinite(projectId)) {
+    return (
+      <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4">
+        <div className="max-w-md w-full rounded-xl border border-slate-800 bg-slate-900 p-6 text-center">
+          <h1 className="text-xl font-semibold text-white">Invalid Project</h1>
+          <p className="mt-2 text-sm text-slate-400">The project id in the URL is not valid.</p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <a
+              href="/editor/new"
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+            >
+              Create Project
+            </a>
+            <a
+              href="/projects"
+              className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900"
+            >
+              Back to Projects
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleGenerate = async () => {
     if (!prompt) return;
@@ -130,7 +155,7 @@ export default function EditorPage({ params }: { params: { id: string } }) {
 
           {activeTab === "history" && (
              <div className="h-full">
-                <GitGraph projectId={parseInt(params.id)} />
+                <GitGraph projectId={projectId} />
              </div>
           )}
         </div>

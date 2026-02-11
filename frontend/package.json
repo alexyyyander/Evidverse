@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "CI=1 playwright test",
+    "test:e2e": "CI=1 playwright test",
+    "test:e2e:install": "playwright install --only-shell chromium"
   },
   "dependencies": {
     "@types/dagre": "^0.7.53",

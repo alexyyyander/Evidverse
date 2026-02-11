@@ -4,8 +4,8 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Stage 20: 部署与发布准备](./stage_20.md)
-**Status**: ✅ Completed
+**Current Stage**: [Stage3](./stage_plan_frontend/stage_03.md)
+**Status**: pending
 **Last Updated**: 2026-02-11
 
 ## 📅 Stage Roadmap

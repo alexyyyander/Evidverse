@@ -4,6 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import PageContainer from "@/components/layout/PageContainer";
+import SectionHeader from "@/components/layout/SectionHeader";
+import Button from "@/components/ui/button";
+import LinkButton from "@/components/ui/link-button";
+import Dialog from "@/components/ui/dialog";
+import Input from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface Project {
   id: number;
@@ -19,6 +26,7 @@ export default function ProjectsPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importSourceId, setImportSourceId] = useState("");
   const [importing, setImporting] = useState(false);
+  const [usingSampleData, setUsingSampleData] = useState(false);
 
   useEffect(() => {
     fetchProjects();
@@ -28,10 +36,11 @@ export default function ProjectsPage() {
     try {
       const res = await api.get("/projects/");
       setProjects(res.data);
+      setUsingSampleData(false);
     } catch (error) {
       console.error("Failed to fetch projects", error);
-      // Fallback to mock if API fails (e.g. auth error)
-       setProjects([
+      setUsingSampleData(true);
+      setProjects([
         { id: 1, name: "Cat Adventure", description: "A story about a cat", created_at: "2023-10-01" },
         { id: 2, name: "Space Sci-Fi", description: "Future world", created_at: "2023-10-02" },
       ]);
@@ -60,84 +69,86 @@ export default function ProjectsPage() {
   };
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">My Projects</h1>
-          <div className="space-x-4">
-             <button
-              onClick={() => setShowImportModal(true)}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md"
-            >
-              Import / Fork
-            </button>
-            <Link
-              href="/editor/new"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
-            >
-              Create Project
-            </Link>
-          </div>
+    <div className="min-h-[calc(100vh-64px)] py-8">
+      <PageContainer>
+        <div className="mb-8">
+          <SectionHeader
+            title="My Projects"
+            subtitle="Manage your projects and jump into the editor."
+            right={
+              <>
+                <Button variant="secondary" onClick={() => setShowImportModal(true)}>
+                  Import / Fork
+                </Button>
+                <LinkButton href="/editor/new">Create Project</LinkButton>
+              </>
+            }
+          />
         </div>
 
-        {showImportModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-xl w-96">
-              <h2 className="text-xl font-bold mb-4">Import Project</h2>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Source Project ID</label>
-                <input
-                  type="number"
-                  className="w-full p-2 border rounded dark:bg-zinc-700 dark:border-zinc-600"
-                  placeholder="e.g. 123"
-                  value={importSourceId}
-                  onChange={(e) => setImportSourceId(e.target.value)}
-                />
-                <p className="text-xs text-gray-500 mt-1">Enter the ID of the Vidgit project to fork.</p>
-              </div>
-              <div className="flex justify-end space-x-2">
-                <button
-                  onClick={() => setShowImportModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleImport}
-                  disabled={importing}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {importing ? "Forking..." : "Fork Project"}
-                </button>
-              </div>
-            </div>
+        {usingSampleData && (
+          <div className="mb-6 rounded-xl border border-amber-900/40 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
+            Showing sample data because the API request failed. Check backend availability and authentication.
           </div>
         )}
 
+        <Dialog
+          open={showImportModal}
+          onOpenChange={(open) => {
+            setShowImportModal(open);
+            if (!open) {
+              setImportSourceId("");
+              setImporting(false);
+            }
+          }}
+          title="Import Project"
+          description="Enter the ID of the Vidgit project to fork."
+          footer={
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="ghost" onClick={() => setShowImportModal(false)}>
+                Cancel
+              </Button>
+              <Button loading={importing} onClick={handleImport}>
+                Fork Project
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-foreground">Source Project ID</div>
+            <Input
+              type="number"
+              placeholder="e.g. 123"
+              value={importSourceId}
+              onChange={(e) => setImportSourceId(e.target.value)}
+            />
+          </div>
+        </Dialog>
+
         {loading ? (
-          <p>Loading...</p>
+          <p className="text-slate-400">Loading...</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => (
               <Link
                 key={project.id}
                 href={`/editor/${project.id}`}
-                className="block p-6 bg-white border border-gray-200 rounded-lg shadow hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+                className="block"
               >
-                <h5 className="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-                  {project.name}
-                </h5>
-                <p className="font-normal text-gray-700 dark:text-gray-400">
-                  {project.description}
-                </p>
-                <p className="mt-4 text-sm text-gray-500">
-                  {new Date(project.created_at).toLocaleDateString()}
-                </p>
+                <Card className="transition-colors hover:bg-card/70">
+                  <CardContent>
+                    <h5 className="mb-2 text-xl font-semibold tracking-tight text-card-foreground">{project.name}</h5>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
+                    <p className="mt-4 text-xs text-muted-foreground">
+                      {new Date(project.created_at).toLocaleDateString()}
+                    </p>
+                  </CardContent>
+                </Card>
               </Link>
             ))}
           </div>
         )}
-      </div>
+      </PageContainer>
     </div>
   );
 }

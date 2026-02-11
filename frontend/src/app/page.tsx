@@ -2,48 +2,75 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Vidgit - AI Video Editor
-        </p>
+    <div className="relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-24 left-1/2 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-600/20 via-sky-500/10 to-fuchsia-500/20 blur-3xl" />
+        <div className="absolute -bottom-28 right-[-120px] h-[420px] w-[520px] rounded-full bg-gradient-to-tr from-emerald-500/10 to-indigo-500/10 blur-3xl" />
       </div>
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <h1 className="text-6xl font-bold">Vidgit</h1>
-      </div>
+      <main className="relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-xs text-slate-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+              AI video editing with Git-like history
+            </div>
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <Link
-          href="/projects"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Projects{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Manage your video projects and anchors.
-          </p>
-        </Link>
+            <h1 className="mt-6 text-4xl sm:text-6xl font-semibold tracking-tight text-white">
+              Vidgit
+              <span className="block text-slate-300 mt-3 text-2xl sm:text-3xl font-medium">
+                Generate. Edit. Branch. Share.
+              </span>
+            </h1>
 
-        <Link
-          href="/editor/new"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            New Project{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Create a new AI-generated video project.
-          </p>
-        </Link>
-      </div>
-    </main>
+            <p className="mt-6 text-base sm:text-lg text-slate-400">
+              A visual editor for AI-generated clips with a commit graph you can fork from any moment.
+            </p>
+
+            <div className="mt-10 flex flex-col sm:flex-row gap-3">
+              <Link
+                href="/editor/new"
+                className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-3 text-sm font-medium text-white hover:bg-indigo-500"
+              >
+                Create New Project
+              </Link>
+              <Link
+                href="/discover"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-800 bg-slate-950 px-5 py-3 text-sm font-medium text-slate-200 hover:bg-slate-900"
+              >
+                Explore Discover
+              </Link>
+              <Link
+                href="/projects"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-800 bg-slate-950 px-5 py-3 text-sm font-medium text-slate-200 hover:bg-slate-900"
+              >
+                My Projects
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+              <div className="text-sm font-medium text-white">Editor-first workflow</div>
+              <div className="mt-2 text-sm text-slate-400">
+                Prompt, preview, and arrange clips on a timeline with fast iteration loops.
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+              <div className="text-sm font-medium text-white">Git graph history</div>
+              <div className="mt-2 text-sm text-slate-400">
+                Inspect commit DAG and fork from any snapshot to explore creative branches.
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+              <div className="text-sm font-medium text-white">Community-ready</div>
+              <div className="mt-2 text-sm text-slate-400">
+                Share public projects, browse Discover, and remix via fork.
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }

@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import { projectApi, userApi } from "@/lib/api";
 import ProjectCard from "@/components/ProjectCard";
-import { Loader2, User } from "lucide-react";
-import { useParams } from "next/navigation";
+import { User } from "lucide-react";
+import PageContainer from "@/components/layout/PageContainer";
+import SectionHeader from "@/components/layout/SectionHeader";
+import LoadingState from "@/components/states/LoadingState";
+import EmptyState from "@/components/ui/empty-state";
+import { Card, CardContent } from "@/components/ui/card";
 
-export default function UserProfilePage() {
-  const { id } = useParams();
-  const userId = Number(id);
+export default function UserProfilePage({ params }: { params: { id: string } }) {
+  const userId = Number(params.id);
   
   const [user, setUser] = useState<any>(null);
   const [projects, setProjects] = useState<any[]>([]);
@@ -36,52 +39,53 @@ export default function UserProfilePage() {
   }, [userId]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-        <Loader2 className="animate-spin text-indigo-500" size={32} />
-      </div>
-    );
+    return <LoadingState label="Loading profile..." />;
   }
 
   if (!user) {
       return (
-          <div className="text-center py-20 text-slate-500">
-              User not found.
+          <div className="min-h-[calc(100vh-64px)] py-8">
+            <PageContainer>
+              <EmptyState title="User not found" description="This profile does not exist or is not accessible." />
+            </PageContainer>
           </div>
       )
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center space-x-4 mb-8 p-6 bg-slate-900 rounded-lg border border-slate-800">
-         <div className="h-20 w-20 rounded-full bg-indigo-600 flex items-center justify-center text-white text-3xl font-bold">
-            <User size={40} />
-         </div>
-         <div>
-            <h1 className="text-2xl font-bold text-white">{user.full_name || user.email.split('@')[0]}</h1>
-            <p className="text-slate-400">Vidgit Creator</p>
-         </div>
+    <div className="min-h-[calc(100vh-64px)] py-8">
+      <PageContainer>
+      <div className="mb-8">
+        <SectionHeader
+          title={user.full_name || user.email.split("@")[0]}
+          subtitle="Vidgit Creator"
+        />
       </div>
 
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-white">Public Projects</h2>
-      </div>
+      <Card className="mb-8">
+        <CardContent className="pt-6">
+          <div className="flex items-center space-x-4">
+            <div className="h-20 w-20 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+              <User size={40} />
+            </div>
+            <div>
+              <div className="text-lg font-semibold text-card-foreground">Public Projects</div>
+              <div className="text-sm text-muted-foreground">Projects shared by this creator.</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {loading ? (
-        <div className="flex justify-center py-10">
-            <Loader2 className="animate-spin text-indigo-500" size={32} />
-        </div>
-      ) : projects.length === 0 ? (
-        <div className="text-center py-20 bg-slate-900/50 rounded-lg border border-slate-800 border-dashed">
-            <p className="text-slate-500">No public projects found.</p>
-        </div>
+      {projects.length === 0 ? (
+        <EmptyState title="No public projects found" description="When this user shares projects, they will show up here." />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {projects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-            ))}
+          {projects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
         </div>
       )}
+      </PageContainer>
     </div>
   );
 }

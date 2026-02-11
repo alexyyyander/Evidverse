@@ -4,6 +4,10 @@ import Link from "next/link";
 import { projectApi } from "@/lib/api";
 import { useState } from "react";
 import { Heart, GitFork, User as UserIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast";
+import IconButton from "@/components/ui/icon-button";
+import { Card } from "@/components/ui/card";
 
 interface Project {
   id: number;
@@ -20,6 +24,8 @@ interface ProjectCardProps {
 }
 
 export default function ProjectCard({ project: initialProject }: ProjectCardProps) {
+  const router = useRouter();
+  const { toast } = useToast();
   const [project, setProject] = useState(initialProject);
   const [loading, setLoading] = useState(false);
 
@@ -38,7 +44,7 @@ export default function ProjectCard({ project: initialProject }: ProjectCardProp
             likes_count: isLikedNow ? prev.likes_count + 1 : prev.likes_count - 1
         }));
     } catch (err) {
-        console.error("Failed to like project", err);
+        toast({ title: "Like failed", description: "Please try again.", variant: "destructive" });
     } finally {
         setLoading(false);
     }
@@ -51,57 +57,56 @@ export default function ProjectCard({ project: initialProject }: ProjectCardProp
       
       try {
           const res = await projectApi.fork(project.id);
-          window.location.href = `/editor/${res.data.id}`;
+          toast({ title: "Forked", description: "Opening editor...", variant: "success" });
+          router.push(`/editor/${res.data.id}`);
       } catch (err) {
-          alert("Failed to fork project");
+          toast({ title: "Fork failed", description: "Check permissions and try again.", variant: "destructive" });
       }
   };
 
   return (
-    <div className="bg-slate-900 rounded-lg overflow-hidden border border-slate-800 hover:border-indigo-500 transition-all group">
-      {/* Thumbnail Placeholder */}
-      <div className="h-40 bg-slate-800 relative">
-         <div className="absolute inset-0 flex items-center justify-center text-slate-600">
-            <span className="text-4xl font-bold opacity-20">VID</span>
-         </div>
+    <Card className="overflow-hidden transition-colors hover:bg-card/70">
+      <div className="h-40 bg-secondary relative">
+        <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+          <span className="text-4xl font-bold opacity-20">VID</span>
+        </div>
       </div>
-      
+
       <div className="p-4">
         <div className="flex justify-between items-start mb-2">
-            <Link href={`/editor/${project.id}`} className="hover:text-indigo-400 transition-colors">
-                <h3 className="font-bold text-lg text-white truncate">{project.name}</h3>
-            </Link>
+          <Link href={`/editor/${project.id}`} className="hover:text-primary transition-colors">
+            <h3 className="font-semibold text-lg text-card-foreground truncate">{project.name}</h3>
+          </Link>
         </div>
-        
-        <p className="text-sm text-slate-400 mb-4 h-10 overflow-hidden line-clamp-2">
-            {project.description || "No description provided."}
+
+        <p className="text-sm text-muted-foreground mb-4 h-10 overflow-hidden line-clamp-2">
+          {project.description || "No description provided."}
         </p>
 
-        <div className="flex items-center justify-between text-xs text-slate-500 border-t border-slate-800 pt-3">
-            <div className="flex items-center space-x-2">
-                 <UserIcon size={14} />
-                 <span>{project.owner.full_name || project.owner.email.split('@')[0]}</span>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-                 <button 
-                    onClick={handleLike}
-                    className={`flex items-center space-x-1 transition-colors ${project.is_liked ? "text-pink-500" : "hover:text-pink-500"}`}
-                 >
-                    <Heart size={14} fill={project.is_liked ? "currentColor" : "none"} />
-                    <span>{project.likes_count}</span>
-                 </button>
-                 
-                 <button 
-                    onClick={handleFork}
-                    className="flex items-center space-x-1 hover:text-indigo-500 transition-colors"
-                    title="Fork this project"
-                 >
-                    <GitFork size={14} />
-                 </button>
-            </div>
+        <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-3">
+          <div className="flex items-center space-x-2">
+            <UserIcon size={14} />
+            <span>{project.owner.full_name || project.owner.email.split("@")[0]}</span>
+          </div>
+
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={handleLike}
+              className={`inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors ${
+                project.is_liked ? "text-pink-500" : "hover:text-pink-500"
+              }`}
+              aria-label="Like project"
+            >
+              <Heart size={14} fill={project.is_liked ? "currentColor" : "none"} />
+              <span>{project.likes_count}</span>
+            </button>
+
+            <IconButton onClick={handleFork} aria-label="Fork project" title="Fork this project">
+              <GitFork size={14} />
+            </IconButton>
+          </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

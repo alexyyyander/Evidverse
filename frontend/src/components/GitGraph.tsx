@@ -38,11 +38,7 @@ export default function GitGraph({ projectId }: GraphProps) {
     nodeId: null
   });
 
-  useEffect(() => {
-    fetchGraph();
-  }, [projectId]);
-
-  const fetchGraph = async () => {
+  const fetchGraph = useCallback(async () => {
     try {
       const res = await api.get(`/projects/${projectId}/graph`);
       const { commits, branches } = res.data;
@@ -90,7 +86,11 @@ export default function GitGraph({ projectId }: GraphProps) {
     } catch (error) {
       console.error("Failed to fetch graph", error);
     }
-  };
+  }, [projectId, setEdges, setNodes]);
+
+  useEffect(() => {
+    fetchGraph();
+  }, [fetchGraph]);
 
   const onNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node) => {
@@ -130,7 +130,7 @@ export default function GitGraph({ projectId }: GraphProps) {
   };
 
   return (
-    <div className="w-full h-full min-h-[400px] bg-gray-50 rounded-lg border border-gray-200">
+    <div className="w-full h-full min-h-[400px] bg-slate-950 rounded-lg border border-slate-800 overflow-hidden">
       <ReactFlow
         nodes={nodes}
         edges={edges}

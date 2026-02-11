@@ -31,6 +31,9 @@ dist/
 .next/
 out/
 .env.local
+playwright-report/
+test-results/
+*.tsbuildinfo
 
 # IDE
 .idea/
@@ -50,5 +53,5 @@ storage/
 
 # Plans (Keep stage_plan, ignore high-level docs)
 plan/*.md
+!plan/current_stage&FAQ.md
 !plan/stage_plan*/
-

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Timeline, TimelineRow, TimelineEffect, TimelineState } from '@xzdarcy/react-timeline-editor';
+import { Timeline, TimelineState } from '@xzdarcy/react-timeline-editor';
 import { useTimelineStore } from '@/store/timelineStore';
 import { Save, Play, Pause } from 'lucide-react';
 

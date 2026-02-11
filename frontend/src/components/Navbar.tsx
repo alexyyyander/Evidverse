@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import PageContainer from "@/components/layout/PageContainer";
+import { cn } from "@/lib/cn";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -13,11 +15,11 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="bg-slate-900 border-b border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="border-b border-border bg-card/60 backdrop-blur">
+      <PageContainer>
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-indigo-500">
+            <Link href="/" className="text-xl font-bold text-primary">
               Vidgit
             </Link>
             <div className="ml-10 flex items-baseline space-x-4">
@@ -27,11 +29,12 @@ export default function Navbar() {
                   <Link
                     key={item.name}
                     href={item.path}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    className={cn(
+                      "px-3 py-2 rounded-md text-sm font-medium transition-colors",
                       isActive
-                        ? "bg-slate-800 text-white"
-                        : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                    }`}
+                        ? "bg-secondary text-secondary-foreground"
+                        : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
+                    )}
                   >
                     {item.name}
                   </Link>
@@ -40,13 +43,12 @@ export default function Navbar() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            {/* Placeholder for User Profile / Login */}
-             <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+             <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
                 U
              </div>
           </div>
         </div>
-      </div>
+      </PageContainer>
     </nav>
   );
 }

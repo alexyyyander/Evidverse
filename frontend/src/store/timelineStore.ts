@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { TimelineRow, TimelineEffect } from '@xzdarcy/react-timeline-editor';
+import type { TimelineRow, TimelineEffect } from '@xzdarcy/timeline-engine';
 import api from '@/lib/api';
 
 export interface TimelineState {
