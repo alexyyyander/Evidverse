@@ -10,7 +10,6 @@ export const metadata: Metadata = {
   description: "AI Video Editor",
 };
 
-import Navbar from "@/components/Navbar";
 import { Toaster } from "@/components/ui/toast";
 import Providers from "@/app/providers";
 
@@ -23,8 +22,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.className} min-h-screen bg-background text-foreground antialiased flex flex-col`}>
         <Providers>
-          <Navbar />
-          <main className="flex-1">{children}</main>
+          {children}
           <Toaster />
         </Providers>
       </body>

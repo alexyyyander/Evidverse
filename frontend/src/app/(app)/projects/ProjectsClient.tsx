@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { projectApi, type ProjectSummary } from "@/lib/api";
+import { projectApi } from "@/lib/api";
 import PageContainer from "@/components/layout/PageContainer";
 import SectionHeader from "@/components/layout/SectionHeader";
 import Button from "@/components/ui/button";
@@ -18,7 +18,7 @@ import { useProjects } from "@/lib/queries/useProjects";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 
-export default function ProjectsPage() {
+export default function ProjectsClient() {
   const router = useRouter();
   const [showImportModal, setShowImportModal] = useState(false);
   const [importSourceId, setImportSourceId] = useState("");
@@ -107,22 +107,22 @@ export default function ProjectsPage() {
         {isLoading ? (
           <p className="text-muted-foreground">Loading...</p>
         ) : (data || []).length === 0 ? (
-          <EmptyState title="No projects yet" description="Create a project to start editing." action={<LinkButton href="/editor/new">Create Project</LinkButton>} />
+          <EmptyState
+            title="No projects yet"
+            description="Create a project to start editing."
+            action={<LinkButton href="/editor/new">Create Project</LinkButton>}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {(data || []).map((project) => (
-              <Link
-                key={project.id}
-                href={`/editor/${project.id}`}
-                className="block"
-              >
+              <Link key={project.id} href={`/editor/${project.id}`} className="block">
                 <Card className="transition-colors hover:bg-card/70">
                   <CardContent>
                     <h5 className="mb-2 text-xl font-semibold tracking-tight text-card-foreground">{project.name}</h5>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{project.description || "No description provided."}</p>
-                    <p className="mt-4 text-xs text-muted-foreground">
-                      {new Date(project.created_at).toLocaleDateString()}
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {project.description || "No description provided."}
                     </p>
+                    <p className="mt-4 text-xs text-muted-foreground">{new Date(project.created_at).toLocaleDateString()}</p>
                   </CardContent>
                 </Card>
               </Link>
@@ -133,3 +133,4 @@ export default function ProjectsPage() {
     </div>
   );
 }
+

@@ -9,7 +9,7 @@ import EmptyState from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/toast";
 import { useFeed } from "@/lib/queries/useFeed";
 
-export default function DiscoverPage() {
+export default function DiscoverClient() {
   const { data, isLoading, isError, error } = useFeed();
 
   useEffect(() => {
@@ -44,3 +44,4 @@ export default function DiscoverPage() {
     </div>
   );
 }
+

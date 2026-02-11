@@ -7,6 +7,7 @@ import { generationApi } from "@/lib/api";
 import GitGraph from "@/components/GitGraph";
 import { useTimelineStore } from "@/store/timelineStore";
 import { toast } from "@/components/ui/toast";
+import LinkButton from "@/components/ui/link-button";
 
 const TimelineEditor = dynamic(() => import("@/components/TimelineEditor"), { ssr: false });
 
@@ -28,23 +29,15 @@ export default function EditorPage({ params }: { params: { id: string } }) {
 
   if (!Number.isFinite(projectId)) {
     return (
-      <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4">
-        <div className="max-w-md w-full rounded-xl border border-slate-800 bg-slate-900 p-6 text-center">
-          <h1 className="text-xl font-semibold text-white">Invalid Project</h1>
-          <p className="mt-2 text-sm text-slate-400">The project id in the URL is not valid.</p>
+      <div className="h-screen flex items-center justify-center px-4">
+        <div className="max-w-md w-full rounded-xl border border-border bg-card p-6 text-center">
+          <h1 className="text-xl font-semibold text-foreground">Invalid Project</h1>
+          <p className="mt-2 text-sm text-muted-foreground">The project id in the URL is not valid.</p>
           <div className="mt-6 flex items-center justify-center gap-3">
-            <a
-              href="/editor/new"
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-            >
-              Create Project
-            </a>
-            <a
-              href="/projects"
-              className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900"
-            >
+            <LinkButton href="/editor/new">Create Project</LinkButton>
+            <LinkButton href="/projects" variant="secondary">
               Back to Projects
-            </a>
+            </LinkButton>
           </div>
         </div>
       </div>

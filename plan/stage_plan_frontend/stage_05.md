@@ -9,13 +9,12 @@
 - 缺少 route-level `loading.tsx` / `error.tsx` 等能力的使用。
 
 ## Todo List
-- [ ] 补齐 `/editor/new`（新建项目流程：创建项目 -> 跳转 `/editor/:id`）。
-- [ ] 将可 server-render 的页面迁移为 Server Components（例如 Discover、Profile、Projects 列表页），只在交互区块使用 Client Components。
-- [ ] 为关键路由增加 `loading.tsx` / `error.tsx`，统一用户体验。
-- [ ] 引入 route groups（例如 `(app)`、`(editor)`）与子 layout，隔离 editor 的全屏布局与普通页面布局。
-- [ ] 清理导航与跳转方式（统一 `Link` / `router.push`，避免 `window.location.href`）。
+- [x] 补齐 `/editor/new`（新建项目流程：创建项目 -> 跳转 `/editor/:id`）。
+- [x] 将可 server-render 的页面迁移为 Server Components（例如 Discover、Profile、Projects 列表页），只在交互区块使用 Client Components。
+- [x] 为关键路由增加 `loading.tsx` / `error.tsx`，统一用户体验。
+- [x] 引入 route groups（例如 `(app)`、`(editor)`）与子 layout，隔离 editor 的全屏布局与普通页面布局。
+- [x] 清理导航与跳转方式（统一 `Link` / `router.push`，避免 `window.location.href`）。
 
 ## 验收标准
 - `/editor/new` 可以正常工作且不产生 `NaN` 项目 ID。
 - 页面加载与错误态具备一致体验，且首屏加载更快（减少不必要的 client hydration）。
-
