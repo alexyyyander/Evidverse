@@ -67,9 +67,9 @@ export default function PromptPanel({
       {statusLabel ? <div className="mt-3 text-xs text-muted-foreground">Status: {statusLabel}</div> : null}
 
       <div className="mt-4">
-        <Button onClick={handleGenerate} disabled={!canSubmit} loading={submitting} className="w-full">
+        <Button onClick={handleGenerate} disabled={!canSubmit} loading={submitting || busy} className="w-full">
           <Film size={18} />
-          Generate Video
+          {busy ? "Generating..." : "Generate Video"}
         </Button>
       </div>
     </div>

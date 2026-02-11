@@ -7,3 +7,4 @@ export { projectApi } from "@/lib/api/domains/project";
 export { userApi } from "@/lib/api/domains/user";
 export { generationApi } from "@/lib/api/domains/generation";
 export { tasksApi } from "@/lib/api/domains/tasks";
+export { authApi } from "@/lib/api/domains/auth";

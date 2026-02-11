@@ -10,6 +10,12 @@ export type UserPublic = {
   full_name?: string | null;
 };
 
+export type UserMe = {
+  id: ID;
+  email: string;
+  is_active: boolean;
+};
+
 export type ProjectSummary = {
   id: ID;
   name: string;
@@ -60,6 +66,11 @@ export type TaskResponse<TResult = unknown> = {
   task_id: string;
   status: TaskStatus | string;
   result: TResult;
+};
+
+export type TokenResponse = {
+  access_token: string;
+  token_type: "bearer" | string;
 };
 
 export type GenerateClipResultSuccessItem = {

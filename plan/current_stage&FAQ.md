@@ -4,7 +4,7 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Stage8](./stage_plan_frontend/stage_08.md)
+**Current Stage**: [Stage9](./stage_plan_frontend/stage_09.md)
 **Status**: pending
 **Last Updated**: 2026-02-11
 
