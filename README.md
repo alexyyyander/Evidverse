@@ -61,6 +61,12 @@ Run a production-like stack (Nginx + Frontend + Backend + Worker + DB + Redis + 
 docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
+If downloads are slow (common behind certain networks), you can use a PyPI mirror during build:
+
+```bash
+9+
+```
+
 Access the application:
 - **Frontend**: http://localhost
 - **API Docs**: http://localhost/docs
