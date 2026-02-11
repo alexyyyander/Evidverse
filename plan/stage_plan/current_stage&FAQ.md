@@ -4,7 +4,7 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Stage 19: 项目文档与演示视频](./stage_19.md)
+**Current Stage**: [Stage 20: 部署与发布准备](./stage_20.md)
 **Status**: 🚀 Ready to Start
 **Last Updated**: 2026-02-11
 
@@ -27,7 +27,8 @@
 - [x] **Stage 16**: CLI 工具基础
 - [x] **Stage 17**: CLI 高级功能
 - [x] **Stage 18**: 社区功能 - 分享与发现
-- [ ] **Stage 19**: 项目文档与演示视频 (Current)
+- [x] **Stage 19**: 系统集成测试与性能优化
+- [ ] **Stage 20**: 部署与发布准备 (Current)
 - [ ] ... (See individual files for details)
 
 ## 🛠️ Quick Actions

@@ -2,6 +2,8 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException
+from fastapi.encoders import jsonable_encoder
+from app.core.cache import cache
 
 from app.models.branch import Branch
 from app.models.commit import Commit
@@ -45,6 +47,10 @@ class BranchService:
         db.add(branch)
         await db.commit()
         await db.refresh(branch)
+        
+        # Invalidate graph cache
+        await cache.delete(f"project_graph:{project_id}")
+        
         return branch
 
     @staticmethod
@@ -52,6 +58,12 @@ class BranchService:
         """
         Get the DAG graph of the project (commits and branches).
         """
+        # Try cache first
+        cache_key = f"project_graph:{project_id}"
+        cached_data = await cache.get(cache_key)
+        if cached_data:
+            return cached_data
+
         # Fetch all branches
         branches_query = select(Branch).where(Branch.project_id == project_id)
         branches_res = await db.execute(branches_query)
@@ -62,7 +74,7 @@ class BranchService:
         commits_res = await db.execute(commits_query)
         commits = commits_res.scalars().all()
 
-        return {
+        data = {
             "branches": [
                 {"id": b.id, "name": b.name, "head_commit_id": b.head_commit_id} 
                 for b in branches
@@ -78,6 +90,12 @@ class BranchService:
                 for c in commits
             ]
         }
+        
+        # Cache the result (convert to JSON-friendly format first)
+        json_data = jsonable_encoder(data)
+        await cache.set(cache_key, json_data, expire=600) # Cache for 10 mins
+        
+        return json_data
     
     @staticmethod
     async def get_head_state(db: AsyncSession, project_id: int, branch_name: str = "main") -> Dict[str, Any]:

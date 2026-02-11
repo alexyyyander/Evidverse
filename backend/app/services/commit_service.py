@@ -5,6 +5,7 @@ from typing import Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from fastapi import HTTPException
+from app.core.cache import cache
 
 from app.models.commit import Commit
 from app.models.branch import Branch
@@ -97,6 +98,9 @@ class CommitService:
         
         await db.commit()
         await db.refresh(commit)
+        
+        # Invalidate graph cache
+        await cache.delete(f"project_graph:{project_id}")
         
         return commit
 

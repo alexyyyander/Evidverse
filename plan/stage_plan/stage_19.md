@@ -9,7 +9,7 @@
 3. **CDN**: 确保视频资源通过 CDN 分发。
 
 ## Todo List
-- [ ] 编写 Playwright 测试脚本 (覆盖核心 User Journey)。
-- [ ] 在后端关键查询添加 Redis 缓存装饰器。
-- [ ] 配置 S3/CloudFront CDN (如果是 AWS) 或 MinIO 缓存。
-- [ ] 压测关键接口。
+- [x] 编写 Playwright 测试脚本 (覆盖核心 User Journey) - `frontend/tests/e2e/test_core_journey.spec.ts`
+- [x] 在后端关键查询添加 Redis 缓存装饰器 - `backend/app/services/branch_service.py`
+- [x] 配置 S3/CloudFront CDN (如果是 AWS) 或 MinIO 缓存 - MinIO configured in Docker
+- [x] 压测关键接口 - `backend/tests/locustfile.py`
