@@ -47,3 +47,8 @@ Thumbs.db
 *.mp4
 *.log
 storage/
+
+# Plans (Keep stage_plan, ignore high-level docs)
+plan/*.md
+!plan/stage_plan/
+
