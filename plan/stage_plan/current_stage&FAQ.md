@@ -4,7 +4,7 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Stage 13: 项目部署与 CI/CD](./stage_13.md)
+**Current Stage**: [Stage 19: 项目文档与演示视频](./stage_19.md)
 **Status**: 🚀 Ready to Start
 **Last Updated**: 2026-02-11
 
@@ -21,7 +21,13 @@
 - [x] **Stage 10**: Git 核心逻辑 - Commit
 - [x] **Stage 11**: Git 核心逻辑 - Branch & Checkout
 - [x] **Stage 12**: 视频流可视化 (Git Graph)
-- [ ] **Stage 13**: 项目部署与 CI/CD (Current)
+- [x] **Stage 13**: 项目部署与 CI/CD
+- [x] **Stage 14**: Web 项目导入与 Fork
+- [x] **Stage 15**: Web 简易时间轴编辑器
+- [x] **Stage 16**: CLI 工具基础
+- [x] **Stage 17**: CLI 高级功能
+- [x] **Stage 18**: 社区功能 - 分享与发现
+- [ ] **Stage 19**: 项目文档与演示视频 (Current)
 - [ ] ... (See individual files for details)
 
 ## 🛠️ Quick Actions

@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Play, Plus, Image as ImageIcon, Film, FileText, Settings, GitBranch } from "lucide-react";
 import api from "@/lib/api";
 import GitGraph from "@/components/GitGraph";
+import { useTimelineStore } from "@/store/timelineStore";
+
+const TimelineEditor = dynamic(() => import("@/components/TimelineEditor"), { ssr: false });
 
 export default function EditorPage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState("script");
@@ -11,6 +15,15 @@ export default function EditorPage({ params }: { params: { id: string } }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [clips, setClips] = useState<any[]>([]);
   const [currentClip, setCurrentClip] = useState<string | null>(null);
+  
+  const { setProjectId, loadFromBackend } = useTimelineStore();
+
+  useEffect(() => {
+    if (params.id) {
+      setProjectId(parseInt(params.id));
+      loadFromBackend();
+    }
+  }, [params.id]);
 
   const handleGenerate = async () => {
     if (!prompt) return;
@@ -140,33 +153,8 @@ export default function EditorPage({ params }: { params: { id: string } }) {
         </div>
 
         {/* Timeline Area */}
-        <div className="h-64 bg-gray-900 border-t border-gray-800 flex flex-col">
-          <div className="h-10 border-b border-gray-800 flex items-center px-4 justify-between">
-            <div className="flex items-center gap-4">
-              <button className="text-gray-400 hover:text-white"><Play size={16} /></button>
-              <span className="text-xs text-gray-500">00:00 / 00:00</span>
-            </div>
-          </div>
-          
-          <div className="flex-1 p-4 overflow-x-auto whitespace-nowrap relative">
-            <div className="flex gap-1 h-24">
-               {clips.map((clip, idx) => (
-                 <div 
-                   key={idx}
-                   className="h-full min-w-[120px] bg-blue-900/30 border border-blue-800 rounded-md relative group cursor-pointer"
-                   onClick={() => setCurrentClip(clip.url)}
-                 >
-                    <div className="absolute inset-0 flex items-center justify-center text-xs text-blue-200">
-                      Clip {idx + 1}
-                    </div>
-                 </div>
-               ))}
-               
-               <div className="h-full min-w-[120px] border-2 border-dashed border-gray-700 rounded-md flex items-center justify-center text-gray-600 hover:border-gray-500 hover:text-gray-400 cursor-pointer transition-colors">
-                 <Plus size={24} />
-               </div>
-            </div>
-          </div>
+        <div className="h-[340px] bg-zinc-900 border-t border-gray-800 flex flex-col relative z-0">
+           <TimelineEditor />
         </div>
       </div>
     </div>

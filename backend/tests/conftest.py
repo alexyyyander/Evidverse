@@ -5,6 +5,8 @@ from app.core.db import get_db
 from app.models.base import Base
 from app.main import app
 from httpx import AsyncClient, ASGITransport
+from app.models.user import User
+from app.core.security import get_password_hash, create_access_token
 
 # Use in-memory SQLite for testing to avoid external dependencies
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -43,3 +45,21 @@ async def client(db_session):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()
+
+@pytest.fixture(scope="function")
+async def normal_user(db_session):
+    password = "testpassword"
+    user = User(
+        email="test@example.com",
+        hashed_password=get_password_hash(password),
+        is_active=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+@pytest.fixture(scope="function")
+def normal_user_token_headers(normal_user):
+    access_token = create_access_token(subject=normal_user.id)
+    return {"Authorization": f"Bearer {access_token}"}

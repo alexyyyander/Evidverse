@@ -9,7 +9,7 @@
 3. **User Profile**: 用户个人主页。
 
 ## Todo List
-- [ ] 后端：实现 `Feed` 相关 API。
-- [ ] 后端：实现 `Like` 模型和 API。
-- [ ] 前端：实现 `Discover` 页面 (瀑布流布局)。
-- [ ] 前端：实现 `UserProfile` 页面。
+- [x] 后端：实现 `Feed` 相关 API。
+- [x] 后端：实现 `Like` 模型和 API。
+- [x] 前端：实现 `Discover` 页面 (瀑布流布局)。
+- [x] 前端：实现 `UserProfile` 页面。

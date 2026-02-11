@@ -12,7 +12,7 @@ This file is the Single Source of Truth for project status, next actions, and op
    - Mark completed items in the `stage_XX.md` todo list.
    - If the stage is finished, update `current_stage&FAQ.md` to point to the next stage.
 5. **Commit**: Use meaningful commit messages referencing the stage (e.g., "feat(stage01): implement user model").
-6. **Version Management**: Use git to save meaningful code.
+6. **Version Management**: Use git to save meaningful code changes. Avoid committing large files or binary data. Use gitignore to exclude unnecessary files. Commit frequently. You have to commit after each stage test is passed.
 7. **Auto Unit Test**: Auto fully test the code before submit and consider totally to avoid bugs. Use pytest for backend and jest for frontend. Do not skip any test. Try all test with auto bash script in `backend/tests/` and `frontend/tests/`.
 
 ## 🛠️ Common Commands

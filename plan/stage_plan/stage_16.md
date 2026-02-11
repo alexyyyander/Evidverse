@@ -10,7 +10,7 @@
 4. **Status**: `vidgit status` (查看当前状态)。
 
 ## Todo List
-- [ ] 完善 `cli/vidgit/main.py`。
-- [ ] 实现 `auth` 命令 (保存 Token 到本地 `~/.vidgit/credentials`)。
-- [ ] 实现 `api_client` (CLI 调用的 HTTP 客户端)。
-- [ ] 打包发布测试。
+- [x] 完善 `cli/vidgit/main.py`。
+- [x] 实现 `auth` 命令 (保存 Token 到本地 `~/.vidgit/credentials`)。
+- [x] 实现 `api_client` (CLI 调用的 HTTP 客户端)。
+- [x] 打包发布测试。

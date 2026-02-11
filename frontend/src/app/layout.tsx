@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: "AI Video Editor",
 };
 
+import Navbar from "@/components/Navbar";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -16,7 +18,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={`${inter.className} bg-slate-950 text-slate-200 min-h-screen flex flex-col`}>
+        <Navbar />
+        <main className="flex-1">
+            {children}
+        </main>
+      </body>
     </html>
   );
 }

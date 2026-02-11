@@ -49,6 +49,8 @@ class ProjectService:
             db_project.name = project_in.name
         if project_in.description is not None:
             db_project.description = project_in.description
+        if project_in.workspace_data is not None:
+            db_project.workspace_data = project_in.workspace_data
         
         db.add(db_project)
         await db.commit()
@@ -66,3 +68,71 @@ class ProjectService:
         query = select(Branch).where(Branch.project_id == project_id)
         result = await db.execute(query)
         return result.scalars().all()
+
+    @staticmethod
+    async def fork_project(db: AsyncSession, source_project_id: int, user_id: int, commit_hash: Optional[str] = None) -> Project:
+        # 1. Get Source Project
+        source_project = await ProjectService.get_project(db, source_project_id)
+        if not source_project:
+            raise ValueError("Source project not found")
+
+        # 2. Determine Target Commit (State to fork from)
+        from app.models.commit import Commit
+        from app.models.branch import Branch
+        
+        target_commit = None
+        if commit_hash:
+            target_commit = await db.get(Commit, commit_hash)
+        else:
+            # Get HEAD of main branch
+            query = select(Branch).where(Branch.project_id == source_project_id, Branch.name == "main")
+            result = await db.execute(query)
+            main_branch = result.scalar_one_or_none()
+            if main_branch and main_branch.head_commit_id:
+                target_commit = await db.get(Commit, main_branch.head_commit_id)
+        
+        if not target_commit:
+             # If source project has no commits, just fork empty project
+             video_assets = {}
+        else:
+             video_assets = target_commit.video_assets
+
+        # 3. Create New Project
+        fork_name = f"Fork of {source_project.name}"
+        new_project = Project(
+            name=fork_name,
+            description=f"Forked from project {source_project.id}",
+            owner_id=user_id
+        )
+        db.add(new_project)
+        await db.flush()
+
+        # 4. Create Default Branch (main)
+        # Note: We rely on CommitService to update branch HEAD if we use it, 
+        # but here we might want to manually set it up to avoid circular dependency or complex logic
+        # Let's create branch first.
+        new_branch = Branch(
+            name="main",
+            project_id=new_project.id,
+            head_commit_id=None
+        )
+        db.add(new_branch)
+        await db.flush()
+
+        # 5. Create Initial Commit with state from source
+        if target_commit:
+            from app.services.commit_service import CommitService
+            # We use CommitService to create the commit properly
+            await CommitService.create_commit(
+                db=db,
+                project_id=new_project.id,
+                author_id=user_id,
+                message=f"Fork from {source_project.name} at {target_commit.id[:7]}",
+                video_assets=video_assets,
+                branch_name="main",
+                parent_hash=None # Start fresh history
+            )
+        
+        await db.commit()
+        await db.refresh(new_project)
+        return new_project

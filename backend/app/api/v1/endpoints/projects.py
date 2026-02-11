@@ -5,12 +5,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
 from app.models.user import User
-from app.schemas.project import Project, ProjectCreate, ProjectUpdate
+from app.schemas.project import Project, ProjectCreate, ProjectUpdate, ProjectFork
 from app.schemas.branch import Branch
 from app.services.project_service import ProjectService
 from app.services.branch_service import branch_service
+from app.services.feed_service import FeedService
 
 router = APIRouter()
+
+@router.get("/feed", response_model=List[Project])
+async def read_public_feed(
+    skip: int = 0,
+    limit: int = 20,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Optional[User] = Depends(deps.get_current_user_optional), # Allow anonymous
+) -> Any:
+    """
+    Get public project feed.
+    """
+    user_id = current_user.id if current_user else None
+    return await FeedService.get_public_feed(db, user_id, skip, limit)
 
 @router.post("/", response_model=Project)
 async def create_project(
@@ -137,3 +151,29 @@ async def read_project_head(
         raise HTTPException(status_code=403, detail="Not enough permissions")
     
     return await branch_service.get_head_state(db, project_id, branch_name)
+
+@router.post("/{project_id}/like", response_model=bool)
+async def like_project(
+    project_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """
+    Toggle like for a project. Returns True if liked, False if unliked.
+    """
+    return await FeedService.toggle_like(db, project_id, current_user.id)
+
+@router.post("/{project_id}/fork", response_model=Project)
+async def fork_project(
+    project_id: int,
+    fork_in: ProjectFork,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """
+    Fork a project.
+    """
+    try:
+        return await ProjectService.fork_project(db, project_id, current_user.id, fork_in.commit_hash)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

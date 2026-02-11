@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 
 interface Project {
@@ -12,8 +13,12 @@ interface Project {
 }
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importSourceId, setImportSourceId] = useState("");
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     fetchProjects();
@@ -21,19 +26,36 @@ export default function ProjectsPage() {
 
   const fetchProjects = async () => {
     try {
-      // Mock data for now if API fails or empty
-      // const res = await api.get("/projects/");
-      // setProjects(res.data);
-      
-      // Using mock data for demo since backend might be empty or require auth flow first
-      setProjects([
+      const res = await api.get("/projects/");
+      setProjects(res.data);
+    } catch (error) {
+      console.error("Failed to fetch projects", error);
+      // Fallback to mock if API fails (e.g. auth error)
+       setProjects([
         { id: 1, name: "Cat Adventure", description: "A story about a cat", created_at: "2023-10-01" },
         { id: 2, name: "Space Sci-Fi", description: "Future world", created_at: "2023-10-02" },
       ]);
-    } catch (error) {
-      console.error("Failed to fetch projects", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importSourceId) return;
+    setImporting(true);
+    try {
+      // Assuming importSourceId is a Project ID for internal fork
+      // For Git URL import, we would need a different endpoint or logic
+      // Here we implement "Fork by Project ID" as requested
+      const res = await api.post(`/projects/${importSourceId}/fork`, {});
+      const newProject = res.data;
+      router.push(`/editor/${newProject.id}`);
+    } catch (error) {
+      alert("Failed to import/fork project. Check ID or permissions.");
+      console.error(error);
+    } finally {
+      setImporting(false);
+      setShowImportModal(false);
     }
   };
 
@@ -42,13 +64,55 @@ export default function ProjectsPage() {
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">My Projects</h1>
-          <Link
-            href="/editor/new"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
-          >
-            Create Project
-          </Link>
+          <div className="space-x-4">
+             <button
+              onClick={() => setShowImportModal(true)}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md"
+            >
+              Import / Fork
+            </button>
+            <Link
+              href="/editor/new"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+            >
+              Create Project
+            </Link>
+          </div>
         </div>
+
+        {showImportModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-xl w-96">
+              <h2 className="text-xl font-bold mb-4">Import Project</h2>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">Source Project ID</label>
+                <input
+                  type="number"
+                  className="w-full p-2 border rounded dark:bg-zinc-700 dark:border-zinc-600"
+                  placeholder="e.g. 123"
+                  value={importSourceId}
+                  onChange={(e) => setImportSourceId(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">Enter the ID of the Vidgit project to fork.</p>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleImport}
+                  disabled={importing}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {importing ? "Forking..." : "Fork Project"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <p>Loading...</p>
