@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { GitCommit } from 'lucide-react';
+import { cn } from "@/lib/cn";
 
 interface CommitNodeData {
   id: string;
@@ -8,42 +9,55 @@ interface CommitNodeData {
   date: string;
   isHead?: boolean;
   branch?: string;
+  isHighlighted?: boolean;
 }
 
 const CommitNode = ({ data }: { data: CommitNodeData }) => {
   return (
     <div
-      className={`px-4 py-2 shadow-md rounded-md border w-[220px] ${
-        data.isHead ? "border-indigo-500/70 bg-slate-900" : "border-slate-800 bg-slate-900/70"
-      }`}
+      className={cn(
+        "px-4 py-2 rounded-md border w-[240px] bg-card text-foreground shadow-soft",
+        data.isHead ? "border-indigo-500/60" : "border-border",
+        data.isHighlighted ? "ring-2 ring-ring" : ""
+      )}
     >
-      <Handle type="target" position={Position.Top} className="w-16 !bg-slate-600" />
+      <Handle type="target" position={Position.Top} className="w-16 !bg-muted-foreground/60" />
       
       <div className="flex items-center">
         <div
-          className={`rounded-full p-1 mr-2 ${
-            data.isHead ? "bg-indigo-500/15 text-indigo-300" : "bg-slate-800 text-slate-300"
-          }`}
+          className={cn(
+            "rounded-full p-1 mr-2",
+            data.isHead ? "bg-indigo-500/15 text-indigo-300" : "bg-muted text-muted-foreground"
+          )}
         >
           <GitCommit size={16} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold truncate text-slate-100">{data.message}</div>
-          <div className="text-[10px] text-slate-400 truncate">{data.id.substring(0, 7)}</div>
+          <div className="text-xs font-semibold truncate" title={data.message}>
+            {data.message}
+          </div>
+          <div className="text-[10px] text-muted-foreground truncate">{data.id.substring(0, 7)}</div>
         </div>
       </div>
       
-      {data.branch && (
-         <div className="mt-2 text-[10px] bg-emerald-500/15 text-emerald-300 px-2 py-0.5 rounded-full inline-block border border-emerald-500/20">
+      <div className="mt-2 flex flex-wrap gap-1">
+        {data.isHead ? (
+          <div className="text-[10px] bg-indigo-500/15 text-indigo-200 px-2 py-0.5 rounded-full inline-block border border-indigo-500/25">
+            HEAD
+          </div>
+        ) : null}
+        {data.branch ? (
+          <div className="text-[10px] bg-emerald-500/15 text-emerald-200 px-2 py-0.5 rounded-full inline-block border border-emerald-500/25">
             {data.branch}
-         </div>
-      )}
-
-      <div className="mt-1 text-[10px] text-slate-500 text-right">
-        {new Date(data.date).toLocaleDateString()}
+          </div>
+        ) : null}
       </div>
 
-      <Handle type="source" position={Position.Bottom} className="w-16 !bg-slate-600" />
+      <div className="mt-1 text-[10px] text-muted-foreground text-right" title={data.date}>
+        {new Date(data.date).toLocaleString()}
+      </div>
+
+      <Handle type="source" position={Position.Bottom} className="w-16 !bg-muted-foreground/60" />
     </div>
   );
 };
