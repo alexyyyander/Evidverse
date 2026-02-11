@@ -22,6 +22,12 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.className} min-h-screen bg-background text-foreground antialiased flex flex-col`}>
         <Providers>
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[80] rounded-md bg-popover text-popover-foreground border border-border px-3 py-2"
+          >
+            Skip to content
+          </a>
           {children}
           <Toaster />
         </Providers>

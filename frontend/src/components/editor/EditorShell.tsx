@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Image as ImageIcon, FileText, Settings, GitBranch } from "lucide-react";
-import GitGraph from "@/components/GitGraph";
 import { useTimelineStore } from "@/store/timelineStore";
 import { useTask } from "@/lib/queries/useTask";
 import type { GenerateClipResult, TaskResponse } from "@/lib/api";
@@ -12,6 +12,16 @@ import PreviewPanel from "@/components/editor/PreviewPanel";
 import TimelinePanel from "@/components/editor/TimelinePanel";
 import { toast } from "@/components/ui/toast";
 import IconButton from "@/components/ui/icon-button";
+import Spinner from "@/components/ui/spinner";
+
+const GitGraph = dynamic(() => import("@/components/GitGraph"), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-[240px] flex items-center justify-center">
+      <Spinner size={20} />
+    </div>
+  ),
+});
 
 type EditorTab = "script" | "assets" | "history";
 

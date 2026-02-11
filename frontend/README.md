@@ -3,59 +3,58 @@
 ## Tech Stack
 - Next.js (App Router) + React + TypeScript
 - Tailwind CSS
-- State: zustand
+- Server-state: @tanstack/react-query
+- Client-state: zustand
 - Graph: reactflow + dagre
 - Timeline: @xzdarcy/react-timeline-editor
 - HTTP: axios
+- Unit tests: Vitest + Testing Library
+- E2E: Playwright
 
 ## Local Dev
 - Install: `npm i`
 - Dev: `npm run dev`
 - Lint: `npm run lint`
+- Quality gate: `npm run check`
 
 ## Environment Variables
 - `NEXT_PUBLIC_API_URL`
   - Default: `http://localhost:8000/api/v1`
-  - Used as axios `baseURL` in [api.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api.ts#L1-L8)
+  - Used as axios `baseURL` in [client.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/client.ts#L6-L11)
 
-## API Layer Overview
-### axios instance
-- File: [api.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api.ts)
-- Token injection: reads `localStorage.getItem("token")` (browser only) and sets `Authorization: Bearer <token>` via request interceptor.
+## Project Structure
+- Routes: `src/app/` (App Router)
+  - Route groups: `(app)` (standard pages) and `(editor)` (fullscreen editor)
+- UI components: `src/components/`
+  - Reusable primitives: `src/components/ui/`
+  - Editor modules: `src/components/editor/`
+- API + types: `src/lib/api/`
+- Query hooks (React Query): `src/lib/queries/`
+- Local editor state: `src/store/`
 
-### Typed API wrappers
-- `projectApi` (defined in [api.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api.ts#L19-L28))
-  - `POST /projects/` → `projectApi.create`
-  - `GET /projects/` → `projectApi.getAll`
-  - `GET /projects/:id` → `projectApi.get`
-  - `GET /projects/:id/graph` → `projectApi.getGraph`
-  - `GET /projects/feed` → `projectApi.getFeed`
-  - `POST /projects/:id/like` → `projectApi.toggleLike`
-  - `POST /projects/:id/fork` → `projectApi.fork` (optional `{ commit_hash }`)
-  - `GET /users/:userId/projects` → `projectApi.getUserProjects`
-- `userApi` (defined in [api.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api.ts#L30-L32))
-  - `GET /users/:id` → `userApi.get`
+## API Layer
+- axios instance + interceptors: [client.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/client.ts)
+  - Attaches `Authorization: Bearer <token>` from `localStorage`
+  - Normalizes errors into `ApiError`
+- Domain APIs: `src/lib/api/domains/*`
+  - Auth: [auth.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/domains/auth.ts)
+  - Projects: [project.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/domains/project.ts)
+  - Users: [user.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/domains/user.ts)
+  - Tasks (Celery polling): [tasks.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/domains/tasks.ts)
+- Query keys: [queryKeys.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/queryKeys.ts)
 
-### Direct API calls (currently not wrapped)
-- `POST /generate/clip` (editor generation trigger)
-  - Called in [editor/[id]/page.tsx](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/app/editor/%5Bid%5D/page.tsx#L28-L49)
-- `PUT /projects/:id` (persist editor workspace data)
-  - Called in [timelineStore.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/store/timelineStore.ts#L77-L88)
+## Auth & Route Guard
+- Token storage: [auth.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/auth.ts)
+- Guard component: [AuthGuard.tsx](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/components/auth/AuthGuard.tsx)
+  - Protects `/projects` and `/editor/*`
+  - Redirects to `/login?next=...` and returns to `next` after login
 
-## Where APIs Are Used
-- Feed + Like + Fork
-  - Feed page: [discover/page.tsx](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/app/discover/page.tsx)
-  - Like/Fork actions: [ProjectCard.tsx](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/components/ProjectCard.tsx)
-  - Fork from commit node: [GitGraph.tsx](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/components/GitGraph.tsx#L110-L122)
-- User profile + projects
-  - Profile page: [profile/[id]/page.tsx](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/app/profile/%5Bid%5D/page.tsx)
-- Project list + import/fork
-  - Projects page: [projects/page.tsx](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/app/projects/page.tsx)
-- Timeline workspace (load/save)
-  - Store: [timelineStore.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/store/timelineStore.ts)
+## Scripts
+- `npm run check`: lint + typecheck(build) + unit + e2e
+- `npm run test:unit`: Vitest
+- `npm run test:e2e`: Playwright
+- `npm run format` / `npm run format:check`: Prettier
 
-## Notes (Current Known Issues / Refactor Targets)
-- Route mismatch: UI links to `/editor/new`, but there is no `/editor/new` page; `/editor/[id]` currently calls `parseInt(params.id)` and will produce `NaN` for `"new"`.
-  - References: [Home page](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/app/page.tsx#L32-L45), [Projects page](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/app/projects/page.tsx#L74-L80), [Editor page](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/app/editor/%5Bid%5D/page.tsx#L21-L26)
-- API usage is split between `projectApi/userApi` and direct `api.get/post/put`. The frontend refactor plan aims to unify this.
-
+## Conventions
+- Use Server Components by default; introduce Client Components only for real interaction/state.
+- Use React Query for server-state (fetching/caching/invalidation) and zustand for local editor timeline state.

@@ -34,6 +34,21 @@ export function DropdownMenuTrigger({ children }: { children: ReactElement }) {
       children.props?.onClick?.(e);
       ctx.setOpen(!ctx.open);
     },
+    onKeyDown: (e: any) => {
+      children.props?.onKeyDown?.(e);
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        ctx.setOpen(!ctx.open);
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        ctx.setOpen(true);
+      }
+      if (e.key === "Escape") {
+        ctx.setOpen(false);
+      }
+    },
+    "aria-haspopup": "menu",
     "aria-expanded": ctx.open,
   });
 }
@@ -62,6 +77,16 @@ export function DropdownMenuContent({
     return () => window.removeEventListener("mousedown", onClick);
   }, [ctx]);
 
+  useEffect(() => {
+    if (!ctx.open) return;
+    window.setTimeout(() => {
+      const el = ref.current;
+      if (!el) return;
+      const items = Array.from(el.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+      items[0]?.focus();
+    }, 0);
+  }, [ctx.open]);
+
   if (!ctx.open) return null;
 
   return (
@@ -72,6 +97,40 @@ export function DropdownMenuContent({
         align === "end" ? "right-0" : "left-0",
         className
       )}
+      role="menu"
+      tabIndex={-1}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          ctx.setOpen(false);
+          return;
+        }
+
+        const el = ref.current;
+        if (!el) return;
+        const items = Array.from(el.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+        if (items.length === 0) return;
+        const currentIndex = Math.max(0, items.findIndex((n) => n === document.activeElement));
+
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          const next = items[(currentIndex + 1) % items.length];
+          next?.focus();
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          const next = items[(currentIndex - 1 + items.length) % items.length];
+          next?.focus();
+        }
+        if (e.key === "Home") {
+          e.preventDefault();
+          items[0]?.focus();
+        }
+        if (e.key === "End") {
+          e.preventDefault();
+          items[items.length - 1]?.focus();
+        }
+      }}
     >
       {children}
     </div>
@@ -92,6 +151,7 @@ export function DropdownMenuItem({
   return (
     <button
       type="button"
+      role="menuitem"
       className={cn(
         "w-full text-left px-3 py-2 text-sm rounded-md hover:bg-secondary hover:text-secondary-foreground transition-colors",
         className
@@ -105,4 +165,3 @@ export function DropdownMenuItem({
     </button>
   );
 }
-
