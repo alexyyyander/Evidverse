@@ -13,10 +13,11 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 
-import api from "@/lib/api";
+import { projectApi, type Commit } from "@/lib/api";
 import CommitNode from "@/components/CommitNode";
 import { getLayoutedElements } from "@/lib/layout";
 import { useTimelineStore } from "@/store/timelineStore";
+import { toast } from "@/components/ui/toast";
 
 const nodeTypes = {
   commit: CommitNode,
@@ -40,13 +41,12 @@ export default function GitGraph({ projectId }: GraphProps) {
 
   const fetchGraph = useCallback(async () => {
     try {
-      const res = await api.get(`/projects/${projectId}/graph`);
-      const { commits, branches } = res.data;
+      const { commits, branches } = await projectApi.getGraph(projectId);
 
       // Transform API data to React Flow
-      const flowNodes: Node[] = commits.map((c: any) => {
+      const flowNodes: Node[] = commits.map((c: Commit) => {
         // Check if any branch points to this commit
-        const branch = branches.find((b: any) => b.head_commit_id === c.id);
+        const branch = branches.find((b) => b.head_commit_id === c.id);
         
         return {
           id: c.id,
@@ -63,10 +63,10 @@ export default function GitGraph({ projectId }: GraphProps) {
       });
 
       const flowEdges: Edge[] = commits
-        .filter((c: any) => c.parent_hash)
-        .map((c: any) => ({
+        .filter((c) => c.parent_hash)
+        .map((c) => ({
           id: `e-${c.parent_hash}-${c.id}`,
-          source: c.parent_hash,
+          source: c.parent_hash as string,
           target: c.id,
           type: 'smoothstep',
           markerEnd: {
@@ -84,7 +84,8 @@ export default function GitGraph({ projectId }: GraphProps) {
       setEdges(layoutedEdges);
 
     } catch (error) {
-      console.error("Failed to fetch graph", error);
+      const message = error instanceof Error ? error.message : "Failed to load graph";
+      toast({ title: "Failed to load history", description: message, variant: "destructive" });
     }
   }, [projectId, setEdges, setNodes]);
 
@@ -110,12 +111,12 @@ export default function GitGraph({ projectId }: GraphProps) {
   const handleFork = async () => {
     if (!menu.nodeId) return;
     try {
-      const res = await api.post(`/projects/${projectId}/fork`, { commit_hash: menu.nodeId });
-      const newProject = res.data;
+      const newProject = await projectApi.fork(projectId, menu.nodeId);
+      toast({ title: "Forked", description: "Opening editor...", variant: "success" });
       router.push(`/editor/${newProject.id}`);
     } catch (e) {
-      console.error(e);
-      alert("Fork failed");
+      const message = e instanceof Error ? e.message : "Fork failed";
+      toast({ title: "Fork failed", description: message, variant: "destructive" });
     } finally {
       setMenu(prev => ({ ...prev, visible: false }));
     }

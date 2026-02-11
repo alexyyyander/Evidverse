@@ -32,6 +32,18 @@ const useToastStore = create<ToastStore>((set, get) => ({
   clear: () => set({ toasts: [] }),
 }));
 
+export function toast(t: Omit<ToastItem, "id">) {
+  useToastStore.getState().toast(t);
+}
+
+export function dismissToast(id: string) {
+  useToastStore.getState().dismiss(id);
+}
+
+export function clearToasts() {
+  useToastStore.getState().clear();
+}
+
 export function useToast() {
   return useToastStore((s) => ({ toast: s.toast, dismiss: s.dismiss, clear: s.clear }));
 }
@@ -70,4 +82,3 @@ export function Toaster() {
     </div>
   );
 }
-

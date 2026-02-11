@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { projectApi } from "@/lib/api";
+import { projectApi, type ProjectFeedItem } from "@/lib/api";
 import { useState } from "react";
 import { Heart, GitFork, User as UserIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -9,18 +9,8 @@ import { useToast } from "@/components/ui/toast";
 import IconButton from "@/components/ui/icon-button";
 import { Card } from "@/components/ui/card";
 
-interface Project {
-  id: number;
-  name: string;
-  description?: string;
-  owner: { id: number; email: string; full_name?: string };
-  likes_count: number;
-  is_liked: boolean;
-  created_at: string;
-}
-
 interface ProjectCardProps {
-  project: Project;
+  project: ProjectFeedItem;
 }
 
 export default function ProjectCard({ project: initialProject }: ProjectCardProps) {
@@ -36,8 +26,7 @@ export default function ProjectCard({ project: initialProject }: ProjectCardProp
     
     setLoading(true);
     try {
-        const res = await projectApi.toggleLike(project.id);
-        const isLikedNow = res.data;
+        const isLikedNow = await projectApi.toggleLike(project.id);
         setProject(prev => ({
             ...prev,
             is_liked: isLikedNow,
@@ -58,7 +47,7 @@ export default function ProjectCard({ project: initialProject }: ProjectCardProp
       try {
           const res = await projectApi.fork(project.id);
           toast({ title: "Forked", description: "Opening editor...", variant: "success" });
-          router.push(`/editor/${res.data.id}`);
+          router.push(`/editor/${res.id}`);
       } catch (err) {
           toast({ title: "Fork failed", description: "Check permissions and try again.", variant: "destructive" });
       }

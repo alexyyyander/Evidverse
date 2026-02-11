@@ -27,7 +27,7 @@ export default function NewProjectPage() {
     setError(null);
     try {
       const res = await projectApi.create({ name: name.trim(), description: description.trim() || undefined });
-      const projectId = res.data?.id;
+      const projectId = res.id;
       if (typeof projectId !== "number") {
         throw new Error("Invalid project response");
       }

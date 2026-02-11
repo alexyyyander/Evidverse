@@ -1,24 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { projectApi } from "@/lib/api";
+import { projectApi, type ProjectFeedItem } from "@/lib/api";
 import ProjectCard from "@/components/ProjectCard";
 import PageContainer from "@/components/layout/PageContainer";
 import SectionHeader from "@/components/layout/SectionHeader";
 import LoadingState from "@/components/states/LoadingState";
 import EmptyState from "@/components/ui/empty-state";
+import { toast } from "@/components/ui/toast";
 
 export default function DiscoverPage() {
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<ProjectFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchFeed = async () => {
       try {
         const res = await projectApi.getFeed();
-        setProjects(res.data);
+        setProjects(res);
       } catch (err) {
-        console.error("Failed to load feed", err);
+        const message = err instanceof Error ? err.message : "Failed to load feed";
+        toast({ title: "Failed to load discover", description: message, variant: "destructive" });
       } finally {
         setLoading(false);
       }

@@ -9,13 +9,12 @@
 - 缺少集中式的类型定义（Project/User/Graph/Workspace 等）。
 
 ## Todo List
-- [ ] 定义 `src/lib/api` 的分层：`client`（axios 实例）、`domains`（project/user/task/generate）、`types`（共享类型）。
-- [ ] 统一错误处理：标准化 error（message、status、code、fieldErrors），页面只消费规范化结果。
-- [ ] 统一鉴权策略：token 存取、过期处理、401 行为（清 token + 跳转/提示）。
-- [ ] 把现有 direct calls（`/generate/clip`、`PUT /projects/:id` 等）纳入 domains API。
-- [ ] 为关键接口补齐类型：Project、User、Graph、TimelineWorkspace、TaskStatus。
+- [x] 定义 `src/lib/api` 的分层：`client`（axios 实例）、`domains`（project/user/task/generate）、`types`（共享类型）。
+- [x] 统一错误处理：标准化 error（message、status、code、fieldErrors），页面只消费规范化结果。
+- [x] 统一鉴权策略：token 存取、过期处理、401 行为（清 token + 跳转/提示）。
+- [x] 把现有 direct calls（`/generate/clip`、`PUT /projects/:id` 等）纳入 domains API。
+- [x] 为关键接口补齐类型：Project、User、Graph、TimelineWorkspace、TaskStatus。
 
 ## 验收标准
 - 页面/组件不再直接调用 axios 实例；统一改为 `xxxApi` 方法。
 - 任何 API 失败都有一致的 UI/Toast 行为与可观测错误信息（不依赖 console）。
-

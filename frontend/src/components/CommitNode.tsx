@@ -5,7 +5,6 @@ import { GitCommit } from 'lucide-react';
 interface CommitNodeData {
   id: string;
   message: string;
-  author: string;
   date: string;
   isHead?: boolean;
   branch?: string;

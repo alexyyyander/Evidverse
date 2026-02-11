@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import api from "@/lib/api";
+import { projectApi, type ProjectSummary } from "@/lib/api";
 import PageContainer from "@/components/layout/PageContainer";
 import SectionHeader from "@/components/layout/SectionHeader";
 import Button from "@/components/ui/button";
@@ -11,22 +11,18 @@ import LinkButton from "@/components/ui/link-button";
 import Dialog from "@/components/ui/dialog";
 import Input from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-
-interface Project {
-  id: number;
-  name: string;
-  description: string;
-  created_at: string;
-}
+import EmptyState from "@/components/ui/empty-state";
+import ErrorState from "@/components/ui/error-state";
+import { toast } from "@/components/ui/toast";
 
 export default function ProjectsPage() {
   const router = useRouter();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importSourceId, setImportSourceId] = useState("");
   const [importing, setImporting] = useState(false);
-  const [usingSampleData, setUsingSampleData] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProjects();
@@ -34,16 +30,13 @@ export default function ProjectsPage() {
 
   const fetchProjects = async () => {
     try {
-      const res = await api.get("/projects/");
-      setProjects(res.data);
-      setUsingSampleData(false);
+      setError(null);
+      const data = await projectApi.getAll();
+      setProjects(data);
     } catch (error) {
-      console.error("Failed to fetch projects", error);
-      setUsingSampleData(true);
-      setProjects([
-        { id: 1, name: "Cat Adventure", description: "A story about a cat", created_at: "2023-10-01" },
-        { id: 2, name: "Space Sci-Fi", description: "Future world", created_at: "2023-10-02" },
-      ]);
+      const message = error instanceof Error ? error.message : "Failed to load projects";
+      setError(message);
+      toast({ title: "Failed to load projects", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -53,15 +46,12 @@ export default function ProjectsPage() {
     if (!importSourceId) return;
     setImporting(true);
     try {
-      // Assuming importSourceId is a Project ID for internal fork
-      // For Git URL import, we would need a different endpoint or logic
-      // Here we implement "Fork by Project ID" as requested
-      const res = await api.post(`/projects/${importSourceId}/fork`, {});
-      const newProject = res.data;
+      const newProject = await projectApi.fork(Number(importSourceId));
+      toast({ title: "Forked", description: "Opening editor...", variant: "success" });
       router.push(`/editor/${newProject.id}`);
     } catch (error) {
-      alert("Failed to import/fork project. Check ID or permissions.");
-      console.error(error);
+      const message = error instanceof Error ? error.message : "Failed to fork project";
+      toast({ title: "Fork failed", description: message, variant: "destructive" });
     } finally {
       setImporting(false);
       setShowImportModal(false);
@@ -86,11 +76,7 @@ export default function ProjectsPage() {
           />
         </div>
 
-        {usingSampleData && (
-          <div className="mb-6 rounded-xl border border-amber-900/40 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
-            Showing sample data because the API request failed. Check backend availability and authentication.
-          </div>
-        )}
+        {error ? <div className="mb-6"><ErrorState title="Projects unavailable" description={error} /></div> : null}
 
         <Dialog
           open={showImportModal}
@@ -126,7 +112,9 @@ export default function ProjectsPage() {
         </Dialog>
 
         {loading ? (
-          <p className="text-slate-400">Loading...</p>
+          <p className="text-muted-foreground">Loading...</p>
+        ) : projects.length === 0 ? (
+          <EmptyState title="No projects yet" description="Create a project to start editing." action={<LinkButton href="/editor/new">Create Project</LinkButton>} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => (
@@ -138,7 +126,7 @@ export default function ProjectsPage() {
                 <Card className="transition-colors hover:bg-card/70">
                   <CardContent>
                     <h5 className="mb-2 text-xl font-semibold tracking-tight text-card-foreground">{project.name}</h5>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{project.description || "No description provided."}</p>
                     <p className="mt-4 text-xs text-muted-foreground">
                       {new Date(project.created_at).toLocaleDateString()}
                     </p>

@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Play, Plus, Image as ImageIcon, Film, FileText, Settings, GitBranch } from "lucide-react";
-import api from "@/lib/api";
+import { generationApi } from "@/lib/api";
 import GitGraph from "@/components/GitGraph";
 import { useTimelineStore } from "@/store/timelineStore";
+import { toast } from "@/components/ui/toast";
 
 const TimelineEditor = dynamic(() => import("@/components/TimelineEditor"), { ssr: false });
 
@@ -54,9 +55,8 @@ export default function EditorPage({ params }: { params: { id: string } }) {
     if (!prompt) return;
     setIsGenerating(true);
     try {
-      const res = await api.post("/generate/clip", { topic: prompt });
-      const taskId = res.data.task_id;
-      console.log("Task started:", taskId);
+      const { task_id } = await generationApi.generateClip({ topic: prompt });
+      toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
       
       // Mock result
       setTimeout(() => {
@@ -68,7 +68,8 @@ export default function EditorPage({ params }: { params: { id: string } }) {
       }, 3000);
 
     } catch (error) {
-      console.error("Generation failed", error);
+      const message = error instanceof Error ? error.message : "Generation failed";
+      toast({ title: "Generation failed", description: message, variant: "destructive" });
       setIsGenerating(false);
     }
   };

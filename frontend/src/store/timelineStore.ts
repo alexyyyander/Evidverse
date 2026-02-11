@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { TimelineRow, TimelineEffect } from '@xzdarcy/timeline-engine';
-import api from '@/lib/api';
+import { projectApi, type TimelineWorkspace } from '@/lib/api';
+import { toast } from '@/components/ui/toast';
 
 export interface TimelineState {
   editorData: TimelineRow[];
@@ -78,12 +79,12 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     const { projectId, editorData, effects } = get();
     if (!projectId) return;
     try {
-        await api.put(`/projects/${projectId}`, {
-            workspace_data: { editorData, effects }
-        });
-        console.log("Saved timeline");
+        const workspace: TimelineWorkspace = { editorData, effects };
+        await projectApi.updateWorkspace(projectId, workspace);
+        toast({ title: "Saved", description: "Timeline saved.", variant: "success" });
     } catch (e) {
-        console.error("Failed to save timeline", e);
+        const message = e instanceof Error ? e.message : "Failed to save timeline";
+        toast({ title: "Save failed", description: message, variant: "destructive" });
     }
   },
 
@@ -91,13 +92,13 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     const { projectId } = get();
     if (!projectId) return;
     try {
-         const res = await api.get(`/projects/${projectId}`);
-         const data = res.data.workspace_data;
+         const data = await projectApi.getWorkspace(projectId);
          if (data && data.editorData) {
              set({ editorData: data.editorData, effects: data.effects || {} });
          }
     } catch (e) {
-        console.error("Failed to load timeline", e);
+        const message = e instanceof Error ? e.message : "Failed to load timeline";
+        toast({ title: "Load failed", description: message, variant: "destructive" });
     }
   }
 }));

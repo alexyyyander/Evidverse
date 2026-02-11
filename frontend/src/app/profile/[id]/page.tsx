@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { projectApi, userApi } from "@/lib/api";
+import { projectApi, userApi, type ProjectFeedItem, type UserPublic } from "@/lib/api";
 import ProjectCard from "@/components/ProjectCard";
 import { User } from "lucide-react";
 import PageContainer from "@/components/layout/PageContainer";
@@ -9,12 +9,13 @@ import SectionHeader from "@/components/layout/SectionHeader";
 import LoadingState from "@/components/states/LoadingState";
 import EmptyState from "@/components/ui/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "@/components/ui/toast";
 
 export default function UserProfilePage({ params }: { params: { id: string } }) {
   const userId = Number(params.id);
   
-  const [user, setUser] = useState<any>(null);
-  const [projects, setProjects] = useState<any[]>([]);
+  const [user, setUser] = useState<UserPublic | null>(null);
+  const [projects, setProjects] = useState<ProjectFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,10 +27,11 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
             userApi.get(userId),
             projectApi.getUserProjects(userId)
         ]);
-        setUser(userRes.data);
-        setProjects(projectsRes.data);
+        setUser(userRes);
+        setProjects(projectsRes);
       } catch (err) {
-        console.error("Failed to load profile", err);
+        const message = err instanceof Error ? err.message : "Failed to load profile";
+        toast({ title: "Failed to load profile", description: message, variant: "destructive" });
       } finally {
         setLoading(false);
       }
