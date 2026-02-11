@@ -50,5 +50,5 @@ storage/
 
 # Plans (Keep stage_plan, ignore high-level docs)
 plan/*.md
-!plan/stage_plan/
+!plan/stage_plan*/
 
