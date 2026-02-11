@@ -17,6 +17,10 @@
 - Lint: `npm run lint`
 - Quality gate: `npm run check`
 
+Notes:
+- The frontend expects the API at `NEXT_PUBLIC_API_URL` (default `http://localhost:8000/api/v1`).
+- For a full local dev stack, start infra with `docker-compose up -d`, then run backend + worker, then run `npm run dev`.
+
 ## Environment Variables
 - `NEXT_PUBLIC_API_URL`
   - Default: `http://localhost:8000/api/v1`

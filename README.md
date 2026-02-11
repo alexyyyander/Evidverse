@@ -55,46 +55,51 @@ Vidgit is a revolutionary platform that brings **Git-like version control** to t
 
 ### Option 1: Docker Compose (Recommended)
 
-Run the entire stack (Backend, Frontend, DB, Redis, MinIO) with a single command.
+Run a production-like stack (Nginx + Frontend + Backend + Worker + DB + Redis + RabbitMQ + MinIO).
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/vidgit.git
-cd vidgit
-
-# Start services
 docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
 Access the application:
 - **Frontend**: http://localhost
 - **API Docs**: http://localhost/docs
-- **MinIO Console**: http://localhost:9001
+- **API (prefix)**: http://localhost/api/v1
+
+Notes:
+- The production compose does not expose Postgres/Redis/MinIO ports to the host by default.
 
 ### Option 2: Local Development
 
 #### Prerequisites
 - Python 3.11+
 - Node.js 18+
-- PostgreSQL, Redis, RabbitMQ (or use `docker-compose.yml` for infra only)
+- Docker & Docker Compose (recommended for infra: Postgres/Redis/RabbitMQ/MinIO)
+
+#### Start Infrastructure
+```bash
+docker-compose up -d
+```
 
 #### Backend Setup
 ```bash
+cp .env.example backend/.env
+```
+
+```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
-# Start DB/Redis/MinIO using Docker
-cd ..
-docker-compose up -d db redis rabbitmq minio createbuckets
-cd backend
-
-# Run Migrations
 alembic upgrade head
-
-# Start Server
 uvicorn app.main:app --reload
+```
+
+#### Celery Worker
+```bash
+cd backend
+source venv/bin/activate
+celery -A app.core.celery_app worker --loglevel=info
 ```
 
 #### Frontend Setup
@@ -103,6 +108,12 @@ cd frontend
 npm install
 npm run dev
 ```
+
+Access:
+- Frontend: http://localhost:3000
+- API docs: http://localhost:8000/docs
+- MinIO console: http://localhost:9001
+- RabbitMQ console: http://localhost:15672
 
 ---
 
@@ -128,7 +139,8 @@ vidgit/
 ## 📚 Documentation
 
 - [User Guide](docs/user_guide.md): How to use the editor and version control features.
-- [Developer Guide](docs/developer_guide.md): Architecture details and contribution guidelines.
+- [Developer Guide](docs/developer_guide.md): Local dev, environment, and architecture overview.
+- [Architecture](docs/architecture.md): Components, directories, and core data flows.
 
 ## 🧪 Testing
 
@@ -138,11 +150,11 @@ We ensure quality with a comprehensive testing strategy:
 - **Performance**: `Locust` for load testing critical endpoints.
 
 ```bash
-# Run backend tests
-cd backend && pytest
+# Run backend tests (pytest)
+./backend/tests/run_tests.sh
 
-# Run frontend E2E tests
-cd frontend && npx playwright test
+# Run frontend quality gate (lint + typecheck + unit + e2e)
+./frontend/tests/run_tests.sh
 ```
 
 ## 🤝 Contributing

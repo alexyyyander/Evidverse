@@ -2,12 +2,64 @@
 
 ## Architecture
 
-Vidgit is built with a modern tech stack:
-- **Backend**: Python FastAPI, SQLAlchemy (Async), Pydantic.
-- **Frontend**: Next.js (React), Tailwind CSS, ReactFlow (Graph).
-- **Database**: PostgreSQL (Data), Redis (Cache/Queue).
-- **Storage**: MinIO (S3 compatible) for video assets.
-- **AI Engine**: Integrated with Stable Diffusion and Seedance (Mocked/Stubbed).
+Vidgit is a full-stack app with async AI workflows. At a high level:
+
+```text
+Browser (Next.js)
+   |
+   | HTTP (JSON / form-urlencoded)
+   v
+FastAPI (/api/v1)
+   |
+   | DB writes/reads              async jobs
+   v                              v
+Postgres  <-------------------  Celery Worker
+   ^                              |
+   |                              | AI calls + uploads
+   +----------- MinIO (S3) <------+
+```
+
+### Backend
+- **Runtime**: FastAPI + Pydantic Settings + SQLAlchemy (async) + Alembic
+- **Auth**: JWT bearer tokens
+- **Async jobs**: Celery (RabbitMQ broker + Redis result backend)
+- **Asset storage**: MinIO (S3-compatible), stores generated images/videos and returns public URLs
+
+Key directories:
+- `backend/app/api/v1/`: route definitions and dependency injection
+- `backend/app/models/`: SQLAlchemy models (projects/commits/branches/anchors, etc.)
+- `backend/app/schemas/`: Pydantic request/response shapes
+- `backend/app/workers/`: Celery tasks (image/video/workflow orchestration)
+- `ai_engine/`: adapters/clients for LLM / Stable Diffusion / Seedance
+
+### Frontend
+- **Runtime**: Next.js App Router + TypeScript + Tailwind
+- **Server-state**: React Query (`src/lib/queries/*`)
+- **Client-state**: zustand (editor timeline store)
+- **Visualization**: ReactFlow (Git graph), timeline editor component for clip sequencing
+
+Key directories:
+- `frontend/src/app/`: routes (route groups `(app)` and `(editor)`)
+- `frontend/src/components/`: UI modules (editor modules under `components/editor/`)
+- `frontend/src/lib/api/`: axios client + typed domain APIs
+
+### Core Data Flows
+
+#### Auth
+- Register: `POST /api/v1/auth/register` (JSON `{ email, password }`)
+- Login: `POST /api/v1/auth/login` (form-urlencoded `username=<email>&password=...`)
+- Current user: `GET /api/v1/users/me` (Authorization: Bearer ...)
+
+Frontend stores token in `localStorage` and injects `Authorization` header via axios interceptor.
+
+#### Generate Video (async)
+1. Frontend calls `POST /api/v1/generate/clip` with `{ topic }` → returns `{ task_id }`
+2. Frontend polls `GET /api/v1/tasks/{task_id}` until SUCCESS/FAILURE
+3. Worker orchestrates AI calls and uploads generated assets to MinIO, returning `image_url` / `video_url` in the task result
+
+#### Git-like version control
+- Backend maintains commit DAG and branch heads per project
+- Frontend renders the DAG via ReactFlow in the editor “History” tab and allows fork/add-to-timeline actions
 
 ## Local Development Setup
 
@@ -16,57 +68,64 @@ Vidgit is built with a modern tech stack:
 - Python 3.11+
 - Node.js 18+
 
-### Quick Start
-1.  **Clone the repo**:
-    ```bash
-    git clone https://github.com/yourusername/vidgit.git
-    cd vidgit
-    ```
+### Option A: Local dev (recommended)
 
-2.  **Start Infrastructure**:
-    ```bash
-    docker-compose up -d
-    ```
-    This spins up Postgres, Redis, RabbitMQ, and MinIO.
+1) Start infra services:
+```bash
+docker-compose up -d
+```
 
-3.  **Backend Setup**:
-    ```bash
-    cd backend
-    python -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
-    # Run migrations
-    alembic upgrade head
-    # Start server
-    uvicorn app.main:app --reload
-    ```
+2) Create `backend/.env`:
+```bash
+cp .env.example backend/.env
+```
+Edit values if needed (notably `POSTGRES_*`, `CELERY_*`, `S3_*`).
 
-4.  **Frontend Setup**:
-    ```bash
-    cd frontend
-    npm install
-    npm run dev
-    ```
+3) Backend:
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload
+```
 
-5.  **Access**:
-    - Frontend: http://localhost:3000
-    - Backend API: http://localhost:8000/docs
-    - MinIO Console: http://localhost:9001
+4) Worker (in another terminal):
+```bash
+cd backend
+source venv/bin/activate
+celery -A app.core.celery_app worker --loglevel=info
+```
 
-## Deployment
+5) Frontend:
+```bash
+cd frontend
+npm i
+npm run dev
+```
 
-### Production Docker
-Use `docker-compose.prod.yml` for a production-ready setup with Nginx reverse proxy.
+Access:
+- Frontend: http://localhost:3000
+- Backend docs: http://localhost:8000/docs
+- MinIO console: http://localhost:9001
+- RabbitMQ console: http://localhost:15672 (guest/guest)
+
+### Option B: Full stack in Docker (prod-like)
 ```bash
 docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
-### CI/CD
-GitHub Actions pipelines are configured in `.github/workflows/`:
-- `ci.yml`: Runs tests and checks build on Pull Requests.
-- `deploy.yml` (Planned): Deploys to production on tag push.
+Access:
+- Frontend: http://localhost
+- Backend docs: http://localhost/docs
 
 ## Testing
-- **Backend**: `pytest`
-- **Frontend**: `npm test` (Unit), `npx playwright test` (E2E)
-- **Load Test**: `locust -f backend/tests/locustfile.py`
+- Backend: `./backend/tests/run_tests.sh`
+- Frontend: `./frontend/tests/run_tests.sh` (runs the full quality gate)
+- Load test: `locust -f backend/tests/locustfile.py`
+
+## CI/CD
+GitHub Actions pipelines live in `.github/workflows/`:
+- `ci.yml`: runs checks/tests
+- `deploy.yml`: deployment workflow
