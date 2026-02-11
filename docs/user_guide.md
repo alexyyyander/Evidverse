@@ -1,0 +1,41 @@
+# Vidgit User Guide
+
+Welcome to Vidgit! Vidgit is an AI-powered video editor with Git-like version control capabilities.
+
+## Getting Started
+
+1.  **Sign Up/Login**: Create an account to start managing your video projects.
+2.  **Dashboard**: You will land on your dashboard where you can see your projects.
+3.  **Create Project**: Click "New Project" to start a fresh video editing workspace.
+
+## Features
+
+### 🎬 Video Editing
+- **Timeline**: Drag and drop clips, trim, and arrange them.
+- **AI Generation**: Use the "Generate" tab to create characters and scenes using AI prompts.
+- **Preview**: Real-time preview of your video sequence.
+
+### 🌿 Version Control
+Vidgit brings Git concepts to video editing:
+- **Commits**: Save snapshots of your project state. Every edit can be committed with a message.
+- **Branches**: Experiment with different editing styles by creating branches (e.g., `director-cut`, `short-version`).
+- **Graph View**: Visualize your project history in a commit graph.
+- **Forking**: Fork public projects to remix them in your own workspace.
+
+### 🌐 Community
+- **Discover**: Browse the "Discover" feed to see public projects from other creators.
+- **Likes**: Like projects you appreciate.
+- **Profile**: Showcase your public portfolio on your user profile.
+
+## CLI Tool
+Vidgit also provides a Command Line Interface (CLI) for power users.
+```bash
+pip install vidgit-cli
+vidgit login
+vidgit clone <project_id>
+vidgit status
+vidgit commit -m "My update"
+```
+
+## Support
+For issues and feature requests, please visit our GitHub repository.
