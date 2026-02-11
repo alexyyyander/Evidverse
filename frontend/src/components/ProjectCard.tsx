@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import IconButton from "@/components/ui/icon-button";
 import { Card } from "@/components/ui/card";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 
 interface ProjectCardProps {
   project: ProjectFeedItem;
@@ -17,26 +19,50 @@ export default function ProjectCard({ project: initialProject }: ProjectCardProp
   const router = useRouter();
   const { toast } = useToast();
   const [project, setProject] = useState(initialProject);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+
+  const likeMutation = useMutation({
+    mutationFn: async () => projectApi.toggleLike(project.id),
+    onMutate: async () => {
+      const previousProject = project;
+      setProject((prev) => {
+        const nextLiked = !prev.is_liked;
+        return {
+          ...prev,
+          is_liked: nextLiked,
+          likes_count: nextLiked ? prev.likes_count + 1 : Math.max(0, prev.likes_count - 1),
+        };
+      });
+      return { previousProject };
+    },
+    onError: (_e, _vars, ctx) => {
+      if (ctx?.previousProject) setProject(ctx.previousProject);
+      toast({ title: "Like failed", description: "Please try again.", variant: "destructive" });
+    },
+    onSuccess: (isLikedNow) => {
+      setProject((prev) => ({ ...prev, is_liked: isLikedNow }));
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.userProjects(project.owner.id) });
+    },
+  });
+
+  const forkMutation = useMutation({
+    mutationFn: async () => projectApi.fork(project.id),
+    onSuccess: (newProject) => {
+      toast({ title: "Forked", description: "Opening editor...", variant: "success" });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects() });
+      router.push(`/editor/${newProject.id}`);
+    },
+    onError: () => {
+      toast({ title: "Fork failed", description: "Check permissions and try again.", variant: "destructive" });
+    },
+  });
 
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (loading) return;
-    
-    setLoading(true);
-    try {
-        const isLikedNow = await projectApi.toggleLike(project.id);
-        setProject(prev => ({
-            ...prev,
-            is_liked: isLikedNow,
-            likes_count: isLikedNow ? prev.likes_count + 1 : prev.likes_count - 1
-        }));
-    } catch (err) {
-        toast({ title: "Like failed", description: "Please try again.", variant: "destructive" });
-    } finally {
-        setLoading(false);
-    }
+    if (likeMutation.isPending) return;
+    likeMutation.mutate();
   };
 
   const handleFork = async (e: React.MouseEvent) => {
@@ -44,13 +70,8 @@ export default function ProjectCard({ project: initialProject }: ProjectCardProp
       e.stopPropagation();
       if(!confirm(`Fork project "${project.name}"?`)) return;
       
-      try {
-          const res = await projectApi.fork(project.id);
-          toast({ title: "Forked", description: "Opening editor...", variant: "success" });
-          router.push(`/editor/${res.id}`);
-      } catch (err) {
-          toast({ title: "Fork failed", description: "Check permissions and try again.", variant: "destructive" });
-      }
+      if (forkMutation.isPending) return;
+      forkMutation.mutate();
   };
 
   return (

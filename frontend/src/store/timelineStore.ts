@@ -12,7 +12,7 @@ export interface TimelineState {
   setEditorData: (data: TimelineRow[]) => void;
   setProjectId: (id: number) => void;
   setCurrentTime: (time: number) => void;
-  saveToBackend: () => Promise<void>;
+  saveToBackend: (options?: { silent?: boolean }) => Promise<void>;
   loadFromBackend: () => Promise<void>;
 }
 
@@ -60,7 +60,7 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     };
   });
   // Trigger save after adding clip
-  get().saveToBackend();
+  get().saveToBackend({ silent: true });
   },
 
   setEditorData: (data) => {
@@ -75,13 +75,15 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
 
   setCurrentTime: (time) => set({ currentTime: time }),
 
-  saveToBackend: async () => {
+  saveToBackend: async (options) => {
     const { projectId, editorData, effects } = get();
     if (!projectId) return;
     try {
         const workspace: TimelineWorkspace = { editorData, effects };
         await projectApi.updateWorkspace(projectId, workspace);
-        toast({ title: "Saved", description: "Timeline saved.", variant: "success" });
+        if (!options?.silent) {
+          toast({ title: "Saved", description: "Timeline saved.", variant: "success" });
+        }
     } catch (e) {
         const message = e instanceof Error ? e.message : "Failed to save timeline";
         toast({ title: "Save failed", description: message, variant: "destructive" });

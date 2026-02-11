@@ -9,6 +9,8 @@ export default function TimelineEditor() {
   const { editorData, effects, setEditorData, saveToBackend, setCurrentTime } = useTimelineStore();
   const timelineRef = useRef<TimelineState>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const saveTimerRef = useRef<number | null>(null);
   
   // Prevent hydration mismatch and ensure browser env
   const [mounted, setMounted] = useState(false);
@@ -25,6 +27,29 @@ export default function TimelineEditor() {
     }, 50);
     return () => clearInterval(interval);
   }, [isPlaying, setCurrentTime]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      saveToBackend({ silent: true }).finally(() => {
+        setDirty(false);
+      });
+    }, 800);
+    return () => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    };
+  }, [dirty, effects, editorData, saveToBackend]);
+
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!dirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
 
   const handlePlayOrPause = () => {
     if (!timelineRef.current) return;
@@ -54,7 +79,7 @@ export default function TimelineEditor() {
          <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400 hidden md:inline">Drag clips or use context menu to add</span>
             <button 
-              onClick={() => saveToBackend()} 
+              onClick={() => saveToBackend({ silent: false }).finally(() => setDirty(false))} 
               className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700 transition-colors"
             >
               <Save size={12} /> Save
@@ -65,7 +90,10 @@ export default function TimelineEditor() {
         ref={timelineRef}
         editorData={editorData}
         effects={effects}
-        onChange={(data) => setEditorData(data)}
+        onChange={(data) => {
+          setEditorData(data);
+          setDirty(true);
+        }}
         autoScroll={true}
         onCursorDrag={(time) => setCurrentTime(time)}
         onClickTimeArea={(time) => { setCurrentTime(time); return true; }}

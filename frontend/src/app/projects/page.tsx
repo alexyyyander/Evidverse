@@ -14,48 +14,35 @@ import { Card, CardContent } from "@/components/ui/card";
 import EmptyState from "@/components/ui/empty-state";
 import ErrorState from "@/components/ui/error-state";
 import { toast } from "@/components/ui/toast";
+import { useProjects } from "@/lib/queries/useProjects";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 
 export default function ProjectsPage() {
   const router = useRouter();
-  const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importSourceId, setImportSourceId] = useState("");
-  const [importing, setImporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
+  const { data, isLoading, isError, error } = useProjects();
 
-  const fetchProjects = async () => {
-    try {
-      setError(null);
-      const data = await projectApi.getAll();
-      setProjects(data);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to load projects";
-      setError(message);
-      toast({ title: "Failed to load projects", description: message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const forkMutation = useMutation({
+    mutationFn: async (projectId: number) => projectApi.fork(projectId),
+    onSuccess: (newProject) => {
+      toast({ title: "Forked", description: "Opening editor...", variant: "success" });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects() });
+      router.push(`/editor/${newProject.id}`);
+    },
+    onError: (e) => {
+      const message = e instanceof Error ? e.message : "Failed to fork project";
+      toast({ title: "Fork failed", description: message, variant: "destructive" });
+    },
+  });
 
   const handleImport = async () => {
     if (!importSourceId) return;
-    setImporting(true);
-    try {
-      const newProject = await projectApi.fork(Number(importSourceId));
-      toast({ title: "Forked", description: "Opening editor...", variant: "success" });
-      router.push(`/editor/${newProject.id}`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to fork project";
-      toast({ title: "Fork failed", description: message, variant: "destructive" });
-    } finally {
-      setImporting(false);
-      setShowImportModal(false);
-    }
+    forkMutation.mutate(Number(importSourceId));
+    setShowImportModal(false);
   };
 
   return (
@@ -76,7 +63,14 @@ export default function ProjectsPage() {
           />
         </div>
 
-        {error ? <div className="mb-6"><ErrorState title="Projects unavailable" description={error} /></div> : null}
+        {isError ? (
+          <div className="mb-6">
+            <ErrorState
+              title="Projects unavailable"
+              description={error instanceof Error ? error.message : "Failed to load projects"}
+            />
+          </div>
+        ) : null}
 
         <Dialog
           open={showImportModal}
@@ -84,7 +78,6 @@ export default function ProjectsPage() {
             setShowImportModal(open);
             if (!open) {
               setImportSourceId("");
-              setImporting(false);
             }
           }}
           title="Import Project"
@@ -94,7 +87,7 @@ export default function ProjectsPage() {
               <Button variant="ghost" onClick={() => setShowImportModal(false)}>
                 Cancel
               </Button>
-              <Button loading={importing} onClick={handleImport}>
+              <Button loading={forkMutation.isPending} onClick={handleImport}>
                 Fork Project
               </Button>
             </div>
@@ -111,13 +104,13 @@ export default function ProjectsPage() {
           </div>
         </Dialog>
 
-        {loading ? (
+        {isLoading ? (
           <p className="text-muted-foreground">Loading...</p>
-        ) : projects.length === 0 ? (
+        ) : (data || []).length === 0 ? (
           <EmptyState title="No projects yet" description="Create a project to start editing." action={<LinkButton href="/editor/new">Create Project</LinkButton>} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
+            {(data || []).map((project) => (
               <Link
                 key={project.id}
                 href={`/editor/${project.id}`}

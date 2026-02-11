@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 
 import Navbar from "@/components/Navbar";
 import { Toaster } from "@/components/ui/toast";
+import Providers from "@/app/providers";
 
 export default function RootLayout({
   children,
@@ -21,11 +22,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.className} min-h-screen bg-background text-foreground antialiased flex flex-col`}>
-        <Navbar />
-        <main className="flex-1">
-            {children}
-        </main>
-        <Toaster />
+        <Providers>
+          <Navbar />
+          <main className="flex-1">{children}</main>
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

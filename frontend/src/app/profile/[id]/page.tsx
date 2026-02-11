@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { projectApi, userApi, type ProjectFeedItem, type UserPublic } from "@/lib/api";
+import { useEffect } from "react";
 import ProjectCard from "@/components/ProjectCard";
 import { User } from "lucide-react";
 import PageContainer from "@/components/layout/PageContainer";
@@ -10,39 +9,31 @@ import LoadingState from "@/components/states/LoadingState";
 import EmptyState from "@/components/ui/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
+import { useUserProfile } from "@/lib/queries/useUserProfile";
 
 export default function UserProfilePage({ params }: { params: { id: string } }) {
   const userId = Number(params.id);
   
-  const [user, setUser] = useState<UserPublic | null>(null);
-  const [projects, setProjects] = useState<ProjectFeedItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { userQuery, projectsQuery } = useUserProfile(userId);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userQuery.isError) return;
+    const message = userQuery.error instanceof Error ? userQuery.error.message : "Failed to load profile";
+    toast({ title: "Failed to load profile", description: message, variant: "destructive" });
+  }, [userQuery.error, userQuery.isError]);
 
-    const fetchData = async () => {
-      try {
-        const [userRes, projectsRes] = await Promise.all([
-            userApi.get(userId),
-            projectApi.getUserProjects(userId)
-        ]);
-        setUser(userRes);
-        setProjects(projectsRes);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load profile";
-        toast({ title: "Failed to load profile", description: message, variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, [userId]);
+  useEffect(() => {
+    if (!projectsQuery.isError) return;
+    const message = projectsQuery.error instanceof Error ? projectsQuery.error.message : "Failed to load projects";
+    toast({ title: "Failed to load projects", description: message, variant: "destructive" });
+  }, [projectsQuery.error, projectsQuery.isError]);
 
-  if (loading) {
+  if (userQuery.isLoading || projectsQuery.isLoading) {
     return <LoadingState label="Loading profile..." />;
   }
+
+  const user = userQuery.data || null;
+  const projects = projectsQuery.data || [];
 
   if (!user) {
       return (
