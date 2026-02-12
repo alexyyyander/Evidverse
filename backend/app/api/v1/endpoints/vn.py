@@ -1,5 +1,7 @@
 from typing import Any, Optional
 
+from celery.result import AsyncResult
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,9 +9,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.core.config import settings
 from app.models.user import User
-from app.models.vn import VNAsset
-from app.schemas.vn import VNAsset as VNAssetSchema, VNAssetCreate, VNParsePreviewRequest, VNParsePreviewResponse
+from app.models.vn import VNAsset, VNParseJob
+from app.schemas.vn import (
+    VNAsset as VNAssetSchema,
+    VNAssetCreate,
+    VNParseJob as VNParseJobSchema,
+    VNParseJobCreate,
+    VNParsePreviewRequest,
+    VNParsePreviewResponse,
+)
 from app.services.publish_service import publish_service
+from app.services.vn_parse_service import vn_parse_service
+from app.workers.vn_tasks import vn_parse_job as vn_parse_job_task
 
 
 router = APIRouter()
@@ -118,96 +129,6 @@ async def list_vn_assets(
         )
     return out
 
-
-def _parse_renpy(text: str) -> list[dict[str, Any]]:
-    events: list[dict[str, Any]] = []
-    lines = text.splitlines()
-    in_menu = False
-    current_choices: list[dict[str, Any]] = []
-
-    def flush_menu() -> None:
-        nonlocal in_menu, current_choices
-        if current_choices:
-            events.append({"type": "CHOICE", "choices": current_choices})
-        in_menu = False
-        current_choices = []
-
-    for raw in lines:
-        line = raw.rstrip("\n")
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-
-        if stripped.startswith("label ") and stripped.endswith(":"):
-            flush_menu()
-            name = stripped[len("label ") : -1].strip()
-            events.append({"type": "LABEL", "name": name})
-            continue
-
-        if stripped == "menu:":
-            flush_menu()
-            in_menu = True
-            continue
-
-        if in_menu:
-            if stripped.startswith('"') and stripped.endswith('":'):
-                opt = stripped[1:-2]
-                current_choices.append({"text": opt})
-                continue
-            if not line.startswith((" ", "\t")):
-                flush_menu()
-
-        if stripped.startswith("jump "):
-            flush_menu()
-            target = stripped[len("jump ") :].strip()
-            events.append({"type": "JUMP", "target": target})
-            continue
-
-        if stripped.startswith('"') and stripped.endswith('"') and len(stripped) >= 2:
-            flush_menu()
-            events.append({"type": "NARRATION", "text": stripped[1:-1]})
-            continue
-
-        if '"' in stripped:
-            prefix, rest = stripped.split('"', 1)
-            speaker = prefix.strip()
-            if rest.endswith('"'):
-                text_content = rest[:-1]
-                flush_menu()
-                if speaker:
-                    events.append({"type": "SAY", "speaker": speaker, "text": text_content})
-                    continue
-
-    flush_menu()
-    return events
-
-
-def _parse_kirikiri(text: str) -> list[dict[str, Any]]:
-    events: list[dict[str, Any]] = []
-    for raw in text.splitlines():
-        stripped = raw.strip()
-        if not stripped or stripped.startswith(";"):
-            continue
-        if stripped.startswith("*"):
-            events.append({"type": "LABEL", "name": stripped[1:].strip()})
-            continue
-        if stripped.startswith("@say "):
-            payload = stripped[len("@say ") :].strip()
-            parts = payload.split(" ", 1)
-            if len(parts) == 2:
-                speaker = parts[0].strip()
-                text_content = parts[1].strip()
-                events.append({"type": "SAY", "speaker": speaker, "text": text_content})
-            else:
-                events.append({"type": "NARRATION", "text": payload})
-            continue
-        if stripped.startswith("@jump "):
-            events.append({"type": "JUMP", "target": stripped[len("@jump ") :].strip()})
-            continue
-        events.append({"type": "TEXT", "text": stripped})
-    return events
-
-
 @router.post("/parse-preview", response_model=VNParsePreviewResponse)
 async def parse_preview(
     body: VNParsePreviewRequest,
@@ -217,11 +138,152 @@ async def parse_preview(
     if not text:
         raise HTTPException(status_code=400, detail="script_text is required")
 
-    if body.engine == "RENPY":
-        events = _parse_renpy(text)
-    elif body.engine == "KIRIKIRI":
-        events = _parse_kirikiri(text)
-    else:
-        raise HTTPException(status_code=400, detail="Unsupported engine")
+    try:
+        events = vn_parse_service.parse(body.engine, text)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     return {"engine": body.engine, "events": events}
+
+
+@router.post("/parse-jobs", response_model=VNParseJobSchema)
+async def create_vn_parse_job(
+    body: VNParseJobCreate,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    project_internal_id = await publish_service.resolve_project_internal_id(db, body.project_id)
+    if not project_internal_id:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    branch_id: Optional[int] = None
+    branch_name: Optional[str] = (body.branch_name or "").strip() or None
+    if branch_name:
+        branch_id = await publish_service.resolve_branch_id(db, project_internal_id, branch_name)
+        if not branch_id:
+            raise HTTPException(status_code=404, detail="Branch not found")
+
+    inputs: list[dict[str, Any]] = []
+    if (body.script_text or "").strip():
+        inputs.append({"kind": "text", "engine": body.engine, "text": body.script_text})
+
+    if body.asset_ids:
+        for public_id in body.asset_ids:
+            asset = (
+                await db.execute(
+                    select(VNAsset).where(
+                        VNAsset.owner_internal_id == current_user.internal_id,
+                        VNAsset.project_internal_id == project_internal_id,
+                        VNAsset.public_id == public_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if not asset:
+                raise HTTPException(status_code=404, detail=f"VNAsset not found: {public_id}")
+            inputs.append({"kind": "asset", "asset_id": asset.public_id, "storage_url": asset.storage_url})
+
+    if not inputs:
+        raise HTTPException(status_code=400, detail="script_text or asset_ids is required")
+
+    job = VNParseJob(
+        owner_internal_id=current_user.internal_id,
+        project_internal_id=project_internal_id,
+        branch_id=branch_id,
+        engine_hint=body.engine,
+        inputs=inputs,
+        status="pending",
+        attempts=0,
+        logs=[],
+    )
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+
+    task = vn_parse_job_task.delay(job.internal_id)
+    job.celery_task_id = task.id
+    await db.commit()
+    await db.refresh(job)
+
+    return VNParseJobSchema.model_validate(
+        {
+            "id": job.public_id,
+            "project_id": body.project_id,
+            "branch_name": branch_name,
+            "engine": body.engine,
+            "status": job.status,
+            "task_id": job.celery_task_id,
+            "attempts": job.attempts,
+            "result": job.result,
+            "logs": job.logs,
+            "error": job.error,
+        }
+    )
+
+
+@router.get("/parse-jobs/{job_id}", response_model=VNParseJobSchema)
+async def get_vn_parse_job(
+    job_id: str,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    job = (
+        await db.execute(
+            select(VNParseJob).where(VNParseJob.owner_internal_id == current_user.internal_id, VNParseJob.public_id == job_id)
+        )
+    ).scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="VNParseJob not found")
+
+    task_id = job.celery_task_id
+    if task_id:
+        ar = AsyncResult(task_id)
+        status = ar.status.lower()
+        if status in {"success", "failure", "revoked"}:
+            result = ar.result
+            if status == "success":
+                job.status = "succeeded" if isinstance(result, dict) and result.get("status") == "succeeded" else "succeeded"
+                job.result = result if isinstance(result, dict) else {"result": result}
+                job.error = None
+            else:
+                job.status = "failed"
+                job.error = str(result)
+                job.result = {"error": str(result)}
+            await db.commit()
+
+    project_id = await publish_service.resolve_project_public_id(db, job.project_internal_id)
+    branch_name = await publish_service.resolve_branch_name(db, job.branch_id)
+    return VNParseJobSchema.model_validate(
+        {
+            "id": job.public_id,
+            "project_id": project_id or "",
+            "branch_name": branch_name,
+            "engine": job.engine_hint,
+            "status": job.status,
+            "task_id": job.celery_task_id,
+            "attempts": job.attempts,
+            "result": job.result,
+            "logs": job.logs,
+            "error": job.error,
+        }
+    )
+
+
+@router.get("/parse-jobs/{job_id}/logs")
+async def get_vn_parse_job_logs(
+    job_id: str,
+    offset: int = 0,
+    limit: int = 200,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    job = (
+        await db.execute(
+            select(VNParseJob).where(VNParseJob.owner_internal_id == current_user.internal_id, VNParseJob.public_id == job_id)
+        )
+    ).scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="VNParseJob not found")
+    logs = list(job.logs) if isinstance(job.logs, list) else []
+    o = max(int(offset), 0)
+    l = min(max(int(limit), 1), 500)
+    return {"items": logs[o : o + l], "total": len(logs), "offset": o, "limit": l}

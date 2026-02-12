@@ -4,6 +4,7 @@
 ### 后端（FastAPI）
 - /vn/assets：创建与查询 VNAsset（基于 object storage URL 记录素材引用）
 - /vn/parse-preview：Ren'Py/KiriKiri 脚本文本解析预览（子集支持，用于验证导入与 IR）
+- /vn/parse-jobs：异步解析任务（创建/查询/日志），用于后续大文件与多文件导入
 
 ## 目标
 - 支持用户导入 Galgame/视觉小说数据，结构化为可编辑的剧情与分段，并驱动 Vidgit 生成多世界线番剧
@@ -113,9 +114,13 @@
 - Seedance 漫画转视频结果回写到 ClipSegment.assets_ref，时间线自动补齐
 
 ## API 设计（草案）
-- POST /api/v1/vn/assets（上传素材）
-- POST /api/v1/vn/parse（创建解析任务）
-- GET /api/v1/vn/parse/{job_id}
+- POST /api/v1/files/presigned-url（获取直传 URL + object_name）
+- POST /api/v1/vn/assets（登记 VNAsset 引用）
+- GET /api/v1/vn/assets（查询 VNAsset）
+- POST /api/v1/vn/parse-preview（脚本解析预览）
+- POST /api/v1/vn/parse-jobs（创建解析任务）
+- GET /api/v1/vn/parse-jobs/{job_id}
+- GET /api/v1/vn/parse-jobs/{job_id}/logs
 - POST /api/v1/vn/comic-to-video（创建 Seedance 漫画转视频任务）
 - GET /api/v1/clips/{clip_id}（ClipSegment 对外可访问）
 

@@ -15,6 +15,9 @@
 ### Q: 如何上传 VN 导入素材？
 - A: 先用 /files/presigned-url 获取 object_name，再创建 VNAsset 记录（/vn/assets），后续解析会基于 VNAsset 进行。
 
+### Q: VN 脚本导入最小链路是什么？
+- A: 先用 /vn/parse-preview 做文本预览；确认 OK 后用 /vn/parse-jobs 创建异步解析任务，按 /vn/parse-jobs/{id} 轮询并读取 logs。
+
 ### Frontend Optimization v1（进行中）
 - 目标：把“视频编辑页面”做得足够高级与复杂（点子→剧本→人物→生成→时间轴联动）
 - 计划：仅 3 个阶段，见 [stage_plan_frontend_v1/README](./stage_plan_frontend_v1/README.md)

@@ -40,3 +40,27 @@ class VNParsePreviewRequest(BaseModel):
 class VNParsePreviewResponse(BaseModel):
     engine: VNEngine
     events: list[dict[str, Any]]
+
+
+class VNParseJobCreate(BaseModel):
+    project_id: str
+    branch_name: Optional[str] = None
+    engine: VNEngine
+    script_text: Optional[str] = None
+    asset_ids: Optional[list[str]] = None
+
+
+class VNParseJob(BaseModel):
+    id: str
+    project_id: str
+    branch_name: Optional[str] = None
+    engine: Optional[str] = None
+    status: str
+    task_id: Optional[str] = None
+    attempts: Optional[int] = None
+    result: Optional[Any] = None
+    logs: Optional[Any] = None
+    error: Optional[str] = None
+
+    class Config:
+        from_attributes = True

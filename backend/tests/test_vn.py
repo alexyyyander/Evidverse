@@ -53,3 +53,18 @@ async def test_vn_asset_and_parse_preview(client: AsyncClient):
     data2 = kirikiri.json()
     assert data2["engine"] == "KIRIKIRI"
     assert any(e.get("type") == "LABEL" for e in data2["events"])
+
+    parse_job = await client.post(
+        "/api/v1/vn/parse-jobs",
+        json={"project_id": project_id, "branch_name": "main", "engine": "RENPY", "script_text": 'label start:\n    e "Hello"\n'},
+        headers=headers,
+    )
+    assert parse_job.status_code == 200
+    job = parse_job.json()
+    assert isinstance(job["id"], str) and job["id"]
+    assert job["status"] in {"pending", "started", "succeeded", "failed"}
+
+    logs = await client.get(f"/api/v1/vn/parse-jobs/{job['id']}/logs", headers=headers)
+    assert logs.status_code == 200
+    logs_data = logs.json()
+    assert isinstance(logs_data.get("items"), list)

@@ -44,9 +44,11 @@ class VNParseJob(Base):
     inputs = Column(JSON().with_variant(JSONB, "postgresql"), nullable=False)
 
     status = Column(String, nullable=False, default="pending", index=True)
+    celery_task_id = Column(String, nullable=True, index=True)
     result = Column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
     error = Column(Text, nullable=True)
     logs = Column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
+    attempts = Column(Integer, nullable=False, default=0)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
