@@ -13,7 +13,9 @@ import { cn } from "@/lib/cn";
 
 export default function CharactersPanel() {
   const characters = useEditorStore((s) => Object.values(s.data.characters));
+  const beats = useEditorStore((s) => s.data.beats);
   const selectedCharacterId = useEditorStore((s) => s.selection.selectedCharacterId);
+  const selectedBeatId = useEditorStore((s) => s.selection.selectedBeatId);
   const selectCharacter = useEditorStore((s) => s.selectCharacter);
   const updateCharacter = useEditorStore((s) => s.updateCharacter);
   const beginHistoryGroup = useEditorStore((s) => s.beginHistoryGroup);
@@ -39,10 +41,17 @@ export default function CharactersPanel() {
   }, [activeTask, task, updateGenerationTask, applyCharacterTaskResult]);
 
   const ordered = useMemo(() => {
-    const list = [...characters];
+    const baseList = (() => {
+      if (!selectedBeatId) return characters;
+      const beat = beats[selectedBeatId as any];
+      if (!beat) return characters;
+      const ids = new Set(beat.characterIds);
+      return characters.filter((c) => ids.has(c.id as any));
+    })();
+    const list = [...baseList];
     list.sort((a, b) => a.name.localeCompare(b.name));
     return list;
-  }, [characters]);
+  }, [characters, beats, selectedBeatId]);
 
   const handleGenerateRef = async (characterId: string) => {
     const character = ordered.find((c) => c.id === characterId);

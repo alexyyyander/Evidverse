@@ -9,6 +9,8 @@ import TimelinePanel from "@/components/editor/TimelinePanel";
 import LeftSidebar from "@/components/editor/LeftSidebar";
 import RightSidebar from "@/components/editor/RightSidebar";
 import { ResizablePanel } from "@/components/layout/ResizablePanel";
+import IconButton from "@/components/ui/icon-button";
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 
 export default function EditorShell({ projectId }: { projectId: number }) {
   const { setProjectId } = useTimelineStore();
@@ -45,8 +47,23 @@ export default function EditorShell({ projectId }: { projectId: number }) {
   }, [saveProject, projectId, undo, redo]);
 
   const assetsProps = useMemo(() => {
-    const items = Object.values(data.timelineItems).sort((a, b) => a.startTime - b.startTime);
-    const clips: EditorClip[] = items
+    const allItems = Object.values(data.timelineItems).sort((a, b) => a.startTime - b.startTime);
+    const filteredItems = (() => {
+      if (selection.selectedBeatId) {
+        return allItems.filter((i) => i.linkedBeatId === selection.selectedBeatId);
+      }
+      if (selection.selectedCharacterId) {
+        return allItems.filter((i) => {
+          if (!i.linkedBeatId) return false;
+          const beat = data.beats[i.linkedBeatId];
+          if (!beat) return false;
+          return beat.characterIds.includes(selection.selectedCharacterId as any);
+        });
+      }
+      return allItems;
+    })();
+
+    const clips: EditorClip[] = filteredItems
       .map((item) => {
         const clip = data.clips[item.clipId];
         if (!clip) return null;
@@ -78,50 +95,92 @@ export default function EditorShell({ projectId }: { projectId: number }) {
         if (clipItem) selectTimelineItem(clipItem.id, "script");
       },
     };
-  }, [data, selection.selectedTimelineItemId, selectTimelineItem]);
+  }, [data, selection.selectedTimelineItemId, selection.selectedBeatId, selection.selectedCharacterId, selectTimelineItem]);
 
   const currentClipUrl = assetsProps.selectedVideoUrl;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      <ResizablePanel
-        direction="horizontal"
-        side="start"
-        size={layout.leftPanelWidth}
-        onResize={(w) => updateLayout({ leftPanelWidth: w })}
-        collapsed={layout.leftPanelCollapsed}
-        className="z-20 border-r border-border"
-      >
-        <LeftSidebar projectId={projectId} assetsProps={assetsProps} />
-      </ResizablePanel>
+      {layout.leftPanelCollapsed ? (
+        <div className="w-10 border-r border-border bg-background flex items-start justify-center py-2">
+          <IconButton aria-label="Expand left panel" onClick={() => updateLayout({ leftPanelCollapsed: false })}>
+            <ChevronRight size={18} />
+          </IconButton>
+        </div>
+      ) : (
+        <ResizablePanel
+          direction="horizontal"
+          side="start"
+          size={layout.leftPanelWidth}
+          onResize={(w) => updateLayout({ leftPanelWidth: w })}
+          className="z-20 border-r border-border"
+        >
+          <div className="h-full relative">
+            <div className="absolute top-2 right-2 z-30">
+              <IconButton aria-label="Collapse left panel" onClick={() => updateLayout({ leftPanelCollapsed: true })}>
+                <ChevronLeft size={18} />
+              </IconButton>
+            </div>
+            <LeftSidebar projectId={projectId} assetsProps={assetsProps} />
+          </div>
+        </ResizablePanel>
+      )}
 
       <div className="flex-1 flex flex-col min-w-0 relative z-10">
         <div className="flex-1 overflow-hidden relative">
           <PreviewPanel videoUrl={currentClipUrl} />
         </div>
 
-        <ResizablePanel
-          direction="vertical"
-          side="end"
-          size={layout.bottomPanelHeight}
-          onResize={(h) => updateLayout({ bottomPanelHeight: h })}
-          collapsed={layout.bottomPanelCollapsed}
-          className="z-20 border-t border-border"
-        >
-          <TimelinePanel />
-        </ResizablePanel>
+        {layout.bottomPanelCollapsed ? (
+          <div className="h-10 border-t border-border bg-background flex items-center justify-center">
+            <IconButton aria-label="Expand timeline" onClick={() => updateLayout({ bottomPanelCollapsed: false })}>
+              <ChevronUp size={18} />
+            </IconButton>
+          </div>
+        ) : (
+          <ResizablePanel
+            direction="vertical"
+            side="end"
+            size={layout.bottomPanelHeight}
+            onResize={(h) => updateLayout({ bottomPanelHeight: h })}
+            className="z-20 border-t border-border"
+          >
+            <div className="h-full relative">
+              <div className="absolute top-2 right-2 z-30">
+                <IconButton aria-label="Collapse timeline" onClick={() => updateLayout({ bottomPanelCollapsed: true })}>
+                  <ChevronDown size={18} />
+                </IconButton>
+              </div>
+              <TimelinePanel />
+            </div>
+          </ResizablePanel>
+        )}
       </div>
 
-      <ResizablePanel
-        direction="horizontal"
-        side="end"
-        size={layout.rightPanelWidth}
-        onResize={(w) => updateLayout({ rightPanelWidth: w })}
-        collapsed={layout.rightPanelCollapsed}
-        className="z-20 border-l border-border"
-      >
-        <RightSidebar />
-      </ResizablePanel>
+      {layout.rightPanelCollapsed ? (
+        <div className="w-10 border-l border-border bg-background flex items-start justify-center py-2">
+          <IconButton aria-label="Expand right panel" onClick={() => updateLayout({ rightPanelCollapsed: false })}>
+            <ChevronLeft size={18} />
+          </IconButton>
+        </div>
+      ) : (
+        <ResizablePanel
+          direction="horizontal"
+          side="end"
+          size={layout.rightPanelWidth}
+          onResize={(w) => updateLayout({ rightPanelWidth: w })}
+          className="z-20 border-l border-border"
+        >
+          <div className="h-full relative">
+            <div className="absolute top-2 left-2 z-30">
+              <IconButton aria-label="Collapse right panel" onClick={() => updateLayout({ rightPanelCollapsed: true })}>
+                <ChevronRight size={18} />
+              </IconButton>
+            </div>
+            <RightSidebar />
+          </div>
+        </ResizablePanel>
+      )}
     </div>
   );
 }
