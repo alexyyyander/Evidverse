@@ -45,6 +45,37 @@ export type PublishJob = {
   error?: string | null;
 };
 
+export type PresignedUrlResponse = {
+  url: string;
+  object_name: string;
+};
+
+export type VNAssetType = "SCREENSHOT" | "VN_SCRIPT" | "VN_TEXT" | "VN_JSON" | "CHARACTER_SHEET" | "OTHER";
+
+export type VNAsset = {
+  id: ID;
+  project_id: ID;
+  branch_name?: string | null;
+  type: VNAssetType;
+  object_name: string;
+  storage_url: string;
+  metadata?: any;
+  created_at?: ISODateTime | null;
+};
+
+export type VNParseJob = {
+  id: ID;
+  project_id: ID;
+  branch_name?: string | null;
+  engine?: "KIRIKIRI" | "RENPY" | string | null;
+  status: string;
+  task_id?: string | null;
+  attempts?: number | null;
+  result?: any;
+  logs?: any;
+  error?: string | null;
+};
+
 export type UserMe = {
   id: ID;
   email: string;

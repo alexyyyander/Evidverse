@@ -10,7 +10,7 @@ export interface SelectionState {
   source: SelectionSource;
 }
 
-export type LeftTab = "script" | "characters" | "assets" | "history";
+export type LeftTab = "script" | "vn" | "characters" | "assets" | "history";
 export type RightTab = "inspector" | "queue";
 
 export interface LayoutState {

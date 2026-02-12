@@ -154,7 +154,7 @@ export default function EditorShell({ projectId }: { projectId: string }) {
                 <ChevronLeft size={18} />
               </IconButton>
             </div>
-            <LeftSidebar projectId={projectId} assetsProps={assetsProps} />
+            <LeftSidebar projectId={projectId} branchName={branchName} assetsProps={assetsProps} />
           </div>
         </ResizablePanel>
       )}

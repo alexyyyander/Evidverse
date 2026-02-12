@@ -2,11 +2,12 @@
 
 import { useEditorStore } from "@/store/editorStore";
 import { cn } from "@/lib/cn";
-import { FileText, Users, Image as ImageIcon, GitBranch } from "lucide-react";
+import { FileText, Users, Image as ImageIcon, GitBranch, BookOpen } from "lucide-react";
 import IconButton from "@/components/ui/icon-button";
 import WorkflowPanel from "@/components/editor/WorkflowPanel";
 import CharactersPanel from "@/components/editor/CharactersPanel";
 import AssetsGrid from "@/components/editor/AssetsGrid";
+import VNImportPanel from "@/components/editor/VNImportPanel";
 import dynamic from "next/dynamic";
 import Spinner from "@/components/ui/spinner";
 
@@ -21,15 +22,17 @@ const GitGraph = dynamic(() => import("@/components/GitGraph"), {
 
 interface LeftSidebarProps {
   projectId: string;
+  branchName: string;
   assetsProps?: any;
 }
 
-export default function LeftSidebar({ projectId, assetsProps }: LeftSidebarProps) {
+export default function LeftSidebar({ projectId, branchName, assetsProps }: LeftSidebarProps) {
   const activeTab = useEditorStore((state) => state.layout.activeLeftTab);
   const updateLayout = useEditorStore((state) => state.updateLayout);
 
   const tabs = [
     { id: "script", icon: FileText, label: "Script" },
+    { id: "vn", icon: BookOpen, label: "VN" },
     { id: "characters", icon: Users, label: "Characters" },
     { id: "assets", icon: ImageIcon, label: "Assets" },
     { id: "history", icon: GitBranch, label: "History" },
@@ -55,6 +58,7 @@ export default function LeftSidebar({ projectId, assetsProps }: LeftSidebarProps
 
       <div className="flex-1 overflow-y-auto">
         {activeTab === "script" ? <WorkflowPanel /> : null}
+        {activeTab === "vn" ? <VNImportPanel projectId={projectId} branchName={branchName} /> : null}
         {activeTab === "characters" ? <CharactersPanel /> : null}
         {activeTab === "assets" && (
           <div className="h-full p-4">

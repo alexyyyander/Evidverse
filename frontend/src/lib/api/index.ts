@@ -9,3 +9,5 @@ export { generationApi } from "@/lib/api/domains/generation";
 export { tasksApi } from "@/lib/api/domains/tasks";
 export { authApi } from "@/lib/api/domains/auth";
 export { publishApi } from "@/lib/api/domains/publish";
+export { filesApi } from "@/lib/api/domains/files";
+export { vnApi } from "@/lib/api/domains/vn";
