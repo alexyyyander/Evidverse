@@ -162,6 +162,9 @@ We ensure quality with a comprehensive testing strategy:
 # Run backend tests (pytest)
 ./backend/tests/run_tests.sh
 
+# Or run directly (no extra PYTHONPATH required)
+cd backend && pytest -q
+
 # Run frontend quality gate (lint + typecheck + unit + e2e)
 ./frontend/tests/run_tests.sh
 ```

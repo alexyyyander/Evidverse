@@ -49,3 +49,8 @@ From repo root:
 ./backend/tests/run_tests.sh
 ```
 
+Or run directly:
+```bash
+cd backend
+pytest -q
+```

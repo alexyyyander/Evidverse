@@ -122,6 +122,7 @@ Access:
 
 ## Testing
 - Backend: `./backend/tests/run_tests.sh`
+- Backend (direct): `cd backend && pytest -q`
 - Frontend: `./frontend/tests/run_tests.sh` (runs the full quality gate)
 - Load test: `locust -f backend/tests/locustfile.py`
 
