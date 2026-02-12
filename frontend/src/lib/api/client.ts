@@ -13,7 +13,13 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use((config) => {
   const token = getToken();
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    const headersAny: any = config.headers || {};
+    if (!config.headers) config.headers = headersAny;
+    if (typeof headersAny.set === "function") {
+      headersAny.set("Authorization", `Bearer ${token}`);
+    } else {
+      headersAny.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
@@ -22,7 +28,7 @@ apiClient.interceptors.response.use(
   (res) => res,
   (err) => {
     const normalized = normalizeAxiosError(err);
-    if (normalized.status === 401) {
+    if (normalized.status === 401 || normalized.status === 403) {
       clearToken();
       toast({
         title: "Authentication expired",
