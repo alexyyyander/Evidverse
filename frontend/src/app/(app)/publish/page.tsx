@@ -133,6 +133,10 @@ export default function PublishPage() {
   });
 
   const accountOptions = useMemo(() => accountsQuery.data || [], [accountsQuery.data]);
+  const selectedAccount = useMemo(
+    () => accountOptions.find((a) => a.id === accountId.trim()) || null,
+    [accountOptions, accountId]
+  );
 
   return (
     <div className="min-h-[calc(100vh-64px)] py-8">
@@ -226,6 +230,11 @@ export default function PublishPage() {
                 onChange={(e) => setAccountId(e.target.value)}
                 placeholder={accountOptions[0]?.id ? `e.g. ${accountOptions[0].id}` : "Create an account first"}
               />
+              {selectedAccount?.last_error ? (
+                <div className="text-xs text-destructive">{selectedAccount.last_error}</div>
+              ) : selectedAccount?.status ? (
+                <div className="text-xs text-muted-foreground">status: {selectedAccount.status}</div>
+              ) : null}
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium text-foreground">Video URL</div>

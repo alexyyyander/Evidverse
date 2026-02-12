@@ -321,6 +321,26 @@ def publish_job(job_internal_id: int) -> dict[str, Any]:
                 job.result = result
                 job.error = str(result.get("error") or "Upload failed")
 
+            if (
+                job.status == "failed"
+                and bool(settings.PUBLISH_AUTO_RETRY_ENABLED)
+                and int(job.attempts or 0) < int(settings.PUBLISH_MAX_ATTEMPTS)
+            ):
+                countdown = int(settings.PUBLISH_RETRY_BASE_SECONDS) * int(job.attempts or 1)
+                countdown = min(countdown, int(settings.PUBLISH_RETRY_MAX_SECONDS))
+                next_task = publish_job.apply_async(args=[job.internal_id], countdown=countdown)
+                job.celery_task_id = next_task.id
+                job.status = "retrying"
+                logs = (list(job.logs) if isinstance(job.logs, list) else [])
+                _append_log(
+                    logs,
+                    "info",
+                    "auto_retry_scheduled",
+                    "Auto retry scheduled",
+                    {"countdown_seconds": countdown, "next_task_id": next_task.id},
+                )
+                job.logs = logs[-200:]
+
             job.logs = (list(job.logs) if isinstance(job.logs, list) else [])[-200:]
             await db.commit()
             return result

@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "amqp://guest:guest@localhost:5672//"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
 
+    # Publish / Export
+    PUBLISH_AUTO_RETRY_ENABLED: bool = False
+    PUBLISH_MAX_ATTEMPTS: int = 3
+    PUBLISH_RETRY_BASE_SECONDS: int = 60
+    PUBLISH_RETRY_MAX_SECONDS: int = 300
+
     # Storage (S3/MinIO)
     S3_ENDPOINT_URL: str = "http://localhost:9000"
     S3_ACCESS_KEY: str = "minioadmin"
