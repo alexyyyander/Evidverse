@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import type { TimelineRow, TimelineEffect } from '@xzdarcy/timeline-engine';
-import { projectApi } from '@/lib/api';
+import { projectApi, type TimelineWorkspace } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
-import { coerceEditorWorkspace } from '@/lib/editor/workspace';
 
 export interface TimelineState {
   editorData: TimelineRow[];
@@ -30,8 +29,6 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   
   addClip: (commitId, message, duration = 5) => {
     set((state) => {
-    // For simplicity, add to the first row (id="0")
-    // Find next available start time
     const row = state.editorData.find(r => r.id === "0") || { id: "0", actions: [] };
     const lastAction = row.actions[row.actions.length - 1];
     const startTime = lastAction ? lastAction.end : 0;
@@ -60,16 +57,11 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       effects: { ...state.effects, [commitId]: newEffect }
     };
   });
-  // Trigger save after adding clip
   get().saveToBackend({ silent: true });
   },
 
   setEditorData: (data) => {
       set({ editorData: data });
-      // Debounce save or save immediately? Let's save immediately for now or let component handle it
-      // For drag operations, it might trigger many updates.
-      // We will rely on component to call save or just save here.
-      // Let's not save here to avoid loop if loadFromBackend calls setEditorData
   },
 
   setProjectId: (id) => set({ projectId: id }),
@@ -80,10 +72,9 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     const { projectId, editorData, effects } = get();
     if (!projectId) return;
     try {
-        const raw = await projectApi.getWorkspace(projectId);
-        const next = coerceEditorWorkspace(raw);
-        next.timeline = { ...next.timeline, editorData, effects };
-        await projectApi.updateWorkspace(projectId, next);
+        const existing = await projectApi.getWorkspace(projectId);
+        const workspace: TimelineWorkspace = { ...(existing || {}), editorData, effects };
+        await projectApi.updateWorkspace(projectId, workspace);
         if (!options?.silent) {
           toast({ title: "Saved", description: "Timeline saved.", variant: "success" });
         }
@@ -97,9 +88,10 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     const { projectId } = get();
     if (!projectId) return;
     try {
-         const raw = await projectApi.getWorkspace(projectId);
-         const workspace = coerceEditorWorkspace(raw);
-         set({ editorData: workspace.timeline.editorData, effects: workspace.timeline.effects || {} });
+         const data = await projectApi.getWorkspace(projectId);
+         if (data && data.editorData) {
+             set({ editorData: data.editorData, effects: data.effects || {} });
+         }
     } catch (e) {
         const message = e instanceof Error ? e.message : "Failed to load timeline";
         toast({ title: "Load failed", description: message, variant: "destructive" });

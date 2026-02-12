@@ -1,23 +1,40 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { Timeline, TimelineState } from "@xzdarcy/react-timeline-editor";
-import { Pause, Play, Save } from "lucide-react";
-import { useEditorStore } from "@/store/editorStore";
+import React, { useEffect, useState, useRef } from 'react';
+import { Timeline, TimelineState } from '@xzdarcy/react-timeline-editor';
+import { useTimelineStore } from '@/store/timelineStore';
+import { useEditorStore } from '@/store/editorStore';
+import { Save, Play, Pause } from 'lucide-react';
 
 export default function TimelineEditor() {
-  const editorData = useEditorStore((s) => s.workspace.timeline.editorData);
-  const effects = useEditorStore((s) => s.workspace.timeline.effects);
-  const updateTimelineData = useEditorStore((s) => s.updateTimelineData);
-  const saveToBackend = useEditorStore((s) => s.saveToBackend);
-  const selectFromTimelineTime = useEditorStore((s) => s.selectFromTimelineTime);
-  const playheadTime = useEditorStore((s) => s.playheadTime);
-  const isPlaying = useEditorStore((s) => s.isPlaying);
-  const setIsPlaying = useEditorStore((s) => s.setIsPlaying);
-  const dirty = useEditorStore((s) => s.dirty);
+  const { editorData, effects, setEditorData, setCurrentTime, projectId } = useTimelineStore();
+  const { selectTimelineItem, selection, saveProject, syncTimelineFromRows } = useEditorStore(state => ({
+    selectTimelineItem: state.selectTimelineItem,
+    selection: state.selection,
+    saveProject: state.saveProject,
+    syncTimelineFromRows: state.syncTimelineFromRows
+  }));
   const timelineRef = useRef<TimelineState>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const saveTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (selection.source === 'timeline') return;
+    if (!selection.selectedTimelineItemId) return;
+
+    for (const row of editorData) {
+      const action = row.actions.find(a => a.id === selection.selectedTimelineItemId);
+      if (action) {
+        setCurrentTime(action.start);
+        if (timelineRef.current) {
+            timelineRef.current.setTime(action.start);
+        }
+        break;
+      }
+    }
+  }, [selection.selectedTimelineItemId, selection.source, editorData, setCurrentTime]);
   
-  // Prevent hydration mismatch and ensure browser env
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -25,80 +42,92 @@ export default function TimelineEditor() {
 
   useEffect(() => {
     if (!isPlaying) return;
-    const interval = window.setInterval(() => {
-      const t = timelineRef.current?.getTime?.();
-      if (typeof t !== "number") return;
-      selectFromTimelineTime(t);
+    const interval = setInterval(() => {
+        if (timelineRef.current) {
+            setCurrentTime(timelineRef.current.getTime());
+        }
     }, 50);
-    return () => window.clearInterval(interval);
-  }, [isPlaying, selectFromTimelineTime]);
+    return () => clearInterval(interval);
+  }, [isPlaying, setCurrentTime]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    if (!projectId) return;
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      saveProject(projectId, { silent: true }).finally(() => {
+        setDirty(false);
+      });
+    }, 800);
+    return () => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    };
+  }, [dirty, effects, editorData, saveProject, projectId]);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!dirty.data && !dirty.ui) return;
+      if (!dirty) return;
       e.preventDefault();
       e.returnValue = "";
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [dirty.data, dirty.ui]);
-
-  useEffect(() => {
-    if (!mounted) return;
-    if (!timelineRef.current) return;
-    if (isPlaying) return;
-    if (typeof (timelineRef.current as any).setTime !== "function") return;
-    const current = timelineRef.current.getTime();
-    if (Math.abs(current - playheadTime) < 0.02) return;
-    (timelineRef.current as any).setTime(playheadTime);
-  }, [isPlaying, mounted, playheadTime]);
+  }, [dirty]);
 
   const handlePlayOrPause = () => {
     if (!timelineRef.current) return;
     if (isPlaying) {
-      timelineRef.current.pause();
-      setIsPlaying(false);
+        timelineRef.current.pause();
+        setIsPlaying(false);
     } else {
-      timelineRef.current.play({ autoEnd: true });
-      setIsPlaying(true);
+        timelineRef.current.play({ autoEnd: true });
+        setIsPlaying(true);
     }
   };
 
   if (!mounted) return <div className="w-full h-full bg-gray-100 dark:bg-zinc-900 animate-pulse flex items-center justify-center text-gray-500">Loading Timeline...</div>;
 
   return (
-    <div className="w-full h-full bg-zinc-900 text-white overflow-hidden flex flex-col">
+    <div className="w-full h-full bg-zinc-900 text-white overflow-hidden border-t border-zinc-700">
       <div className="p-2 border-b border-zinc-700 bg-zinc-800 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <button onClick={handlePlayOrPause} className="p-1 rounded hover:bg-zinc-700 text-white">
-            {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-          </button>
-          <span className="text-sm font-semibold">Playhead: {playheadTime.toFixed(2)}s</span>
-        </div>
-        <button
-          onClick={() => saveToBackend({ silent: false })}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700 transition-colors"
-        >
-          <Save size={12} /> Save
-        </button>
+         <div className="flex items-center gap-2">
+            <button 
+              onClick={handlePlayOrPause}
+              className="p-1 rounded hover:bg-zinc-700 text-white"
+            >
+               {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+            </button>
+            <span className="text-sm font-semibold">Timeline</span>
+         </div>
+         <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400 hidden md:inline">Drag clips or use context menu to add</span>
+            <button 
+              onClick={() => {
+                if(projectId) saveProject(projectId, { silent: false }).finally(() => setDirty(false));
+              }} 
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+            >
+              <Save size={12} /> Save
+            </button>
+         </div>
       </div>
-      <div className="flex-1 min-h-0">
-        <Timeline
-          ref={timelineRef}
-          editorData={editorData}
-          effects={effects}
-          onChange={(data) => {
-            updateTimelineData(data);
-          }}
-          autoScroll={true}
-          onCursorDrag={(time) => selectFromTimelineTime(time)}
-          onClickTimeArea={(time) => {
-            selectFromTimelineTime(time);
-            return true;
-          }}
-          style={{ height: "100%", width: "100%" }}
-        />
-      </div>
+      <Timeline
+        ref={timelineRef}
+        editorData={editorData}
+        effects={effects}
+        onChange={(data) => {
+          setEditorData(data);
+          syncTimelineFromRows(data as any);
+          setDirty(true);
+        }}
+        autoScroll={true}
+        onCursorDrag={(time) => setCurrentTime(time)}
+        onClickTimeArea={(time) => { setCurrentTime(time); return true; }}
+        onClickActionOnly={(e, { action }) => {
+          selectTimelineItem(action.id, 'timeline');
+        }}
+        style={{ height: 'calc(100% - 40px)', width: '100%' }}
+      />
     </div>
   );
 }

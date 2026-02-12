@@ -1,383 +1,329 @@
-"use client";
+import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
+import { useTimelineStore } from './timelineStore';
+import { projectApi, TimelineWorkspace } from '@/lib/api';
+import { toast } from '@/components/ui/toast';
+import { createId } from "@/lib/editor/id";
+import { extractCharactersFromBeats, toEditorStateFromGenerateClipResult } from "@/lib/editor/fromGenerateClip";
+import { 
+  EditorStateData, 
+  Beat,
+  BeatId, 
+  Character,
+  CharacterId, 
+  AssetId, 
+  IdeaParameters,
+  IdeaVersion,
+  IdeaVersionId,
+  GenerationTask,
+  TaskStatus
+} from '@/lib/editor/types';
+import type { GenerateClipResult } from "@/lib/api";
+import type { LayoutState, SelectionState, SelectionSource } from "@/lib/editor/ui";
 
-import { create } from "zustand";
-import { projectApi } from "@/lib/api";
-import { toast } from "@/components/ui/toast";
-import type { TaskResponse, GenerateClipResult } from "@/lib/api";
-import {
-  coerceEditorWorkspace,
-  createDefaultWorkspace,
-  createEditorId,
-  type Asset,
-  type BeatId,
-  type ClipId,
-  type EditorWorkspace,
-  type TimelineItemId,
-} from "@/lib/editor/workspace";
+export interface EditorState {
+  data: EditorStateData;
+  selection: SelectionState;
+  layout: LayoutState;
+  
+  // Actions
+  selectBeat: (id: BeatId | null, source?: SelectionSource) => void;
+  selectTimelineItem: (id: string | null, source?: SelectionSource) => void;
+  selectCharacter: (id: CharacterId | null, source?: SelectionSource) => void;
+  selectAsset: (id: AssetId | null, source?: SelectionSource) => void;
+  
+  updateLayout: (layout: Partial<LayoutState>) => void;
+  
+  setData: (data: EditorStateData) => void;
 
-type DirtyState = {
-  data: boolean;
-  ui: boolean;
-};
-
-export type EditorState = {
-  projectId: number | null;
-  workspace: EditorWorkspace;
-  playheadTime: number;
-  isPlaying: boolean;
-  lastTaskId: string | null;
-  dirty: DirtyState;
-
-  setProjectId: (id: number) => void;
-  loadFromBackend: () => Promise<void>;
-  saveToBackend: (options?: { silent?: boolean }) => Promise<void>;
-
-  setPlayheadTime: (time: number) => void;
-  setIsPlaying: (playing: boolean) => void;
-
-  setPrompt: (prompt: string) => void;
-  ingestGenerationResult: (taskId: string, task: TaskResponse<GenerateClipResult>) => void;
-  addCharacter: (name?: string) => void;
-
-  selectBeat: (beatId: BeatId, options?: { alignPlayhead?: boolean }) => void;
-  selectTimelineItem: (timelineItemId: TimelineItemId, options?: { alignPlayhead?: boolean }) => void;
-  selectCharacter: (characterId: string | null) => void;
-
-  setLayout: (partial: Partial<EditorWorkspace["layout"]>) => void;
-  setLeftTab: (tab: EditorWorkspace["layout"]["leftTab"]) => void;
-  setRightTab: (tab: EditorWorkspace["layout"]["rightTab"]) => void;
-
-  updateTimelineData: (editorData: EditorWorkspace["timeline"]["editorData"]) => void;
-  addClipFromCommit: (commitId: string, message: string, durationSec?: number) => void;
-  selectFromTimelineTime: (timeSec: number) => void;
-};
-
-function getActionStartEnd(action: any): { start: number; end: number } {
-  return { start: Number(action?.start ?? 0), end: Number(action?.end ?? 0) };
+  addIdeaVersion: (params: { text: string; params: IdeaParameters }) => IdeaVersion;
+  setActiveIdeaVersion: (id: IdeaVersionId | null) => void;
+  addGenerationTask: (task: GenerationTask) => void;
+  updateGenerationTask: (taskId: string, patch: Partial<GenerationTask>) => void;
+  applyClipTaskResult: (taskId: string, result: GenerateClipResult) => void;
+  applyCharacterTaskResult: (params: { taskId: string; characterId: CharacterId; result: any }) => void;
+  extractCharacters: () => void;
+  updateBeat: (beatId: BeatId, patch: Partial<Beat>) => void;
+  updateCharacter: (characterId: CharacterId, patch: Partial<Character>) => void;
+  syncTimelineFromRows: (rows: Array<{ id: string; actions: Array<{ id: string; start: number; end: number }> }>) => void;
+  
+  saveProject: (projectId: number, options?: { silent?: boolean }) => Promise<void>;
+  loadProject: (projectId: number) => Promise<void>;
 }
 
-function findActionAtTime(editorData: any[], timeSec: number): { action: any; rowId: string } | null {
-  for (const row of editorData || []) {
-    const actions = Array.isArray(row?.actions) ? row.actions : [];
-    for (const action of actions) {
-      const { start, end } = getActionStartEnd(action);
-      if (timeSec >= start && timeSec < end) return { action, rowId: String(row?.id ?? "") };
-    }
-  }
-  return null;
-}
-
-function findActionById(editorData: any[], actionId: string): any | null {
-  for (const row of editorData || []) {
-    const actions = Array.isArray(row?.actions) ? row.actions : [];
-    const found = actions.find((a: any) => String(a?.id ?? "") === actionId);
-    if (found) return found;
-  }
-  return null;
-}
-
-export const useEditorStore = create<EditorState>((set, get) => {
-  let saveDataTimer: number | null = null;
-  let saveUiTimer: number | null = null;
-
-  const scheduleSave = (kind: "data" | "ui") => {
-    const delay = kind === "data" ? 800 : 1500;
-    const current = kind === "data" ? saveDataTimer : saveUiTimer;
-    if (current) window.clearTimeout(current);
-    const t = window.setTimeout(() => {
-      get()
-        .saveToBackend({ silent: true })
-        .finally(() => {
-          set((s) => ({ dirty: { ...s.dirty, [kind]: false } }));
-        });
-    }, delay);
-    if (kind === "data") saveDataTimer = t;
-    else saveUiTimer = t;
-  };
-
-  const markDirty = (kind: "data" | "ui") => {
-    set((s) => ({ dirty: { ...s.dirty, [kind]: true } }));
-    scheduleSave(kind);
-  };
-
-  const alignSelectionToBeat = (workspace: EditorWorkspace, beatId: BeatId) => {
-    const timelineItemId =
-      Object.entries(workspace.timeline.itemsById).find(([, meta]) => meta?.beatId === beatId)?.[0] ?? null;
-    return {
-      ...workspace,
-      selection: { ...workspace.selection, selectedBeatId: beatId, selectedTimelineItemId: timelineItemId },
-    };
-  };
-
-  const alignSelectionToTimelineItem = (workspace: EditorWorkspace, timelineItemId: TimelineItemId) => {
-    const meta = workspace.timeline.itemsById[timelineItemId];
-    const beatId = meta?.beatId ?? workspace.selection.selectedBeatId ?? null;
-    return {
-      ...workspace,
-      selection: { ...workspace.selection, selectedTimelineItemId: timelineItemId, selectedBeatId: beatId },
-    };
-  };
-
-  return {
-    projectId: null,
-    workspace: createDefaultWorkspace(),
-    playheadTime: 0,
-    isPlaying: false,
-    lastTaskId: null,
-    dirty: { data: false, ui: false },
-
-    setProjectId: (id) => set({ projectId: id }),
-
-    loadFromBackend: async () => {
-      const { projectId } = get();
-      if (!projectId) return;
-      try {
-        const raw = await projectApi.getWorkspace(projectId);
-        const workspace = coerceEditorWorkspace(raw);
-        set({ workspace, dirty: { data: false, ui: false } });
-        const selectedBeatId = workspace.selection.selectedBeatId;
-        if (selectedBeatId) {
-          const beat = workspace.story.beatsById[selectedBeatId];
-          if (!beat) {
-            const next = createDefaultWorkspace();
-            set({ workspace: next });
-          }
+export const useEditorStore = create<EditorState>()(
+  immer((set, get) => ({
+    data: {
+      scenes: {},
+      beats: {},
+      characters: {},
+      assets: {},
+      clips: {},
+      timelineItems: {},
+      sceneOrder: [],
+      ideaVersions: [],
+      generationTasks: [],
+      activeIdeaVersionId: undefined,
+    },
+    selection: {
+      selectedBeatId: null,
+      selectedTimelineItemId: null,
+      selectedCharacterId: null,
+      selectedAssetId: null,
+      source: null,
+    },
+    layout: {
+      leftPanelWidth: 300,
+      rightPanelWidth: 300,
+      bottomPanelHeight: 300,
+      leftPanelCollapsed: false,
+      rightPanelCollapsed: false,
+      bottomPanelCollapsed: false,
+      activeLeftTab: 'script',
+      activeRightTab: 'inspector',
+    },
+    
+    selectBeat: (id, source = null) => set((state) => {
+      state.selection.selectedBeatId = id;
+      state.selection.source = source;
+    }),
+    
+    selectTimelineItem: (id, source = null) => set((state) => {
+      state.selection.selectedTimelineItemId = id;
+      state.selection.source = source;
+      if (id) {
+        const item = state.data.timelineItems[id as any];
+        if (item && item.linkedBeatId) {
+          state.selection.selectedBeatId = item.linkedBeatId;
         }
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Failed to load workspace";
-        toast({ title: "Load failed", description: message, variant: "destructive" });
       }
-    },
+    }),
 
-    saveToBackend: async (options) => {
-      const { projectId, workspace } = get();
-      if (!projectId) return;
-      try {
-        await projectApi.updateWorkspace(projectId, workspace);
-        if (!options?.silent) {
-          toast({ title: "Saved", description: "Workspace saved.", variant: "success" });
-        }
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Failed to save workspace";
-        toast({ title: "Save failed", description: message, variant: "destructive" });
-      }
-    },
+    selectCharacter: (id, source = null) => set((state) => {
+      state.selection.selectedCharacterId = id;
+      state.selection.source = source;
+    }),
 
-    setPlayheadTime: (time) => {
-      set({ playheadTime: time });
-      markDirty("ui");
-    },
+    selectAsset: (id, source = null) => set((state) => {
+      state.selection.selectedAssetId = id;
+      state.selection.source = source;
+    }),
+    
+    updateLayout: (layout) => set((state) => {
+      Object.assign(state.layout, layout);
+    }),
+    
+    setData: (data) => set((state) => {
+      state.data = data;
+    }),
 
-    setIsPlaying: (playing) => set({ isPlaying: playing }),
-
-    setPrompt: (prompt) => {
-      set((s) => ({ workspace: { ...s.workspace, prompt } }));
-      markDirty("data");
-    },
-
-    ingestGenerationResult: (taskId, task) => {
-      if (!task?.result) return;
-      if (task.result.status !== "succeeded") return;
-      const clips = Array.isArray(task.result.clips) ? task.result.clips : [];
-      if (clips.length === 0) return;
-
-      set((s) => {
-        const workspace = s.workspace;
-        const sceneId = createEditorId("scene");
-        const beatIds: BeatId[] = [];
-        const beatsById = { ...workspace.story.beatsById };
-        const assets = [...workspace.assets];
-        const clipsArr = [...workspace.clips];
-        const effects = { ...workspace.timeline.effects } as Record<string, any>;
-        const itemsById = { ...workspace.timeline.itemsById };
-        const editorData = workspace.timeline.editorData.map((r: any) => ({ ...r, actions: Array.isArray(r.actions) ? [...r.actions] : [] }));
-        const row0 = editorData.find((r: any) => String(r.id) === "0") || { id: "0", actions: [] };
-        if (!editorData.find((r: any) => String(r.id) === "0")) editorData.push(row0);
-        const lastAction = row0.actions[row0.actions.length - 1];
-        let cursor = lastAction ? Number(lastAction.end) : 0;
-
-        clips.forEach((c, idx) => {
-          const beatId = createEditorId("beat");
-          beatIds.push(beatId);
-          const videoUrl = typeof c?.video_url === "string" ? c.video_url : "";
-          const imageUrl = typeof c?.image_url === "string" ? c.image_url : "";
-
-          const assetId = createEditorId("asset");
-          if (videoUrl) {
-            assets.push({
-              id: assetId,
-              type: "video",
-              url: videoUrl,
-              source: "generation",
-              beatId,
-              createdAt: new Date().toISOString(),
-            });
-          }
-          if (imageUrl) {
-            assets.push({
-              id: createEditorId("asset"),
-              type: "image",
-              url: imageUrl,
-              source: "generation",
-              beatId,
-              createdAt: new Date().toISOString(),
-            });
-          }
-
-          const clipId = createEditorId("clip");
-          if (videoUrl) {
-            clipsArr.push({ id: clipId, assetId, name: `Clip ${idx + 1}` });
-          }
-
-          beatsById[beatId] = {
-            id: beatId,
-            sceneId,
-            order: idx + 1,
-            narration: typeof c?.narration === "string" ? c.narration : undefined,
-            suggestedDurationSec: 5,
-            status: "succeeded",
-            clipId: videoUrl ? clipId : null,
-          };
-
-          if (videoUrl) {
-            const timelineItemId = createEditorId("ti");
-            const durationSec = 5;
-            row0.actions.push({ id: timelineItemId, start: cursor, end: cursor + durationSec, effectId: clipId });
-            itemsById[timelineItemId] = { clipId, beatId };
-            effects[clipId] = { id: clipId, name: `Clip ${idx + 1}` };
-            cursor += durationSec;
-          }
-        });
-
-        const scenes = [
-          ...workspace.story.scenes,
-          {
-            id: sceneId,
-            order: workspace.story.scenes.length + 1,
-            title: `Generated ${new Date().toLocaleString()}`,
-            beatIds,
-          },
-        ];
-
-        let next = {
-          ...workspace,
-          story: { scenes, beatsById },
-          assets,
-          clips: clipsArr,
-          timeline: { ...workspace.timeline, editorData, effects, itemsById },
-        };
-        const firstBeatId = beatIds[0];
-        if (firstBeatId) next = alignSelectionToBeat(next, firstBeatId);
-        return { workspace: next, lastTaskId: taskId };
+    addIdeaVersion: ({ text, params }) => {
+      const idea: IdeaVersion = {
+        id: createId("idea"),
+        createdAt: new Date().toISOString(),
+        text,
+        params,
+      };
+      set((state) => {
+        const next = state.data.ideaVersions ? [...state.data.ideaVersions, idea] : [idea];
+        state.data.ideaVersions = next;
+        state.data.activeIdeaVersionId = idea.id;
       });
-      markDirty("data");
+      return idea;
     },
 
-    addCharacter: (name) => {
-      const id = createEditorId("char");
-      set((s) => ({
-        workspace: {
-          ...s.workspace,
-          characters: [...s.workspace.characters, { id, name: name?.trim() ? name.trim() : `Character ${s.workspace.characters.length + 1}` }],
-          selection: { ...s.workspace.selection, selectedCharacterId: id },
-        },
-      }));
-      markDirty("data");
-    },
+    setActiveIdeaVersion: (id) =>
+      set((state) => {
+        state.data.activeIdeaVersionId = id || undefined;
+      }),
 
-    selectBeat: (beatId, options) => {
-      set((s) => {
-        const nextWorkspace = alignSelectionToBeat(s.workspace, beatId);
-        const ti = nextWorkspace.selection.selectedTimelineItemId || null;
-        if (!ti) return { workspace: nextWorkspace };
-        const action = findActionById(nextWorkspace.timeline.editorData as any, ti);
-        if (!action) return { workspace: nextWorkspace };
-        return { workspace: nextWorkspace, playheadTime: Number(action.start ?? 0) };
-      });
-      markDirty("ui");
-    },
+    addGenerationTask: (task) =>
+      set((state) => {
+        const tasks = state.data.generationTasks ? [...state.data.generationTasks] : [];
+        tasks.unshift(task);
+        state.data.generationTasks = tasks;
+      }),
 
-    selectTimelineItem: (timelineItemId, options) => {
-      set((s) => {
-        const nextWorkspace = alignSelectionToTimelineItem(s.workspace, timelineItemId);
-        const action = findActionById(nextWorkspace.timeline.editorData as any, timelineItemId);
-        if (!action) return { workspace: nextWorkspace };
-        return { workspace: nextWorkspace, playheadTime: Number(action.start ?? 0) };
-      });
-      markDirty("ui");
-    },
+    updateGenerationTask: (taskId, patch) =>
+      set((state) => {
+        if (!state.data.generationTasks) return;
+        state.data.generationTasks = state.data.generationTasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t));
+      }),
 
-    selectCharacter: (characterId) => {
-      set((s) => ({ workspace: { ...s.workspace, selection: { ...s.workspace.selection, selectedCharacterId: characterId } } }));
-      markDirty("ui");
-    },
-
-    setLayout: (partial) => {
-      set((s) => ({ workspace: { ...s.workspace, layout: { ...s.workspace.layout, ...partial } } }));
-      markDirty("ui");
-    },
-
-    setLeftTab: (tab) => {
-      set((s) => ({ workspace: { ...s.workspace, layout: { ...s.workspace.layout, leftTab: tab } } }));
-      markDirty("ui");
-    },
-
-    setRightTab: (tab) => {
-      set((s) => ({ workspace: { ...s.workspace, layout: { ...s.workspace.layout, rightTab: tab } } }));
-      markDirty("ui");
-    },
-
-    updateTimelineData: (editorData) => {
-      set((s) => ({ workspace: { ...s.workspace, timeline: { ...s.workspace.timeline, editorData } } }));
-      markDirty("data");
-    },
-
-    addClipFromCommit: (commitId, message, durationSec = 5) => {
-      set((s) => {
-        const workspace = s.workspace;
-        const row = workspace.timeline.editorData.find((r) => String((r as any).id) === "0") || { id: "0", actions: [] };
-        const lastAction = (row as any).actions?.[(row as any).actions.length - 1];
-        const startTime = lastAction ? Number(lastAction.end) : 0;
-
-        const assetId = createEditorId("asset");
-        const clipId = createEditorId("clip");
-        const timelineItemId = createEditorId("ti");
-
-        const newAsset: Asset = { id: assetId, type: "video", url: "", source: "commit", createdAt: new Date().toISOString() };
-        const assets = [...workspace.assets, newAsset];
-        const clips = [...workspace.clips, { id: clipId, assetId, name: message || `Commit ${commitId.slice(0, 7)}` }];
-
-        const newAction: any = {
-          id: timelineItemId,
-          start: startTime,
-          end: startTime + durationSec,
-          effectId: clipId,
+    applyClipTaskResult: (taskId, result) => {
+      const base = get().data;
+      const activeIdea = (base.ideaVersions || []).find((v) => v.id === base.activeIdeaVersionId) || null;
+      const createdAt = new Date().toISOString();
+      const ideaParams: IdeaParameters =
+        activeIdea?.params || {
+          style: "default",
+          aspectRatio: "16:9",
+          duration: 12,
+          shotCount: 4,
+          pace: "normal",
+          language: "zh",
+          resolution: "1080p",
         };
 
-        const newRows = workspace.timeline.editorData.map((r: any) => {
-          if (String(r.id) === "0") return { ...r, actions: [...(r.actions || []), newAction] };
-          return r;
+      const next = toEditorStateFromGenerateClipResult({ base, result, ideaParams, createdAt });
+      if (!next) {
+        get().updateGenerationTask(taskId, {
+          status: "FAILURE" as TaskStatus,
+          error: result.error || "Invalid generation result",
+          result: result as any,
         });
-
-        const effects = { ...workspace.timeline.effects, [clipId]: { id: clipId, name: message || `Commit ${commitId.slice(0, 7)}` } as any };
-        const itemsById = { ...workspace.timeline.itemsById, [timelineItemId]: { clipId, beatId: null } };
-
-        return { workspace: { ...workspace, assets, clips, timeline: { ...workspace.timeline, editorData: newRows, effects, itemsById } } };
-      });
-      markDirty("data");
-    },
-
-    selectFromTimelineTime: (timeSec) => {
-      const { workspace } = get();
-      const found = findActionAtTime(workspace.timeline.editorData as any, timeSec);
-      if (!found) {
-        get().setPlayheadTime(timeSec);
         return;
       }
-      const timelineItemId = String(found.action?.id ?? "");
-      const nextWorkspace = alignSelectionToTimelineItem(workspace, timelineItemId);
-      set({ workspace: nextWorkspace, playheadTime: timeSec });
-      markDirty("ui");
+
+      set((state) => {
+        state.data = next;
+      });
+
+      const timelineRows = [
+        {
+          id: "0",
+          actions: Object.values(next.timelineItems)
+            .filter((t) => t.trackId === "0")
+            .sort((a, b) => a.startTime - b.startTime)
+            .map((t) => ({
+              id: t.id,
+              start: t.startTime,
+              end: t.startTime + t.duration,
+              effectId: t.id,
+            })),
+        },
+      ];
+
+      const effects: Record<string, any> = {};
+      for (const item of Object.values(next.timelineItems)) {
+        const beat = item.linkedBeatId ? next.beats[item.linkedBeatId] : null;
+        effects[item.id] = { id: item.id, name: beat?.narration || "Clip" };
+      }
+
+      useTimelineStore.getState().setEditorData(timelineRows as any);
+      useTimelineStore.setState({ effects } as any);
+
+      const newest = Object.values(next.timelineItems).sort((a, b) => b.startTime - a.startTime)[0];
+      if (newest) {
+        get().selectTimelineItem(newest.id, "queue");
+      }
+
+      get().updateGenerationTask(taskId, { status: "SUCCESS" as TaskStatus, result: result as any });
     },
-  };
-});
+
+    applyCharacterTaskResult: ({ taskId, characterId, result }) => {
+      const imageUrl = typeof result?.image_url === "string" ? result.image_url : "";
+      if (!imageUrl) {
+        get().updateGenerationTask(taskId, { status: "FAILURE" as TaskStatus, error: result?.error || "Invalid character result" });
+        return;
+      }
+
+      const createdAt = new Date().toISOString();
+      const assetId = createId("asset_image");
+      set((state) => {
+        state.data.assets[assetId] = {
+          id: assetId,
+          type: "image",
+          url: imageUrl,
+          source: "generated",
+          relatedCharacterId: characterId,
+          generationParams: { taskId },
+          createdAt,
+        };
+        const character = state.data.characters[characterId];
+        if (character) state.data.characters[characterId] = { ...character, avatarUrl: imageUrl };
+      });
+
+      get().updateGenerationTask(taskId, { status: "SUCCESS" as TaskStatus, result });
+      get().selectCharacter(characterId, "queue");
+    },
+
+    extractCharacters: () => {
+      const state = get();
+      const beats = Object.values(state.data.beats).sort((a, b) => a.order - b.order);
+      const existing = Object.values(state.data.characters);
+      const createdAt = new Date().toISOString();
+      const added = extractCharactersFromBeats({ beats, existing, createdAt });
+      if (added.length === 0) return;
+      set((draft) => {
+        for (const c of added) draft.data.characters[c.id] = c;
+      });
+    },
+
+    updateBeat: (beatId, patch) =>
+      set((state) => {
+        const beat = state.data.beats[beatId];
+        if (!beat) return;
+        state.data.beats[beatId] = { ...beat, ...patch };
+      }),
+
+    updateCharacter: (characterId, patch) =>
+      set((state) => {
+        const character = state.data.characters[characterId];
+        if (!character) return;
+        state.data.characters[characterId] = { ...character, ...patch };
+      }),
+
+    syncTimelineFromRows: (rows) =>
+      set((state) => {
+        for (const row of rows) {
+          for (const action of row.actions) {
+            const item = state.data.timelineItems[action.id];
+            if (!item) continue;
+            state.data.timelineItems[action.id] = {
+              ...item,
+              trackId: String(row.id),
+              startTime: action.start,
+              duration: Math.max(0, action.end - action.start),
+            };
+          }
+        }
+      }),
+
+    saveProject: async (projectId, options) => {
+      const { data } = get();
+      const { editorData, effects } = useTimelineStore.getState();
+      const { layout, selection } = get();
+      
+      try {
+          const workspace: TimelineWorkspace = {
+              editorData,
+              effects,
+              editorState: data,
+              editorUi: { layout, selection },
+          };
+          await projectApi.updateWorkspace(projectId, workspace);
+          if (!options?.silent) {
+               toast({ title: "Saved", description: "Project saved.", variant: "success" });
+          }
+      } catch (e) {
+          const message = e instanceof Error ? e.message : "Failed to save project";
+          toast({ title: "Save failed", description: message, variant: "destructive" });
+      }
+    },
+
+    loadProject: async (projectId) => {
+      try {
+          const data = await projectApi.getWorkspace(projectId);
+          if (data) {
+              if (data.editorData) {
+                  useTimelineStore.getState().setEditorData(data.editorData);
+                  useTimelineStore.setState({ effects: data.effects || {} });
+              }
+              if (data.editorState) {
+                  set(state => { state.data = data.editorState! });
+              }
+              if (data.editorUi) {
+                  set((state) => {
+                    state.layout = data.editorUi!.layout;
+                    state.selection = data.editorUi!.selection;
+                  });
+              }
+          }
+      } catch (e) {
+          const message = e instanceof Error ? e.message : "Failed to load project";
+          toast({ title: "Load failed", description: message, variant: "destructive" });
+      }
+    }
+  }))
+);

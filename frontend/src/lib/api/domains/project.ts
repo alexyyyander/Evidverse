@@ -1,6 +1,5 @@
 import { get, post, put } from "@/lib/api/client";
-import type { ProjectDetail, ProjectFeedItem, ProjectGraph, ProjectSummary } from "@/lib/api/types";
-import type { EditorWorkspace } from "@/lib/editor/workspace";
+import type { ProjectDetail, ProjectFeedItem, ProjectGraph, ProjectSummary, TimelineWorkspace } from "@/lib/api/types";
 
 export const projectApi = {
   create: (data: { name: string; description?: string }) => post<ProjectSummary>("/projects/", data),
@@ -17,6 +16,6 @@ export const projectApi = {
     const res = await get<ProjectDetail>(`/projects/${projectId}`);
     return res.workspace_data || null;
   },
-  updateWorkspace: (projectId: number, workspace: EditorWorkspace) =>
+  updateWorkspace: (projectId: number, workspace: TimelineWorkspace) =>
     put<ProjectDetail>(`/projects/${projectId}`, { workspace_data: workspace }),
 };

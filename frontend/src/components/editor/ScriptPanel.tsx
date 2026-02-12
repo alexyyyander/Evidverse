@@ -1,94 +1,310 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-import type { GenerateClipResult, TaskResponse } from "@/lib/api";
-import PromptPanel from "@/components/editor/PromptPanel";
+import { useEffect, useMemo, useState } from "react";
+import Textarea from "@/components/ui/textarea";
+import Input from "@/components/ui/input";
+import Button from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
+import { generationApi } from "@/lib/api";
+import { useTask } from "@/lib/queries/useTask";
 import { useEditorStore } from "@/store/editorStore";
-import { getBeatTitle } from "@/lib/editor/workspace";
+import type { GenerateClipResult, TaskResponse } from "@/lib/api";
+import type { IdeaParameters } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
+import { createId } from "@/lib/editor/id";
 
-export default function ScriptPanel({
-  onTaskStarted,
-  task,
-  busy,
-}: {
-  onTaskStarted: (taskId: string) => void;
-  task: TaskResponse<GenerateClipResult> | null;
-  busy: boolean;
-}) {
-  const { workspace, setPrompt, selectBeat } = useEditorStore();
-  const listRef = useRef<HTMLDivElement | null>(null);
+const DEFAULT_PARAMS: IdeaParameters = {
+  style: "default",
+  aspectRatio: "16:9",
+  duration: 12,
+  shotCount: 4,
+  pace: "normal",
+  language: "zh",
+  resolution: "1080p",
+};
 
-  const beatsInOrder = useMemo(() => {
-    const beats: { id: string; sceneTitle: string; order: number; title: string }[] = [];
-    const scenes = [...workspace.story.scenes].sort((a, b) => a.order - b.order);
-    scenes.forEach((scene) => {
-      scene.beatIds.forEach((beatId, idx) => {
-        const beat = workspace.story.beatsById[beatId];
-        if (!beat) return;
-        beats.push({
-          id: beat.id,
-          sceneTitle: scene.title,
-          order: idx + 1,
-          title: getBeatTitle(beat),
-        });
-      });
-    });
-    return beats;
-  }, [workspace.story.beatsById, workspace.story.scenes]);
+export default function ScriptPanel() {
+  const [ideaText, setIdeaText] = useState("");
+  const [params, setParams] = useState<IdeaParameters>(DEFAULT_PARAMS);
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const {
+    data,
+    addIdeaVersion,
+    setActiveIdeaVersion,
+    addGenerationTask,
+    updateGenerationTask,
+    applyClipTaskResult,
+    extractCharacters,
+    selectBeat,
+    selectTimelineItem,
+    updateBeat,
+  } = useEditorStore();
+
+  const activeIdea = useMemo(() => {
+    const versions = data.ideaVersions || [];
+    return versions.find((v) => v.id === data.activeIdeaVersionId) || null;
+  }, [data.ideaVersions, data.activeIdeaVersionId]);
 
   useEffect(() => {
-    const container = listRef.current;
-    if (!container) return;
-    const id = workspace.selection.selectedBeatId;
-    if (!id) return;
-    const el = container.querySelector(`[data-beat-id="${id}"]`) as HTMLElement | null;
-    if (!el) return;
-    el.scrollIntoView({ block: "nearest" });
-  }, [workspace.selection.selectedBeatId]);
+    if (!activeIdea) return;
+    setIdeaText(activeIdea.text);
+    setParams(activeIdea.params);
+  }, [activeIdea?.id]);
+
+  const taskQuery = useTask<GenerateClipResult>(taskId);
+  const task = (taskQuery.data || null) as TaskResponse<GenerateClipResult> | null;
+
+  useEffect(() => {
+    if (!taskId) return;
+    if (!task) return;
+    updateGenerationTask(taskId, {
+      status: String(task.status) as any,
+      result: (task.result as any) || undefined,
+    });
+    if (String(task.status) === "SUCCESS") {
+      applyClipTaskResult(taskId, task.result);
+    }
+    if (String(task.status) === "FAILURE") {
+      const err = (task.result as any)?.error || "Task failed";
+      updateGenerationTask(taskId, { error: err });
+    }
+  }, [taskId, task, updateGenerationTask, applyClipTaskResult]);
+
+  const canSubmit = ideaText.trim().length > 0 && !submitting && !(task && (String(task.status) === "PENDING" || String(task.status) === "STARTED"));
+
+  const handleGenerate = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    const text = ideaText.trim();
+    const idea = addIdeaVersion({ text, params });
+    try {
+      const { task_id } = await generationApi.generateClip({ topic: text });
+      addGenerationTask({
+        id: task_id,
+        type: "clip",
+        status: "PENDING",
+        createdAt: new Date().toISOString(),
+        input: { text, params, ideaVersionId: idea.id },
+        refIds: { ideaVersionId: idea.id },
+      });
+      setTaskId(task_id);
+      toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Generation failed";
+      toast({ title: "Generation failed", description: message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const orderedBeats = useMemo(() => {
+    const beats = Object.values(data.beats);
+    beats.sort((a, b) => {
+      const sceneOrderA = data.scenes[a.sceneId]?.order ?? 0;
+      const sceneOrderB = data.scenes[b.sceneId]?.order ?? 0;
+      if (sceneOrderA !== sceneOrderB) return sceneOrderA - sceneOrderB;
+      return a.order - b.order;
+    });
+    return beats;
+  }, [data.beats, data.scenes]);
+
+  const selectedBeatId = useEditorStore((s) => s.selection.selectedBeatId);
+
+  const handleSelectBeat = (beatId: string) => {
+    selectBeat(beatId as any, "script");
+    const item = Object.values(data.timelineItems).find((t) => t.linkedBeatId === beatId);
+    if (item) selectTimelineItem(item.id, "script");
+  };
 
   return (
-    <div className="flex flex-col gap-4">
-      <PromptPanel
-        prompt={workspace.prompt}
-        onPromptChange={setPrompt}
-        onTaskStarted={onTaskStarted}
-        task={task}
-        busy={busy}
-      />
+    <div className="flex flex-col h-full">
+      <div className="p-4 border-b border-border">
+        <div className="text-sm font-medium text-foreground">点子</div>
+        {(data.ideaVersions || []).length > 0 ? (
+          <div className="mt-2 flex gap-2 overflow-x-auto">
+            {(data.ideaVersions || []).map((v, idx) => {
+              const active = v.id === data.activeIdeaVersionId;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  className={cn(
+                    "px-2 py-1 rounded-md text-xs border border-border whitespace-nowrap",
+                    active ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => setActiveIdeaVersion(v.id)}
+                >
+                  v{idx + 1}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        <div className="mt-2">
+          <Textarea value={ideaText} onChange={(e) => setIdeaText(e.target.value)} placeholder="一句话点子..." className="min-h-[120px]" />
+        </div>
 
-      <div className="border border-border rounded-lg overflow-hidden">
-        <div className="px-3 py-2 border-b border-border bg-background/60">
-          <div className="text-sm font-semibold">Story</div>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Input
+            value={params.style}
+            onChange={(e) => setParams((p) => ({ ...p, style: e.target.value }))}
+            placeholder="风格"
+          />
+          <Input
+            value={params.aspectRatio}
+            onChange={(e) => setParams((p) => ({ ...p, aspectRatio: e.target.value }))}
+            placeholder="比例 (16:9)"
+          />
+          <Input
+            value={String(params.duration)}
+            onChange={(e) => setParams((p) => ({ ...p, duration: Number(e.target.value) || 0 }))}
+            placeholder="总时长(秒)"
+          />
+          <Input
+            value={String(params.shotCount)}
+            onChange={(e) => setParams((p) => ({ ...p, shotCount: Number(e.target.value) || 1 }))}
+            placeholder="镜头数"
+          />
+          <Input
+            value={params.pace}
+            onChange={(e) => setParams((p) => ({ ...p, pace: e.target.value }))}
+            placeholder="节奏"
+          />
+          <Input
+            value={params.language}
+            onChange={(e) => setParams((p) => ({ ...p, language: e.target.value }))}
+            placeholder="语言"
+          />
+          <Input
+            value={params.resolution}
+            onChange={(e) => setParams((p) => ({ ...p, resolution: e.target.value }))}
+            placeholder="分辨率"
+          />
         </div>
-        <div ref={listRef} className="max-h-[360px] overflow-y-auto p-2">
-          {beatsInOrder.length === 0 ? (
-            <div className="text-sm text-muted-foreground px-2 py-3">No beats yet.</div>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {beatsInOrder.map((b) => {
-                const active = workspace.selection.selectedBeatId === b.id;
-                return (
+
+        <div className="mt-4 flex gap-2">
+          <Button onClick={handleGenerate} disabled={!canSubmit} loading={submitting} className="flex-1">
+            生成剧本+视频
+          </Button>
+          <Button variant="secondary" onClick={() => extractCharacters()}>
+            提取人物
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4">
+        {orderedBeats.length === 0 ? (
+          <div className="text-sm text-muted-foreground">还没有剧本内容。先生成一次。</div>
+        ) : (
+          <div className="space-y-3">
+            {orderedBeats.map((beat) => {
+              const selected = beat.id === selectedBeatId;
+              return (
+                <div key={beat.id} className={cn("rounded-lg border border-border p-3", selected ? "ring-2 ring-ring" : "")}>
                   <button
-                    key={b.id}
                     type="button"
-                    data-beat-id={b.id}
-                    className={cn(
-                      "w-full text-left rounded-md px-2 py-2 border border-transparent hover:bg-secondary transition-colors",
-                      active ? "bg-secondary border-border" : ""
-                    )}
-                    onClick={() => selectBeat(b.id)}
+                    className="w-full text-left"
+                    onClick={() => handleSelectBeat(beat.id)}
                   >
-                    <div className="text-xs text-muted-foreground truncate">{b.sceneTitle}</div>
-                    <div className="text-sm font-medium truncate">{b.title}</div>
+                    <div className="text-sm font-semibold text-foreground">{data.scenes[beat.sceneId]?.title || "Scene"}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">Beat {beat.order + 1}</div>
                   </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+
+                  <div className="mt-3 grid gap-2">
+                    <Textarea
+                      value={beat.narration || ""}
+                      onChange={(e) => updateBeat(beat.id, { narration: e.target.value })}
+                      placeholder="旁白"
+                      className="min-h-[80px]"
+                    />
+                    <Textarea
+                      value={beat.cameraDescription || ""}
+                      onChange={(e) => updateBeat(beat.id, { cameraDescription: e.target.value })}
+                      placeholder="镜头描述"
+                      className="min-h-[60px]"
+                    />
+                    <Input
+                      value={String(beat.suggestedDuration)}
+                      onChange={(e) => updateBeat(beat.id, { suggestedDuration: Number(e.target.value) || 0 })}
+                      placeholder="建议时长"
+                    />
+
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          const count = Math.max(1, Math.round(params.shotCount || 1));
+                          const per = beat.suggestedDuration / count;
+                          const shots = Array.from({ length: count }).map((_, idx) => ({
+                            id: createId("shot"),
+                            beatId: beat.id,
+                            order: idx,
+                            narration: beat.narration || "",
+                            cameraDescription: beat.cameraDescription || "",
+                            suggestedDuration: per,
+                          }));
+                          updateBeat(beat.id, { shots });
+                        }}
+                      >
+                        拆分镜头
+                      </Button>
+                    </div>
+
+                    {Array.isArray(beat.shots) && beat.shots.length > 0 ? (
+                      <div className="rounded-md border border-border p-2 space-y-2">
+                        {beat.shots
+                          .slice()
+                          .sort((a, b) => a.order - b.order)
+                          .map((shot, idx) => (
+                            <div key={shot.id} className="rounded-md border border-border p-2">
+                              <div className="text-xs text-muted-foreground">Shot {idx + 1}</div>
+                              <Textarea
+                                value={shot.narration || ""}
+                                onChange={(e) => {
+                                  const nextShots = (beat.shots || []).map((s) =>
+                                    s.id === shot.id ? { ...s, narration: e.target.value } : s
+                                  );
+                                  updateBeat(beat.id, { shots: nextShots });
+                                }}
+                                placeholder="镜头旁白"
+                                className="min-h-[60px] mt-2"
+                              />
+                              <Textarea
+                                value={shot.cameraDescription || ""}
+                                onChange={(e) => {
+                                  const nextShots = (beat.shots || []).map((s) =>
+                                    s.id === shot.id ? { ...s, cameraDescription: e.target.value } : s
+                                  );
+                                  updateBeat(beat.id, { shots: nextShots });
+                                }}
+                                placeholder="镜头描述"
+                                className="min-h-[60px] mt-2"
+                              />
+                              <Input
+                                value={String(shot.suggestedDuration)}
+                                onChange={(e) => {
+                                  const nextShots = (beat.shots || []).map((s) =>
+                                    s.id === shot.id ? { ...s, suggestedDuration: Number(e.target.value) || 0 } : s
+                                  );
+                                  updateBeat(beat.id, { shots: nextShots });
+                                }}
+                                placeholder="镜头时长"
+                                className="mt-2"
+                              />
+                            </div>
+                          ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

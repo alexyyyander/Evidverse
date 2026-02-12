@@ -4,8 +4,8 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Frontend Optimization v1 - Stage 02](./stage_plan_frontend_v1/stage_02.md)
-**Status**: in_progress
+**Current Stage**: [Frontend Optimization v1 - Stage 03](./stage_plan_frontend_v1/stage_03.md)
+**Status**: pending
 **Last Updated**: 2026-02-12
 
 ### Frontend Optimization v1（进行中）
