@@ -6,7 +6,7 @@ import Textarea from "@/components/ui/textarea";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
-import { filesApi, vnApi } from "@/lib/api";
+import { clipsApi, filesApi, vnApi } from "@/lib/api";
 import type { StoryboardScene, VNAsset, VNAssetType } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -91,6 +91,7 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
   const [assetType, setAssetType] = useState<VNAssetType>("VN_SCRIPT");
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [clipId, setClipId] = useState<string | null>(null);
   const [uploadingName, setUploadingName] = useState("");
   const [pendingImport, setPendingImport] = useState<null | { mode: "append" | "replace" }>(null);
 
@@ -142,6 +143,22 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
       if (!status) return 2000;
       if (isTerminalStatus(status)) return false;
       return q.state.data ? 2000 : 1000;
+    },
+  });
+
+  const clipsListQuery = useQuery({
+    queryKey: ["clips", projectId, branchName],
+    queryFn: () => clipsApi.list({ project_id: projectId, branch_name: branchName }),
+  });
+
+  const clipQuery = useQuery({
+    queryKey: ["clip", clipId],
+    queryFn: () => clipsApi.get(clipId as string),
+    enabled: !!clipId,
+    refetchInterval: (q) => {
+      const status = String((q.state.data as any)?.status || "").toLowerCase();
+      if (!status) return 1500;
+      return isTerminalStatus(status) ? false : 1500;
     },
   });
 
@@ -268,6 +285,24 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
     toast({ title: "Screenshot attached", description: asset.metadata?.filename || asset.object_name, variant: "success" });
   };
 
+  const comicMutation = useMutation({
+    mutationFn: (asset: VNAsset) => {
+      const prompt = String(selectedBeat?.narration || selectedBeat?.cameraDescription || "").trim() || "comic-to-video";
+      return vnApi.comicToVideo({
+        project_id: projectId,
+        branch_name: branchName,
+        title: selectedBeat ? selectedBeat.narration || undefined : undefined,
+        screenshot_asset_ids: [asset.id],
+        prompt,
+      });
+    },
+    onSuccess: async (clip) => {
+      setClipId(clip.id);
+      await qc.invalidateQueries({ queryKey: ["clips", projectId, branchName] });
+      toast({ title: "Clip created", description: clip.id, variant: "success" });
+    },
+  });
+
   return (
     <div className="h-full p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -286,6 +321,9 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
           </TabsTrigger>
           <TabsTrigger value="assets" className="flex-1">
             Assets
+          </TabsTrigger>
+          <TabsTrigger value="clips" className="flex-1">
+            Clips
           </TabsTrigger>
           <TabsTrigger value="job" className="flex-1">
             Job
@@ -418,9 +456,14 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
                         <div className="text-muted-foreground truncate">{a.metadata?.filename || a.object_name}</div>
                       </button>
                       {a.type === "SCREENSHOT" ? (
-                        <Button size="sm" variant="ghost" onClick={() => attachScreenshotToBeat(a)}>
-                          Attach
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => attachScreenshotToBeat(a)}>
+                            Attach
+                          </Button>
+                          <Button size="sm" variant="secondary" loading={comicMutation.isPending} onClick={() => comicMutation.mutate(a)}>
+                            Video
+                          </Button>
+                        </div>
                       ) : null}
                     </div>
                   </div>
@@ -428,6 +471,47 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
               })}
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="clips" className="space-y-3">
+          <div className="text-xs text-muted-foreground">
+            {clipsListQuery.isLoading ? "Loading clips..." : clipsListQuery.isError ? "Failed to load clips" : `${(clipsListQuery.data || []).length} clips`}
+          </div>
+          <div className="space-y-2">
+            {(clipsListQuery.data || []).map((c) => {
+              const active = c.id === clipId;
+              const videoUrl = c.assets_ref?.video_url || null;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setClipId(c.id)}
+                  className={cn(
+                    "w-full text-left rounded-md border px-3 py-2 text-xs transition-colors",
+                    active ? "border-primary bg-secondary" : "border-border hover:bg-secondary/50"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-mono truncate">{c.id}</div>
+                    <div className="text-muted-foreground">{c.status}</div>
+                  </div>
+                  <div className="text-muted-foreground truncate">{c.title || ""}</div>
+                  {videoUrl ? <div className="text-muted-foreground truncate">{videoUrl}</div> : null}
+                </button>
+              );
+            })}
+          </div>
+
+          {clipId ? (
+            <div className="rounded-md border border-border bg-background p-3 space-y-2">
+              <div className="text-xs text-muted-foreground font-mono">{clipId}</div>
+              <div className="text-sm">status: {clipQuery.data?.status || "unknown"}</div>
+              {clipQuery.data?.assets_ref?.video_url ? (
+                <div className="text-xs break-all">{clipQuery.data.assets_ref.video_url}</div>
+              ) : null}
+              {clipQuery.data?.error ? <div className="text-xs text-destructive">{clipQuery.data.error}</div> : null}
+            </div>
+          ) : null}
         </TabsContent>
 
         <TabsContent value="job" className="space-y-3">

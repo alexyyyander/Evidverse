@@ -76,6 +76,21 @@ export type VNParseJob = {
   error?: string | null;
 };
 
+export type ClipSegment = {
+  id: ID;
+  project_id: ID;
+  branch_name?: string | null;
+  title?: string | null;
+  summary?: string | null;
+  input_artifacts?: any;
+  assets_ref?: any;
+  task_id?: string | null;
+  status: string;
+  result?: any;
+  error?: string | null;
+  created_at?: ISODateTime | null;
+};
+
 export type UserMe = {
   id: ID;
   email: string;

@@ -9,7 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.core.config import settings
 from app.models.user import User
+from app.models.clip_segment import ClipSegment as ClipSegmentModel
 from app.models.vn import VNAsset, VNParseJob
+from app.models.project import Project
+from app.schemas.clips import ClipSegment as ClipSegmentSchema, ClipSegmentCreate
 from app.schemas.vn import (
     VNAsset as VNAssetSchema,
     VNAssetCreate,
@@ -20,6 +23,7 @@ from app.schemas.vn import (
 )
 from app.services.publish_service import publish_service
 from app.services.vn_parse_service import vn_parse_service
+from app.workers.video_tasks import generate_video_from_image
 from app.workers.vn_tasks import vn_parse_job as vn_parse_job_task
 
 
@@ -29,6 +33,88 @@ router = APIRouter()
 def _public_storage_url(object_name: str) -> str:
     base = str(settings.S3_ENDPOINT_URL).rstrip("/")
     return f"{base}/{settings.S3_BUCKET_NAME}/{object_name.lstrip('/')}"
+
+
+@router.post("/comic-to-video", response_model=ClipSegmentSchema)
+async def comic_to_video(
+    body: ClipSegmentCreate,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    project_internal_id = await publish_service.resolve_project_internal_id(db, body.project_id)
+    if not project_internal_id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    project = await db.get(Project, project_internal_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    branch_id: Optional[int] = None
+    branch_name: Optional[str] = (body.branch_name or "").strip() or None
+    if branch_name:
+        branch_id = await publish_service.resolve_branch_id(db, project_internal_id, branch_name)
+        if not branch_id:
+            raise HTTPException(status_code=404, detail="Branch not found")
+
+    if not body.screenshot_asset_ids:
+        raise HTTPException(status_code=400, detail="screenshot_asset_ids is required")
+
+    screenshot_urls: list[str] = []
+    for public_id in body.screenshot_asset_ids[:20]:
+        asset = (
+            await db.execute(
+                select(VNAsset).where(
+                    VNAsset.owner_internal_id == current_user.internal_id,
+                    VNAsset.project_internal_id == project_internal_id,
+                    VNAsset.public_id == public_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not asset:
+            raise HTTPException(status_code=404, detail=f"VNAsset not found: {public_id}")
+        if str(asset.type).upper() != "SCREENSHOT":
+            raise HTTPException(status_code=400, detail=f"VNAsset is not SCREENSHOT: {public_id}")
+        screenshot_urls.append(str(asset.storage_url))
+
+    prompt = (body.prompt or "").strip() or "comic-to-video"
+    clip = ClipSegmentModel(
+        owner_internal_id=current_user.internal_id,
+        project_internal_id=project_internal_id,
+        branch_id=branch_id,
+        title=body.title,
+        summary=body.summary,
+        input_artifacts={
+            "screenshot_asset_ids": body.screenshot_asset_ids,
+            "screenshot_urls": screenshot_urls,
+            "prompt": prompt,
+        },
+        assets_ref={"screenshots": screenshot_urls},
+        status="pending",
+    )
+    db.add(clip)
+    await db.commit()
+    await db.refresh(clip)
+
+    task = generate_video_from_image.delay(screenshot_urls[0], prompt)
+    clip.celery_task_id = task.id
+    await db.commit()
+    await db.refresh(clip)
+
+    return ClipSegmentSchema.model_validate(
+        {
+            "id": clip.public_id,
+            "project_id": body.project_id,
+            "branch_name": branch_name,
+            "title": clip.title,
+            "summary": clip.summary,
+            "input_artifacts": clip.input_artifacts,
+            "assets_ref": clip.assets_ref,
+            "task_id": clip.celery_task_id,
+            "status": clip.status,
+            "result": clip.result,
+            "error": clip.error,
+            "created_at": clip.created_at,
+        }
+    )
 
 
 @router.post("/assets", response_model=VNAssetSchema)

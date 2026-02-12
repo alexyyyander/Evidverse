@@ -145,3 +145,8 @@
 - 截图导入：可触发 Seedance 漫画转视频链路并回填为 ClipSegment 资产
 - 设定导入：能给出人物候选映射，并允许用户校对确认
 - ClipSegment（UUID 可访问）可在编辑器中浏览与引用
+
+## ✅ 验收（MVP）
+- 剧情导入：Ren'Py / KiriKiri 支持预览解析与异步解析，并可导入到编辑器 Script
+- 截图导入：SCREENSHOT 可绑定到 Beat；可触发 comic-to-video 并生成 ClipSegment（含 video_url 回填）
+- ClipSegment：支持 UUID 获取与列表浏览（/clips）

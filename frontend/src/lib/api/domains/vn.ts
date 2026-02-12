@@ -1,5 +1,5 @@
 import { get, post } from "@/lib/api/client";
-import type { VNAsset, VNAssetType, VNParseJob } from "@/lib/api/types";
+import type { ClipSegment, VNAsset, VNAssetType, VNParseJob } from "@/lib/api/types";
 
 export const vnApi = {
   createAsset: (data: { project_id: string; branch_name?: string; type: VNAssetType; object_name: string; metadata?: any }) =>
@@ -12,4 +12,6 @@ export const vnApi = {
   getParseJob: (jobId: string) => get<VNParseJob>(`/vn/parse-jobs/${jobId}`),
   getParseJobLogs: (jobId: string, params?: { offset?: number; limit?: number }) =>
     get<{ items: any[]; total: number; offset: number; limit: number }>(`/vn/parse-jobs/${jobId}/logs`, params),
+  comicToVideo: (data: { project_id: string; branch_name?: string; title?: string; summary?: string; screenshot_asset_ids: string[]; prompt?: string }) =>
+    post<ClipSegment>("/vn/comic-to-video", data),
 };

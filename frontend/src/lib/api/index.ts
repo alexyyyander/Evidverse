@@ -11,3 +11,4 @@ export { authApi } from "@/lib/api/domains/auth";
 export { publishApi } from "@/lib/api/domains/publish";
 export { filesApi } from "@/lib/api/domains/files";
 export { vnApi } from "@/lib/api/domains/vn";
+export { clipsApi } from "@/lib/api/domains/clips";
