@@ -7,9 +7,11 @@ import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { filesApi, vnApi } from "@/lib/api";
-import type { VNAsset, VNAssetType } from "@/lib/api/types";
+import type { StoryboardScene, VNAsset, VNAssetType } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEditorStore } from "@/store/editorStore";
+import type { IdeaParameters } from "@/lib/editor/types";
 
 function guessAssetType(fileName: string): VNAssetType {
   const name = (fileName || "").toLowerCase();
@@ -26,6 +28,62 @@ function isTerminalStatus(status: string) {
   return s === "succeeded" || s === "failed" || s === "success" || s === "failure" || s === "revoked";
 }
 
+function eventsToStoryboard(events: any[]): StoryboardScene[] {
+  let sceneNumber = 1;
+  const out: StoryboardScene[] = [];
+  let hasContentInScene = false;
+
+  for (const e of events || []) {
+    const t = String(e?.type || "").toUpperCase();
+    if (t === "LABEL") {
+      if (hasContentInScene) {
+        sceneNumber += 1;
+        hasContentInScene = false;
+      }
+      continue;
+    }
+
+    if (t === "SAY") {
+      const speaker = String(e?.speaker || "").trim();
+      const text = String(e?.text || "").trim();
+      const narration = speaker ? `${speaker}: ${text}` : text;
+      if (narration) {
+        out.push({ scene_number: sceneNumber, narration });
+        hasContentInScene = true;
+      }
+      continue;
+    }
+
+    if (t === "NARRATION" || t === "TEXT") {
+      const narration = String(e?.text || "").trim();
+      if (narration) {
+        out.push({ scene_number: sceneNumber, narration });
+        hasContentInScene = true;
+      }
+      continue;
+    }
+
+    if (t === "CHOICE") {
+      const choices = Array.isArray(e?.choices) ? e.choices : [];
+      const texts = choices.map((c: any) => String(c?.text || "").trim()).filter(Boolean);
+      const narration = texts.length ? `CHOICE: ${texts.join(" | ")}` : "CHOICE";
+      out.push({ scene_number: sceneNumber, narration });
+      hasContentInScene = true;
+      continue;
+    }
+
+    if (t === "JUMP") {
+      const target = String(e?.target || "").trim();
+      const narration = target ? `JUMP → ${target}` : "JUMP";
+      out.push({ scene_number: sceneNumber, narration });
+      hasContentInScene = true;
+      continue;
+    }
+  }
+
+  return out;
+}
+
 export default function VNImportPanel({ projectId, branchName }: { projectId: string; branchName: string }) {
   const qc = useQueryClient();
   const [engine, setEngine] = useState<"RENPY" | "KIRIKIRI">("RENPY");
@@ -34,6 +92,8 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [jobId, setJobId] = useState<string | null>(null);
   const [uploadingName, setUploadingName] = useState("");
+
+  const { data: editorData, applyStoryboard, updateLayout } = useEditorStore();
 
   const assetsQuery = useQuery({
     queryKey: ["vnAssets", projectId, branchName],
@@ -112,6 +172,8 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
     return { count: previewEvents.length, head: previewEvents.slice(0, 12) };
   }, [previewEvents]);
 
+  const jobEvents = (parseJobQuery.data as any)?.result?.events as any[] | undefined;
+
   const assets = useMemo(() => (assetsQuery.data || []) as VNAsset[], [assetsQuery.data]);
 
   useEffect(() => {
@@ -125,6 +187,35 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
 
   const canPreview = scriptText.trim().length > 0 && !previewMutation.isPending;
   const canCreateJob = (!parseJobMutation.isPending && (scriptText.trim().length > 0 || selectedAssetIds.length > 0)) || false;
+
+  const currentIdeaParams: IdeaParameters = useMemo(() => {
+    const versions = editorData.ideaVersions || [];
+    const activeId = editorData.activeIdeaVersionId;
+    const active = activeId ? versions.find((v: any) => v.id === activeId) : null;
+    const params = (active as any)?.params as IdeaParameters | undefined;
+    return (
+      params || {
+        style: "default",
+        aspectRatio: "16:9",
+        duration: 60,
+        shotCount: 6,
+        pace: "normal",
+        language: "zh",
+        resolution: "1080p",
+      }
+    );
+  }, [editorData.ideaVersions, editorData.activeIdeaVersionId]);
+
+  const importFromEvents = (events: any[], mode: "append" | "replace") => {
+    const storyboard = eventsToStoryboard(events || []);
+    if (storyboard.length === 0) {
+      toast({ title: "Nothing to import", description: "No usable events found.", variant: "destructive" });
+      return;
+    }
+    applyStoryboard({ topic: `VN Import (${engine})`, ideaParams: currentIdeaParams, storyboard, mode });
+    updateLayout({ activeLeftTab: "script" });
+    toast({ title: "Imported", description: `${storyboard.length} beats`, variant: "success" });
+  };
 
   return (
     <div className="h-full p-4 space-y-4">
@@ -199,6 +290,14 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
             <div className="rounded-md border border-border bg-background p-3 space-y-2">
               <div className="text-xs text-muted-foreground">events: {previewSummary.count}</div>
               <pre className="text-xs overflow-x-auto">{JSON.stringify(previewSummary.head, null, 2)}</pre>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="secondary" onClick={() => importFromEvents(previewEvents || [], "append")}>
+                  Append to Script
+                </Button>
+                <Button size="sm" variant="destructive" onClick={() => importFromEvents(previewEvents || [], "replace")}>
+                  Replace Script
+                </Button>
+              </div>
             </div>
           ) : null}
         </TabsContent>
@@ -298,6 +397,16 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
                 <div className="rounded-md border border-border bg-background p-3 space-y-2">
                   <div className="text-xs text-muted-foreground">result</div>
                   <pre className="text-xs overflow-x-auto whitespace-pre-wrap">{JSON.stringify(parseJobQuery.data.result, null, 2)}</pre>
+                  {Array.isArray(jobEvents) && jobEvents.length > 0 ? (
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => importFromEvents(jobEvents, "append")}>
+                        Append to Script
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => importFromEvents(jobEvents, "replace")}>
+                        Replace Script
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
