@@ -1,5 +1,10 @@
 # Stage 02: Galgame/VN → 多世界线番剧（截图 + 引擎脚本导入）
 
+## 📍 当前实现（已落地）
+### 后端（FastAPI）
+- /vn/assets：创建与查询 VNAsset（基于 object storage URL 记录素材引用）
+- /vn/parse-preview：Ren'Py/KiriKiri 脚本文本解析预览（子集支持，用于验证导入与 IR）
+
 ## 目标
 - 支持用户导入 Galgame/视觉小说数据，结构化为可编辑的剧情与分段，并驱动 Vidgit 生成多世界线番剧
 - 支持三类输入（可混合）：
@@ -132,4 +137,3 @@
 - 截图导入：可触发 Seedance 漫画转视频链路并回填为 ClipSegment 资产
 - 设定导入：能给出人物候选映射，并允许用户校对确认
 - ClipSegment（UUID 可访问）可在编辑器中浏览与引用
-

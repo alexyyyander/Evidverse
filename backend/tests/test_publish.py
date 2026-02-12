@@ -93,6 +93,11 @@ async def test_publish_account_and_job_flow(client: AsyncClient):
         assert data["id"] == job["id"]
         assert data["status"] in {"pending", "started", "succeeded", "failed"}
 
+    logs_res = await client.get(f"/api/v1/publish/jobs/{job['id']}/logs", headers=headers)
+    assert logs_res.status_code == 200
+    logs_data = logs_res.json()
+    assert isinstance(logs_data.get("items"), list)
+
     with patch("app.api.v1.endpoints.publish.AsyncResult") as MockAR:
         MockAR.return_value.status = "FAILURE"
         MockAR.return_value.result = "boom"

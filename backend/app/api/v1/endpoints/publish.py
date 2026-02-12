@@ -211,6 +211,23 @@ async def get_publish_job(
     )
 
 
+@router.get("/jobs/{job_id}/logs")
+async def get_publish_job_logs(
+    job_id: str,
+    offset: int = 0,
+    limit: int = 200,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    job = await publish_service.get_job_by_public_id(db, current_user.internal_id, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Publish job not found")
+    logs = list(job.logs) if isinstance(job.logs, list) else []
+    o = max(int(offset), 0)
+    l = min(max(int(limit), 1), 500)
+    return {"items": logs[o : o + l], "total": len(logs), "offset": o, "limit": l}
+
+
 @router.post("/jobs/{job_id}/retry", response_model=PublishJob)
 async def retry_publish_job(
     job_id: str,
