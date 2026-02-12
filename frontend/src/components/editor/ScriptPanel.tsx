@@ -12,6 +12,8 @@ import type { GenerateClipResult, TaskResponse } from "@/lib/api";
 import type { IdeaParameters } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
 import { createId } from "@/lib/editor/id";
+import Dialog from "@/components/ui/dialog";
+import { validateGenerateClipResult } from "@/lib/editor/validators";
 
 const DEFAULT_PARAMS: IdeaParameters = {
   style: "default",
@@ -28,6 +30,20 @@ export default function ScriptPanel() {
   const [params, setParams] = useState<IdeaParameters>(DEFAULT_PARAMS);
   const [taskId, setTaskId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [applyModeDialog, setApplyModeDialog] = useState<{
+    open: boolean;
+    taskId: string | null;
+    result: GenerateClipResult | null;
+  }>({ open: false, taskId: null, result: null });
+  const [beatRegenDialog, setBeatRegenDialog] = useState<{
+    open: boolean;
+    beatId: string | null;
+  }>({ open: false, beatId: null });
+  const [beatRegenJob, setBeatRegenJob] = useState<{
+    taskId: string;
+    beatId: string;
+    mode: "append" | "replace";
+  } | null>(null);
 
   const {
     data,
@@ -36,6 +52,7 @@ export default function ScriptPanel() {
     addGenerationTask,
     updateGenerationTask,
     applyClipTaskResult,
+    applyBeatClipResult,
     extractCharacters,
     beginHistoryGroup,
     endHistoryGroup,
@@ -57,6 +74,8 @@ export default function ScriptPanel() {
 
   const taskQuery = useTask<GenerateClipResult>(taskId);
   const task = (taskQuery.data || null) as TaskResponse<GenerateClipResult> | null;
+  const beatTaskQuery = useTask<GenerateClipResult>(beatRegenJob?.taskId || null);
+  const beatTask = (beatTaskQuery.data || null) as TaskResponse<GenerateClipResult> | null;
 
   useEffect(() => {
     if (!taskId) return;
@@ -66,13 +85,54 @@ export default function ScriptPanel() {
       result: (task.result as any) || undefined,
     });
     if (String(task.status) === "SUCCESS") {
-      applyClipTaskResult(taskId, task.result);
+      const validation = validateGenerateClipResult(task.result);
+      if (!validation.ok) {
+        updateGenerationTask(taskId, { error: validation.error });
+        toast({ title: "Generation failed", description: validation.error, variant: "destructive" });
+        return;
+      }
+      const hasExisting = Object.keys(data.timelineItems).length > 0;
+      if (hasExisting) {
+        setApplyModeDialog({ open: true, taskId, result: task.result });
+      } else {
+        applyClipTaskResult(taskId, task.result, { mode: "append" });
+      }
     }
     if (String(task.status) === "FAILURE") {
       const err = (task.result as any)?.error || "Task failed";
       updateGenerationTask(taskId, { error: err });
     }
-  }, [taskId, task, updateGenerationTask, applyClipTaskResult]);
+  }, [taskId, task, updateGenerationTask, applyClipTaskResult, data.timelineItems]);
+
+  useEffect(() => {
+    if (!beatRegenJob) return;
+    if (!beatTask) return;
+    updateGenerationTask(beatRegenJob.taskId, {
+      status: String(beatTask.status) as any,
+      result: (beatTask.result as any) || undefined,
+    });
+    if (String(beatTask.status) === "SUCCESS") {
+      const validation = validateGenerateClipResult(beatTask.result);
+      if (!validation.ok) {
+        updateGenerationTask(beatRegenJob.taskId, { error: validation.error });
+        toast({ title: "Generation failed", description: validation.error, variant: "destructive" });
+        return;
+      }
+      applyBeatClipResult({
+        taskId: beatRegenJob.taskId,
+        beatId: beatRegenJob.beatId as any,
+        result: beatTask.result,
+        mode: beatRegenJob.mode,
+      });
+      setBeatRegenJob(null);
+    }
+    if (String(beatTask.status) === "FAILURE") {
+      const err = (beatTask.result as any)?.error || "Task failed";
+      updateGenerationTask(beatRegenJob.taskId, { error: err });
+      toast({ title: "Generation failed", description: err, variant: "destructive" });
+      setBeatRegenJob(null);
+    }
+  }, [beatRegenJob, beatTask, updateGenerationTask, applyBeatClipResult]);
 
   const canSubmit = ideaText.trim().length > 0 && !submitting && !(task && (String(task.status) === "PENDING" || String(task.status) === "STARTED"));
 
@@ -120,8 +180,107 @@ export default function ScriptPanel() {
     if (item) selectTimelineItem(item.id, "script");
   };
 
+  const startBeatRegen = async (beatId: string, mode: "append" | "replace") => {
+    const beat = data.beats[beatId as any];
+    if (!beat) return;
+    const topic = `${beat.narration || ""}\n${beat.cameraDescription || ""}`.trim();
+    if (!topic) {
+      toast({ title: "Missing prompt", description: "Beat 没有可用于生成的文案。", variant: "destructive" });
+      return;
+    }
+    try {
+      const { task_id } = await generationApi.generateClip({ topic });
+      addGenerationTask({
+        id: task_id,
+        type: "clip",
+        status: "PENDING",
+        createdAt: new Date().toISOString(),
+        input: { topic, beatId, mode },
+        refIds: { beatId },
+      });
+      setBeatRegenJob({ taskId: task_id, beatId, mode });
+      toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Generation failed";
+      toast({ title: "Generation failed", description: message, variant: "destructive" });
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
+      <Dialog
+        open={applyModeDialog.open}
+        onOpenChange={(open) => setApplyModeDialog((s) => ({ ...s, open }))}
+        title="生成结果如何写入？"
+        description="当前项目已有编辑内容，选择替换或并存。"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setApplyModeDialog({ open: false, taskId: null, result: null })}
+            >
+              取消
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (applyModeDialog.taskId && applyModeDialog.result) {
+                  applyClipTaskResult(applyModeDialog.taskId, applyModeDialog.result, { mode: "append" });
+                }
+                setApplyModeDialog({ open: false, taskId: null, result: null });
+              }}
+            >
+              并存
+            </Button>
+            <Button
+              onClick={() => {
+                if (applyModeDialog.taskId && applyModeDialog.result) {
+                  applyClipTaskResult(applyModeDialog.taskId, applyModeDialog.result, { mode: "replace" });
+                }
+                setApplyModeDialog({ open: false, taskId: null, result: null });
+              }}
+            >
+              替换
+            </Button>
+          </div>
+        }
+      >
+        <div className="text-sm text-muted-foreground">替换会清空现有时间轴与剧本结构，但保留点子版本与任务记录。</div>
+      </Dialog>
+
+      <Dialog
+        open={beatRegenDialog.open}
+        onOpenChange={(open) => setBeatRegenDialog((s) => ({ ...s, open }))}
+        title="重生成此 Beat"
+        description="选择替换当前 Beat 的片段，或并存新增一个片段。"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setBeatRegenDialog({ open: false, beatId: null })}>
+              取消
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (beatRegenDialog.beatId) startBeatRegen(beatRegenDialog.beatId, "append");
+                setBeatRegenDialog({ open: false, beatId: null });
+              }}
+            >
+              并存
+            </Button>
+            <Button
+              onClick={() => {
+                if (beatRegenDialog.beatId) startBeatRegen(beatRegenDialog.beatId, "replace");
+                setBeatRegenDialog({ open: false, beatId: null });
+              }}
+            >
+              替换
+            </Button>
+          </div>
+        }
+      >
+        <div className="text-sm text-muted-foreground">重生成会创建新的生成任务，并在成功后回填到该 Beat。</div>
+      </Dialog>
+
       <div className="p-4 border-b border-border">
         <div className="text-sm font-medium text-foreground">点子</div>
         {(data.ideaVersions || []).length > 0 ? (
@@ -210,8 +369,23 @@ export default function ScriptPanel() {
                     className="w-full text-left"
                     onClick={() => handleSelectBeat(beat.id)}
                   >
-                    <div className="text-sm font-semibold text-foreground">{data.scenes[beat.sceneId]?.title || "Scene"}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">Beat {beat.order + 1}</div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-foreground">{data.scenes[beat.sceneId]?.title || "Scene"}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">Beat {beat.order + 1}</div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setBeatRegenDialog({ open: true, beatId: beat.id });
+                        }}
+                      >
+                        重生成
+                      </Button>
+                    </div>
                   </button>
 
                   <div className="mt-3 grid gap-2">

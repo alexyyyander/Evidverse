@@ -57,11 +57,23 @@ export interface EditorState {
   setActiveIdeaVersion: (id: IdeaVersionId | null) => void;
   addGenerationTask: (task: GenerationTask) => void;
   updateGenerationTask: (taskId: string, patch: Partial<GenerationTask>) => void;
-  applyClipTaskResult: (taskId: string, result: GenerateClipResult) => void;
+  applyClipTaskResult: (
+    taskId: string,
+    result: GenerateClipResult,
+    options?: { mode?: "append" | "replace" }
+  ) => void;
+  applyBeatClipResult: (params: {
+    taskId: string;
+    beatId: BeatId;
+    result: GenerateClipResult;
+    mode: "append" | "replace";
+  }) => void;
   applyCharacterTaskResult: (params: { taskId: string; characterId: CharacterId; result: any }) => void;
   extractCharacters: () => void;
   updateBeat: (beatId: BeatId, patch: Partial<Beat>) => void;
   updateCharacter: (characterId: CharacterId, patch: Partial<Character>) => void;
+  deleteCharacter: (characterId: CharacterId) => void;
+  mergeCharacter: (fromCharacterId: CharacterId, toCharacterId: CharacterId) => void;
   syncTimelineFromRows: (rows: Array<{ id: string; actions: Array<{ id: string; start: number; end: number }> }>) => void;
   beginHistoryGroup: () => void;
   endHistoryGroup: () => void;
@@ -258,8 +270,24 @@ export const useEditorStore = create<EditorState>()(
         state.data.generationTasks = state.data.generationTasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t));
       }),
 
-    applyClipTaskResult: (taskId, result) => {
-      const base = get().data;
+    applyClipTaskResult: (taskId, result, options) => {
+      const current = get().data;
+      const mode = options?.mode || "append";
+      const base: EditorStateData =
+        mode === "replace"
+          ? {
+              scenes: {},
+              beats: {},
+              characters: current.characters,
+              assets: {},
+              clips: {},
+              timelineItems: {},
+              sceneOrder: [],
+              ideaVersions: current.ideaVersions,
+              generationTasks: current.generationTasks,
+              activeIdeaVersionId: current.activeIdeaVersionId,
+            }
+          : current;
       const activeIdea = (base.ideaVersions || []).find((v) => v.id === base.activeIdeaVersionId) || null;
       const createdAt = new Date().toISOString();
       const ideaParams: IdeaParameters =
@@ -318,6 +346,112 @@ export const useEditorStore = create<EditorState>()(
         get().selectTimelineItem(newest.id, "queue");
       }
 
+      get().updateGenerationTask(taskId, { status: "SUCCESS" as TaskStatus, result: result as any });
+    },
+
+    applyBeatClipResult: ({ taskId, beatId, result, mode }) => {
+      const clip0 = Array.isArray(result.clips) ? result.clips[0] : null;
+      if (!clip0 || typeof clip0.video_url !== "string" || clip0.video_url.length === 0) {
+        get().updateGenerationTask(taskId, { status: "FAILURE" as TaskStatus, error: result.error || "Invalid beat generation result" });
+        return;
+      }
+
+      const current = get().data;
+      const beat = current.beats[beatId];
+      if (!beat) return;
+
+      const createdAt = new Date().toISOString();
+      const videoAssetId = createId("asset_video");
+      const clipId = createId("clip");
+      const imageUrl = typeof clip0.image_url === "string" ? clip0.image_url : "";
+      const imageAssetId = imageUrl ? createId("asset_image") : null;
+
+      const existingItems = Object.values(current.timelineItems)
+        .filter((t) => t.linkedBeatId === beatId)
+        .sort((a, b) => a.startTime - b.startTime);
+      const firstExisting = existingItems[0] || null;
+
+      let timelineItemId = firstExisting?.id || createId("timeline_item");
+      let startTime = 0;
+      if (mode === "replace" && firstExisting) startTime = firstExisting.startTime;
+      if (mode === "append" || !firstExisting) {
+        const last = Object.values(current.timelineItems).sort((a, b) => a.startTime - b.startTime).slice(-1)[0] || null;
+        startTime = last ? last.startTime + last.duration : 0;
+      }
+
+      get().beginHistoryGroup();
+      set((state) => {
+        state.data.assets[videoAssetId] = {
+          id: videoAssetId,
+          type: "video",
+          url: clip0.video_url as string,
+          duration: beat.suggestedDuration,
+          source: "generated",
+          relatedBeatId: beatId,
+          generationParams: { taskId },
+          createdAt,
+        };
+        if (imageAssetId) {
+          state.data.assets[imageAssetId] = {
+            id: imageAssetId,
+            type: "image",
+            url: imageUrl,
+            source: "generated",
+            relatedBeatId: beatId,
+            generationParams: { taskId },
+            createdAt,
+          };
+        }
+        state.data.clips[clipId] = { id: clipId, assetId: videoAssetId, startOffset: 0 };
+
+        if (mode === "replace" && firstExisting) {
+          state.data.timelineItems[timelineItemId] = {
+            ...firstExisting,
+            clipId,
+            duration: beat.suggestedDuration,
+            startTime,
+          };
+          for (let i = 1; i < existingItems.length; i += 1) {
+            delete state.data.timelineItems[existingItems[i].id];
+          }
+        } else {
+          state.data.timelineItems[timelineItemId] = {
+            id: timelineItemId,
+            clipId,
+            trackId: "0",
+            startTime,
+            duration: beat.suggestedDuration,
+            linkedBeatId: beatId,
+          };
+        }
+      });
+      get().endHistoryGroup();
+
+      const next = get().data;
+      const timelineRows = [
+        {
+          id: "0",
+          actions: Object.values(next.timelineItems)
+            .filter((t) => t.trackId === "0")
+            .sort((a, b) => a.startTime - b.startTime)
+            .map((t) => ({
+              id: t.id,
+              start: t.startTime,
+              end: t.startTime + t.duration,
+              effectId: t.id,
+            })),
+        },
+      ];
+
+      const effects: Record<string, any> = {};
+      for (const item of Object.values(next.timelineItems)) {
+        const b = item.linkedBeatId ? next.beats[item.linkedBeatId] : null;
+        effects[item.id] = { id: item.id, name: b?.narration || "Clip" };
+      }
+      useTimelineStore.getState().setEditorData(timelineRows as any);
+      useTimelineStore.setState({ effects } as any);
+
+      get().selectTimelineItem(timelineItemId, "queue");
       get().updateGenerationTask(taskId, { status: "SUCCESS" as TaskStatus, result: result as any });
     },
 
@@ -395,6 +529,39 @@ export const useEditorStore = create<EditorState>()(
         if (!character) return;
         state.data.characters[characterId] = { ...character, ...patch };
       }),
+
+    deleteCharacter: (characterId) => {
+      get().beginHistoryGroup();
+      set((state) => {
+        delete state.data.characters[characterId];
+        for (const beat of Object.values(state.data.beats)) {
+          beat.characterIds = beat.characterIds.filter((id) => id !== characterId);
+        }
+        for (const asset of Object.values(state.data.assets)) {
+          if (asset.relatedCharacterId === characterId) asset.relatedCharacterId = undefined;
+        }
+        if (state.selection.selectedCharacterId === characterId) state.selection.selectedCharacterId = null;
+      });
+      get().endHistoryGroup();
+    },
+
+    mergeCharacter: (fromCharacterId, toCharacterId) => {
+      if (fromCharacterId === toCharacterId) return;
+      get().beginHistoryGroup();
+      set((state) => {
+        for (const beat of Object.values(state.data.beats)) {
+          if (!beat.characterIds.includes(fromCharacterId)) continue;
+          const next = beat.characterIds.map((id) => (id === fromCharacterId ? toCharacterId : id));
+          beat.characterIds = Array.from(new Set(next));
+        }
+        for (const asset of Object.values(state.data.assets)) {
+          if (asset.relatedCharacterId === fromCharacterId) asset.relatedCharacterId = toCharacterId;
+        }
+        delete state.data.characters[fromCharacterId];
+        if (state.selection.selectedCharacterId === fromCharacterId) state.selection.selectedCharacterId = toCharacterId;
+      });
+      get().endHistoryGroup();
+    },
 
     syncTimelineFromRows: (rows) =>
       set((state) => {
