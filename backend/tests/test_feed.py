@@ -20,9 +20,10 @@ async def test_feed_and_like(client: AsyncClient, normal_user_token_headers, nor
     assert response.status_code == 200
     data = response.json()
     assert len(data) >= 1
-    assert data[0]["id"] == project_id
-    assert data[0]["likes_count"] == 0
-    assert data[0]["is_liked"] == False
+    target = next((p for p in data if p["id"] == project_id), None)
+    assert target is not None
+    assert target["likes_count"] == 0
+    assert target["is_liked"] == False
 
     # 3. Like the project
     response = await client.post(

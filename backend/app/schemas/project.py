@@ -1,6 +1,7 @@
 from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
+from app.schemas.user import UserPublic
 
 class ProjectBase(BaseModel):
     name: str
@@ -22,6 +23,7 @@ class ProjectFork(BaseModel):
 class Project(ProjectBase):
     id: int
     owner_id: int
+    parent_project_id: Optional[int] = None
     created_at: datetime
     workspace_data: Optional[dict] = None
     likes_count: int = 0
@@ -29,3 +31,6 @@ class Project(ProjectBase):
 
     class Config:
         from_attributes = True
+
+class ProjectFeedItem(Project):
+    owner: Optional[UserPublic] = None

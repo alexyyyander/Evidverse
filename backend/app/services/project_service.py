@@ -102,7 +102,8 @@ class ProjectService:
         new_project = Project(
             name=fork_name,
             description=f"Forked from project {source_project.id}",
-            owner_id=user_id
+            owner_id=user_id,
+            parent_project_id=source_project.id,
         )
         db.add(new_project)
         await db.flush()

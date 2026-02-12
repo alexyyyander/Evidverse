@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { getToken } from "@/lib/api/auth";
+import { useAuthToken } from "@/lib/auth/useAuthToken";
 import { userApi } from "@/lib/api";
 
 export function useMe() {
-  const token = getToken();
+  const token = useAuthToken();
   return useQuery({
     queryKey: ["me"],
     queryFn: userApi.me,
@@ -11,4 +11,3 @@ export function useMe() {
     staleTime: 30_000,
   });
 }
-

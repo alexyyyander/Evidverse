@@ -25,3 +25,11 @@ class User(UserBase):
     
     class Config:
         from_attributes = True
+
+class UserPublic(BaseModel):
+    id: int
+    email: EmailStr
+    full_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True

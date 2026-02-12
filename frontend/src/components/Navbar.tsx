@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import PageContainer from "@/components/layout/PageContainer";
 import { cn } from "@/lib/cn";
-import { clearToken, getToken } from "@/lib/api/auth";
+import { clearToken } from "@/lib/api/auth";
+import { useAuthToken } from "@/lib/auth/useAuthToken";
 import { useMe } from "@/lib/queries/useMe";
 import Spinner from "@/components/ui/spinner";
 import Button from "@/components/ui/button";
@@ -15,7 +16,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const token = getToken();
+  const token = useAuthToken();
   const meQuery = useMe();
   
   const navItems = [

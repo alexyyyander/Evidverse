@@ -18,7 +18,7 @@ import "reactflow/dist/style.css";
 import { projectApi, type Commit } from "@/lib/api";
 import CommitNode from "@/components/CommitNode";
 import { getLayoutedElements } from "@/lib/layout";
-import { useTimelineStore } from "@/store/timelineStore";
+import { useEditorStore } from "@/store/editorStore";
 import { toast } from "@/components/ui/toast";
 import { useProjectGraph } from "@/lib/queries/useProjectGraph";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -39,7 +39,7 @@ interface GraphProps {
 
 export default function GitGraph({ projectId }: GraphProps) {
   const router = useRouter();
-  const { addClip } = useTimelineStore();
+  const addClipFromCommit = useEditorStore((s) => s.addClipFromCommit);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [rf, setRf] = useState<ReactFlowInstance | null>(null);
@@ -176,7 +176,7 @@ export default function GitGraph({ projectId }: GraphProps) {
     if (!menu.nodeId) return;
     const node = nodes.find(n => n.id === menu.nodeId);
     const message = node?.data?.message || "Clip";
-    addClip(menu.nodeId, message);
+    addClipFromCommit(menu.nodeId, message);
     closeMenu();
   };
 

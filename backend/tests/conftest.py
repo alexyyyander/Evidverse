@@ -1,4 +1,5 @@
 import pytest
+import uuid
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from app.core.db import get_db
@@ -50,7 +51,7 @@ async def client(db_session):
 async def normal_user(db_session):
     password = "testpassword"
     user = User(
-        email="test@example.com",
+        email=f"test-{uuid.uuid4().hex[:8]}@example.com",
         hashed_password=get_password_hash(password),
         is_active=True,
     )

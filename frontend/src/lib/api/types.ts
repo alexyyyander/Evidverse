@@ -1,4 +1,5 @@
 import type { TimelineEffect, TimelineRow } from "@xzdarcy/timeline-engine";
+import type { EditorWorkspace } from "@/lib/editor/workspace";
 
 export type ID = number;
 
@@ -20,11 +21,12 @@ export type ProjectSummary = {
   id: ID;
   name: string;
   description?: string | null;
+  parent_project_id?: ID | null;
   created_at: ISODateTime;
 };
 
 export type ProjectFeedItem = ProjectSummary & {
-  owner: UserPublic;
+  owner: UserPublic | null;
   likes_count: number;
   is_liked: boolean;
 };
@@ -47,13 +49,13 @@ export type ProjectGraph = {
   branches: Branch[];
 };
 
-export type TimelineWorkspace = {
+export type LegacyTimelineWorkspace = {
   editorData: TimelineRow[];
   effects: Record<string, TimelineEffect>;
 };
 
 export type ProjectDetail = ProjectSummary & {
-  workspace_data?: TimelineWorkspace | null;
+  workspace_data?: EditorWorkspace | LegacyTimelineWorkspace | null;
 };
 
 export type TaskStatus = "PENDING" | "STARTED" | "SUCCESS" | "FAILURE" | "RETRY" | "REVOKED";

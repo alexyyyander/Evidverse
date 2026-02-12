@@ -20,6 +20,7 @@ RUN set -eux; \
 COPY backend/app ./app
 COPY backend/alembic ./alembic
 COPY backend/alembic.ini ./alembic.ini
+COPY backend/docker-entrypoint.sh ./docker-entrypoint.sh
 COPY ai_engine ./ai_engine
 
 RUN addgroup --system vidgit && adduser --system --group vidgit
@@ -27,4 +28,5 @@ USER vidgit
 
 EXPOSE 8000
 
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

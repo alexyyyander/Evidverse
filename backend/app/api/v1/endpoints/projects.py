@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
 from app.models.user import User
-from app.schemas.project import Project, ProjectCreate, ProjectUpdate, ProjectFork
+from app.schemas.project import Project, ProjectCreate, ProjectUpdate, ProjectFork, ProjectFeedItem
 from app.schemas.branch import Branch
 from app.services.project_service import ProjectService
 from app.services.branch_service import branch_service
@@ -13,7 +13,7 @@ from app.services.feed_service import FeedService
 
 router = APIRouter()
 
-@router.get("/feed", response_model=List[Project])
+@router.get("/feed", response_model=List[ProjectFeedItem])
 async def read_public_feed(
     skip: int = 0,
     limit: int = 20,

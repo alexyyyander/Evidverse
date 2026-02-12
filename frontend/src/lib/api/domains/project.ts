@@ -1,10 +1,13 @@
 import { get, post, put } from "@/lib/api/client";
-import type { ProjectDetail, ProjectFeedItem, ProjectGraph, ProjectSummary, TimelineWorkspace } from "@/lib/api/types";
+import type { ProjectDetail, ProjectFeedItem, ProjectGraph, ProjectSummary } from "@/lib/api/types";
+import type { EditorWorkspace } from "@/lib/editor/workspace";
 
 export const projectApi = {
   create: (data: { name: string; description?: string }) => post<ProjectSummary>("/projects/", data),
   getAll: () => get<ProjectSummary[]>("/projects/"),
   get: (id: number) => get<ProjectDetail>(`/projects/${id}`),
+  update: (id: number, data: { name?: string; description?: string | null }) =>
+    put<ProjectSummary>(`/projects/${id}`, data),
   getGraph: (id: number) => get<ProjectGraph>(`/projects/${id}/graph`),
   getFeed: () => get<ProjectFeedItem[]>("/projects/feed"),
   toggleLike: (id: number) => post<boolean>(`/projects/${id}/like`),
@@ -14,7 +17,6 @@ export const projectApi = {
     const res = await get<ProjectDetail>(`/projects/${projectId}`);
     return res.workspace_data || null;
   },
-  updateWorkspace: (projectId: number, workspace: TimelineWorkspace) =>
+  updateWorkspace: (projectId: number, workspace: EditorWorkspace) =>
     put<ProjectDetail>(`/projects/${projectId}`, { workspace_data: workspace }),
 };
-

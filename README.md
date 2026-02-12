@@ -64,8 +64,11 @@ docker-compose -f docker-compose.prod.yml up -d --build
 If downloads are slow (common behind certain networks), you can use a PyPI mirror during build:
 
 ```bash
-9+
+export PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+export PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn
+docker-compose -f docker-compose.prod.yml up -d --build
 ```
+
 
 Access the application:
 - **Frontend**: http://localhost

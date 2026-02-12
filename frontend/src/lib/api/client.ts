@@ -4,7 +4,7 @@ import { normalizeAxiosError } from "@/lib/api/errors";
 import { toast } from "@/components/ui/toast";
 
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "/api/v1",
   headers: {
     "Content-Type": "application/json",
   },
@@ -53,4 +53,3 @@ export async function del<T>(url: string) {
   const res = await apiClient.delete<T>(url);
   return res.data;
 }
-

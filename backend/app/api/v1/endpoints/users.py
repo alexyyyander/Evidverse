@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.api import deps
 from app.models.user import User
 from app.schemas.user import User as UserSchema
-from app.schemas.project import Project as ProjectSchema
+from app.schemas.project import ProjectFeedItem as ProjectSchema
 from app.services.feed_service import FeedService
 
 router = APIRouter()

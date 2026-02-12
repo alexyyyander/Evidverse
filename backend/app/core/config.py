@@ -1,4 +1,5 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
+import json
 from pydantic import PostgresDsn, validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -55,6 +56,28 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: str = "sk-test-openai-api-key"
 
-    model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
+    BACKEND_CORS_ORIGINS: List[str] = []
+
+    @validator("BACKEND_CORS_ORIGINS", pre=True)
+    def assemble_cors_origins(cls, v: Any) -> List[str]:
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return [str(i).rstrip("/") for i in v if str(i).strip()]
+        if isinstance(v, str):
+            raw = v.strip()
+            if not raw:
+                return []
+            if raw.startswith("["):
+                try:
+                    items = json.loads(raw)
+                    if isinstance(items, list):
+                        return [str(i).rstrip("/") for i in items if str(i).strip()]
+                except Exception:
+                    return []
+            return [item.strip().rstrip("/") for item in raw.split(",") if item.strip()]
+        return []
+
+    model_config = SettingsConfigDict(case_sensitive=True, env_file=".env", extra="ignore")
 
 settings = Settings()

@@ -4,9 +4,13 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Stage10](./stage_plan_frontend/stage_10.md)
-**Status**: completed
-**Last Updated**: 2026-02-11
+**Current Stage**: [Frontend Optimization v1 - Stage 02](./stage_plan_frontend_v1/stage_02.md)
+**Status**: in_progress
+**Last Updated**: 2026-02-12
+
+### Frontend Optimization v1（进行中）
+- 目标：把“视频编辑页面”做得足够高级与复杂（点子→剧本→人物→生成→时间轴联动）
+- 计划：仅 3 个阶段，见 [stage_plan_frontend_v1/README](./stage_plan_frontend_v1/README.md)
 
 ## 📅 Stage Roadmap
 - [x] **Stage 01**: 环境与数据库

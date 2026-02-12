@@ -3,7 +3,8 @@
 import { ReactNode, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Spinner from "@/components/ui/spinner";
-import { clearToken, getToken } from "@/lib/api/auth";
+import { clearToken } from "@/lib/api/auth";
+import { useAuthToken } from "@/lib/auth/useAuthToken";
 import { useMe } from "@/lib/queries/useMe";
 import { toast } from "@/components/ui/toast";
 
@@ -12,7 +13,7 @@ export default function AuthGuard({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const token = getToken();
+  const token = useAuthToken();
   const meQuery = useMe();
 
   const next = `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`;
@@ -53,4 +54,3 @@ export default function AuthGuard({ children }: { children: ReactNode }) {
 
   return <>{children}</>;
 }
-

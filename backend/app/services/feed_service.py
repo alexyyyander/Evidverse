@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.project import Project
 from app.models.like import Like
-from app.schemas.project import Project as ProjectSchema
+from app.schemas.project import ProjectFeedItem as ProjectSchema
 
 class FeedService:
     @staticmethod
