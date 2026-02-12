@@ -7,7 +7,7 @@
 - /vn/parse-jobs：异步解析任务（创建/查询/日志），用于后续大文件与多文件导入
 
 ### 前端（Next.js）
-- Editor 左侧新增 VN Tab：脚本预览解析 / 上传 VN 素材并登记 VNAsset / 创建解析任务并查看日志
+- Editor 左侧新增 VN Tab：脚本预览解析 / 上传 VN 素材并登记 VNAsset / 一键创建解析 Job 并导入 Script / 截图 VNAsset 绑定到 Beat（最小映射编辑）
 
 ## 目标
 - 支持用户导入 Galgame/视觉小说数据，结构化为可编辑的剧情与分段，并驱动 Vidgit 生成多世界线番剧

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Textarea from "@/components/ui/textarea";
 import Button from "@/components/ui/button";
@@ -92,8 +92,17 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [jobId, setJobId] = useState<string | null>(null);
   const [uploadingName, setUploadingName] = useState("");
+  const [pendingImport, setPendingImport] = useState<null | { mode: "append" | "replace" }>(null);
 
-  const { data: editorData, applyStoryboard, updateLayout } = useEditorStore();
+  const {
+    data: editorData,
+    selection,
+    applyStoryboard,
+    updateLayout,
+    beginHistoryGroup,
+    endHistoryGroup,
+    addBeatImageAsset,
+  } = useEditorStore();
 
   const assetsQuery = useQuery({
     queryKey: ["vnAssets", projectId, branchName],
@@ -173,8 +182,11 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
   }, [previewEvents]);
 
   const jobEvents = (parseJobQuery.data as any)?.result?.events as any[] | undefined;
+  const jobStatus = String(parseJobQuery.data?.status || "").toLowerCase();
 
   const assets = useMemo(() => (assetsQuery.data || []) as VNAsset[], [assetsQuery.data]);
+  const selectedBeatId = selection.selectedBeatId;
+  const selectedBeat = selectedBeatId ? editorData.beats[selectedBeatId as any] : null;
 
   useEffect(() => {
     const existing = new Set(assets.map((a) => a.id));
@@ -206,7 +218,7 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
     );
   }, [editorData.ideaVersions, editorData.activeIdeaVersionId]);
 
-  const importFromEvents = (events: any[], mode: "append" | "replace") => {
+  const importFromEvents = useCallback((events: any[], mode: "append" | "replace") => {
     const storyboard = eventsToStoryboard(events || []);
     if (storyboard.length === 0) {
       toast({ title: "Nothing to import", description: "No usable events found.", variant: "destructive" });
@@ -215,6 +227,45 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
     applyStoryboard({ topic: `VN Import (${engine})`, ideaParams: currentIdeaParams, storyboard, mode });
     updateLayout({ activeLeftTab: "script" });
     toast({ title: "Imported", description: `${storyboard.length} beats`, variant: "success" });
+  }, [applyStoryboard, currentIdeaParams, engine, updateLayout]);
+
+  useEffect(() => {
+    if (!pendingImport) return;
+    if (jobStatus !== "succeeded" && jobStatus !== "success") return;
+    const events = jobEvents;
+    if (!Array.isArray(events) || events.length === 0) {
+      setPendingImport(null);
+      return;
+    }
+    importFromEvents(events, pendingImport.mode);
+    setPendingImport(null);
+  }, [importFromEvents, jobEvents, jobStatus, pendingImport]);
+
+  const createJobAndImport = (mode: "append" | "replace") => {
+    if (parseJobMutation.isPending) return;
+    const script_text = scriptText.trim() || undefined;
+    const asset_ids = selectedAssetIds.length > 0 ? selectedAssetIds : undefined;
+    if (!script_text && !asset_ids) return;
+    setPendingImport({ mode });
+    parseJobMutation.mutate({ script_text, asset_ids });
+    updateLayout({ activeLeftTab: "vn" });
+  };
+
+  const attachScreenshotToBeat = (asset: VNAsset) => {
+    if (!selectedBeatId) {
+      toast({ title: "No beat selected", description: "Select a beat in Script first.", variant: "destructive" });
+      return;
+    }
+    const url = String(asset.storage_url || "").trim();
+    if (!url) {
+      toast({ title: "Invalid asset", description: "storage_url is missing.", variant: "destructive" });
+      return;
+    }
+    beginHistoryGroup();
+    addBeatImageAsset({ beatId: selectedBeatId as any, url, source: "upload" });
+    endHistoryGroup();
+    updateLayout({ activeLeftTab: "script" });
+    toast({ title: "Screenshot attached", description: asset.metadata?.filename || asset.object_name, variant: "success" });
   };
 
   return (
@@ -272,13 +323,11 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
             <Button loading={previewMutation.isPending} disabled={!canPreview} onClick={() => previewMutation.mutate()}>
               Preview
             </Button>
-            <Button
-              variant="secondary"
-              loading={parseJobMutation.isPending}
-              disabled={!canCreateJob}
-              onClick={() => parseJobMutation.mutate({ script_text: scriptText.trim() || undefined, asset_ids: selectedAssetIds })}
-            >
-              Create Parse Job
+            <Button variant="secondary" loading={parseJobMutation.isPending} disabled={!canCreateJob} onClick={() => createJobAndImport("append")}>
+              Create + Append
+            </Button>
+            <Button variant="destructive" loading={parseJobMutation.isPending} disabled={!canCreateJob} onClick={() => createJobAndImport("replace")}>
+              Create + Replace
             </Button>
           </div>
 
@@ -303,6 +352,10 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
         </TabsContent>
 
         <TabsContent value="assets" className="space-y-3">
+          <div className="text-xs text-muted-foreground">
+            Selected beat:{" "}
+            <span className="text-foreground">{selectedBeat ? selectedBeat.narration || `Beat ${selectedBeat.order + 1}` : "none"}</span>
+          </div>
           <div className="grid grid-cols-1 gap-2">
             <div className="flex items-center gap-2">
               <Button
@@ -349,21 +402,28 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
               {assets.map((a) => {
                 const selected = selectedAssetIds.includes(a.id);
                 return (
-                  <button
+                  <div
                     key={a.id}
-                    type="button"
-                    onClick={() => toggleAsset(a.id)}
                     className={cn(
                       "w-full text-left rounded-md border px-3 py-2 text-xs transition-colors",
                       selected ? "border-primary bg-secondary" : "border-border hover:bg-secondary/50"
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="font-mono truncate">{a.id}</div>
-                      <div className="text-muted-foreground">{a.type}</div>
+                      <button type="button" onClick={() => toggleAsset(a.id)} className="min-w-0 flex-1 text-left">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="font-mono truncate">{a.id}</div>
+                          <div className="text-muted-foreground">{a.type}</div>
+                        </div>
+                        <div className="text-muted-foreground truncate">{a.metadata?.filename || a.object_name}</div>
+                      </button>
+                      {a.type === "SCREENSHOT" ? (
+                        <Button size="sm" variant="ghost" onClick={() => attachScreenshotToBeat(a)}>
+                          Attach
+                        </Button>
+                      ) : null}
                     </div>
-                    <div className="text-muted-foreground truncate">{a.metadata?.filename || a.object_name}</div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
