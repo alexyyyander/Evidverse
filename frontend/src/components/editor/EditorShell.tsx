@@ -12,7 +12,7 @@ import { ResizablePanel } from "@/components/layout/ResizablePanel";
 
 export default function EditorShell({ projectId }: { projectId: number }) {
   const { setProjectId } = useTimelineStore();
-  const { layout, updateLayout, loadProject, saveProject, data, selection, selectTimelineItem } = useEditorStore();
+  const { layout, updateLayout, loadProject, saveProject, data, selection, selectTimelineItem, undo, redo } = useEditorStore();
 
   useEffect(() => {
     setProjectId(projectId);
@@ -23,15 +23,26 @@ export default function EditorShell({ projectId }: { projectId: number }) {
     const onKeyDown = (e: KeyboardEvent) => {
       const isMac = navigator.platform.toLowerCase().includes("mac");
       const mod = isMac ? e.metaKey : e.ctrlKey;
+      const shift = e.shiftKey;
       if (mod && e.key.toLowerCase() === "s") {
         e.preventDefault();
         saveProject(projectId, { silent: false });
         return;
       }
+      if (mod && !shift && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        undo();
+        return;
+      }
+      if ((mod && shift && e.key.toLowerCase() === "z") || (mod && e.key.toLowerCase() === "y")) {
+        e.preventDefault();
+        redo();
+        return;
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [saveProject, projectId]);
+  }, [saveProject, projectId, undo, redo]);
 
   const assetsProps = useMemo(() => {
     const items = Object.values(data.timelineItems).sort((a, b) => a.startTime - b.startTime);

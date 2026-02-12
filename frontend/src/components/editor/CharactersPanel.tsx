@@ -16,6 +16,8 @@ export default function CharactersPanel() {
   const selectedCharacterId = useEditorStore((s) => s.selection.selectedCharacterId);
   const selectCharacter = useEditorStore((s) => s.selectCharacter);
   const updateCharacter = useEditorStore((s) => s.updateCharacter);
+  const beginHistoryGroup = useEditorStore((s) => s.beginHistoryGroup);
+  const endHistoryGroup = useEditorStore((s) => s.endHistoryGroup);
   const addGenerationTask = useEditorStore((s) => s.addGenerationTask);
   const updateGenerationTask = useEditorStore((s) => s.updateGenerationTask);
   const applyCharacterTaskResult = useEditorStore((s) => s.applyCharacterTaskResult);
@@ -90,10 +92,18 @@ export default function CharactersPanel() {
               </button>
 
               <div className="mt-3 grid gap-2">
-                <Input value={c.name} onChange={(e) => updateCharacter(c.id, { name: e.target.value })} placeholder="角色名" />
+                <Input
+                  value={c.name}
+                  onChange={(e) => updateCharacter(c.id, { name: e.target.value })}
+                  onFocus={() => beginHistoryGroup()}
+                  onBlur={() => endHistoryGroup()}
+                  placeholder="角色名"
+                />
                 <Textarea
                   value={c.description || ""}
                   onChange={(e) => updateCharacter(c.id, { description: e.target.value })}
+                  onFocus={() => beginHistoryGroup()}
+                  onBlur={() => endHistoryGroup()}
                   placeholder="外观/服装/关键词/禁用词..."
                   className="min-h-[80px]"
                 />
@@ -110,4 +120,3 @@ export default function CharactersPanel() {
     </div>
   );
 }
-

@@ -37,6 +37,8 @@ export default function ScriptPanel() {
     updateGenerationTask,
     applyClipTaskResult,
     extractCharacters,
+    beginHistoryGroup,
+    endHistoryGroup,
     selectBeat,
     selectTimelineItem,
     updateBeat,
@@ -216,18 +218,24 @@ export default function ScriptPanel() {
                     <Textarea
                       value={beat.narration || ""}
                       onChange={(e) => updateBeat(beat.id, { narration: e.target.value })}
+                      onFocus={() => beginHistoryGroup()}
+                      onBlur={() => endHistoryGroup()}
                       placeholder="旁白"
                       className="min-h-[80px]"
                     />
                     <Textarea
                       value={beat.cameraDescription || ""}
                       onChange={(e) => updateBeat(beat.id, { cameraDescription: e.target.value })}
+                      onFocus={() => beginHistoryGroup()}
+                      onBlur={() => endHistoryGroup()}
                       placeholder="镜头描述"
                       className="min-h-[60px]"
                     />
                     <Input
                       value={String(beat.suggestedDuration)}
                       onChange={(e) => updateBeat(beat.id, { suggestedDuration: Number(e.target.value) || 0 })}
+                      onFocus={() => beginHistoryGroup()}
+                      onBlur={() => endHistoryGroup()}
                       placeholder="建议时长"
                     />
 
@@ -269,6 +277,8 @@ export default function ScriptPanel() {
                                   );
                                   updateBeat(beat.id, { shots: nextShots });
                                 }}
+                                onFocus={() => beginHistoryGroup()}
+                                onBlur={() => endHistoryGroup()}
                                 placeholder="镜头旁白"
                                 className="min-h-[60px] mt-2"
                               />
@@ -280,6 +290,8 @@ export default function ScriptPanel() {
                                   );
                                   updateBeat(beat.id, { shots: nextShots });
                                 }}
+                                onFocus={() => beginHistoryGroup()}
+                                onBlur={() => endHistoryGroup()}
                                 placeholder="镜头描述"
                                 className="min-h-[60px] mt-2"
                               />
@@ -291,6 +303,8 @@ export default function ScriptPanel() {
                                   );
                                   updateBeat(beat.id, { shots: nextShots });
                                 }}
+                                onFocus={() => beginHistoryGroup()}
+                                onBlur={() => endHistoryGroup()}
                                 placeholder="镜头时长"
                                 className="mt-2"
                               />

@@ -21,10 +21,27 @@ import {
 import type { GenerateClipResult } from "@/lib/api";
 import type { LayoutState, SelectionState, SelectionSource } from "@/lib/editor/ui";
 
+type WorkspaceSnapshot = {
+  editorState: EditorStateData;
+  timeline: { editorData: any; effects: any };
+  selection: SelectionState;
+};
+
+function cloneValue<T>(value: T): T {
+  if (typeof structuredClone === "function") return structuredClone(value);
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 export interface EditorState {
   data: EditorStateData;
   selection: SelectionState;
   layout: LayoutState;
+  history: {
+    undo: WorkspaceSnapshot[];
+    redo: WorkspaceSnapshot[];
+    recording: boolean;
+    applying: boolean;
+  };
   
   // Actions
   selectBeat: (id: BeatId | null, source?: SelectionSource) => void;
@@ -46,6 +63,12 @@ export interface EditorState {
   updateBeat: (beatId: BeatId, patch: Partial<Beat>) => void;
   updateCharacter: (characterId: CharacterId, patch: Partial<Character>) => void;
   syncTimelineFromRows: (rows: Array<{ id: string; actions: Array<{ id: string; start: number; end: number }> }>) => void;
+  beginHistoryGroup: () => void;
+  endHistoryGroup: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
   
   saveProject: (projectId: number, options?: { silent?: boolean }) => Promise<void>;
   loadProject: (projectId: number) => Promise<void>;
@@ -82,6 +105,12 @@ export const useEditorStore = create<EditorState>()(
       activeLeftTab: 'script',
       activeRightTab: 'inspector',
     },
+    history: {
+      undo: [],
+      redo: [],
+      recording: false,
+      applying: false,
+    },
     
     selectBeat: (id, source = null) => set((state) => {
       state.selection.selectedBeatId = id;
@@ -117,6 +146,75 @@ export const useEditorStore = create<EditorState>()(
       state.data = data;
     }),
 
+    beginHistoryGroup: () =>
+      set((state) => {
+        if (state.history.applying) return;
+        if (state.history.recording) return;
+        const { editorData, effects } = useTimelineStore.getState();
+        state.history.undo.push({
+          editorState: cloneValue(state.data),
+          timeline: { editorData: cloneValue(editorData), effects: cloneValue(effects) },
+          selection: cloneValue(state.selection),
+        });
+        state.history.redo = [];
+        if (state.history.undo.length > 50) state.history.undo = state.history.undo.slice(-50);
+        state.history.recording = true;
+      }),
+
+    endHistoryGroup: () =>
+      set((state) => {
+        state.history.recording = false;
+      }),
+
+    canUndo: () => get().history.undo.length > 0,
+    canRedo: () => get().history.redo.length > 0,
+
+    undo: () => {
+      const { history } = get();
+      if (history.undo.length === 0) return;
+      const snap = history.undo[history.undo.length - 1];
+      set((state) => {
+        state.history.applying = true;
+        const { editorData, effects } = useTimelineStore.getState();
+        state.history.redo.push({
+          editorState: cloneValue(state.data),
+          timeline: { editorData: cloneValue(editorData), effects: cloneValue(effects) },
+          selection: cloneValue(state.selection),
+        });
+        state.history.undo = state.history.undo.slice(0, -1);
+        state.data = cloneValue(snap.editorState);
+        state.selection = cloneValue(snap.selection);
+        state.history.recording = false;
+      });
+      useTimelineStore.setState({ editorData: cloneValue(snap.timeline.editorData), effects: cloneValue(snap.timeline.effects) });
+      set((state) => {
+        state.history.applying = false;
+      });
+    },
+
+    redo: () => {
+      const { history } = get();
+      if (history.redo.length === 0) return;
+      const snap = history.redo[history.redo.length - 1];
+      set((state) => {
+        state.history.applying = true;
+        const { editorData, effects } = useTimelineStore.getState();
+        state.history.undo.push({
+          editorState: cloneValue(state.data),
+          timeline: { editorData: cloneValue(editorData), effects: cloneValue(effects) },
+          selection: cloneValue(state.selection),
+        });
+        state.history.redo = state.history.redo.slice(0, -1);
+        state.data = cloneValue(snap.editorState);
+        state.selection = cloneValue(snap.selection);
+        state.history.recording = false;
+      });
+      useTimelineStore.setState({ editorData: cloneValue(snap.timeline.editorData), effects: cloneValue(snap.timeline.effects) });
+      set((state) => {
+        state.history.applying = false;
+      });
+    },
+
     addIdeaVersion: ({ text, params }) => {
       const idea: IdeaVersion = {
         id: createId("idea"),
@@ -125,6 +223,16 @@ export const useEditorStore = create<EditorState>()(
         params,
       };
       set((state) => {
+        if (!state.history.recording && !state.history.applying) {
+          const { editorData, effects } = useTimelineStore.getState();
+          state.history.undo.push({
+            editorState: cloneValue(state.data),
+            timeline: { editorData: cloneValue(editorData), effects: cloneValue(effects) },
+            selection: cloneValue(state.selection),
+          });
+          state.history.redo = [];
+          if (state.history.undo.length > 50) state.history.undo = state.history.undo.slice(-50);
+        }
         const next = state.data.ideaVersions ? [...state.data.ideaVersions, idea] : [idea];
         state.data.ideaVersions = next;
         state.data.activeIdeaVersionId = idea.id;
@@ -175,9 +283,11 @@ export const useEditorStore = create<EditorState>()(
         return;
       }
 
+      get().beginHistoryGroup();
       set((state) => {
         state.data = next;
       });
+      get().endHistoryGroup();
 
       const timelineRows = [
         {
@@ -220,6 +330,7 @@ export const useEditorStore = create<EditorState>()(
 
       const createdAt = new Date().toISOString();
       const assetId = createId("asset_image");
+      get().beginHistoryGroup();
       set((state) => {
         state.data.assets[assetId] = {
           id: assetId,
@@ -233,6 +344,7 @@ export const useEditorStore = create<EditorState>()(
         const character = state.data.characters[characterId];
         if (character) state.data.characters[characterId] = { ...character, avatarUrl: imageUrl };
       });
+      get().endHistoryGroup();
 
       get().updateGenerationTask(taskId, { status: "SUCCESS" as TaskStatus, result });
       get().selectCharacter(characterId, "queue");
@@ -252,6 +364,16 @@ export const useEditorStore = create<EditorState>()(
 
     updateBeat: (beatId, patch) =>
       set((state) => {
+        if (!state.history.recording && !state.history.applying) {
+          const { editorData, effects } = useTimelineStore.getState();
+          state.history.undo.push({
+            editorState: cloneValue(state.data),
+            timeline: { editorData: cloneValue(editorData), effects: cloneValue(effects) },
+            selection: cloneValue(state.selection),
+          });
+          state.history.redo = [];
+          if (state.history.undo.length > 50) state.history.undo = state.history.undo.slice(-50);
+        }
         const beat = state.data.beats[beatId];
         if (!beat) return;
         state.data.beats[beatId] = { ...beat, ...patch };
@@ -259,6 +381,16 @@ export const useEditorStore = create<EditorState>()(
 
     updateCharacter: (characterId, patch) =>
       set((state) => {
+        if (!state.history.recording && !state.history.applying) {
+          const { editorData, effects } = useTimelineStore.getState();
+          state.history.undo.push({
+            editorState: cloneValue(state.data),
+            timeline: { editorData: cloneValue(editorData), effects: cloneValue(effects) },
+            selection: cloneValue(state.selection),
+          });
+          state.history.redo = [];
+          if (state.history.undo.length > 50) state.history.undo = state.history.undo.slice(-50);
+        }
         const character = state.data.characters[characterId];
         if (!character) return;
         state.data.characters[characterId] = { ...character, ...patch };
@@ -266,6 +398,16 @@ export const useEditorStore = create<EditorState>()(
 
     syncTimelineFromRows: (rows) =>
       set((state) => {
+        if (!state.history.recording && !state.history.applying) {
+          const { editorData, effects } = useTimelineStore.getState();
+          state.history.undo.push({
+            editorState: cloneValue(state.data),
+            timeline: { editorData: cloneValue(editorData), effects: cloneValue(effects) },
+            selection: cloneValue(state.selection),
+          });
+          state.history.redo = [];
+          if (state.history.undo.length > 50) state.history.undo = state.history.undo.slice(-50);
+        }
         for (const row of rows) {
           for (const action of row.actions) {
             const item = state.data.timelineItems[action.id];

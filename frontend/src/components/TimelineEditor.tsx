@@ -4,20 +4,41 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Timeline, TimelineState } from '@xzdarcy/react-timeline-editor';
 import { useTimelineStore } from '@/store/timelineStore';
 import { useEditorStore } from '@/store/editorStore';
-import { Save, Play, Pause } from 'lucide-react';
+import { Save, Play, Pause, Undo2, Redo2 } from 'lucide-react';
 
 export default function TimelineEditor() {
   const { editorData, effects, setEditorData, setCurrentTime, projectId } = useTimelineStore();
-  const { selectTimelineItem, selection, saveProject, syncTimelineFromRows } = useEditorStore(state => ({
+  const {
+    selectTimelineItem,
+    selection,
+    saveProject,
+    syncTimelineFromRows,
+    beginHistoryGroup,
+    endHistoryGroup,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useEditorStore(state => ({
     selectTimelineItem: state.selectTimelineItem,
     selection: state.selection,
     saveProject: state.saveProject,
-    syncTimelineFromRows: state.syncTimelineFromRows
+    syncTimelineFromRows: state.syncTimelineFromRows,
+    beginHistoryGroup: state.beginHistoryGroup,
+    endHistoryGroup: state.endHistoryGroup,
+    undo: state.undo,
+    redo: state.redo,
+    canUndo: state.canUndo,
+    canRedo: state.canRedo,
   }));
   const timelineRef = useRef<TimelineState>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [dirty, setDirty] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
+  const [scaleWidth, setScaleWidth] = useState(160);
+  const [scale, setScale] = useState(1);
+  const startLeft = 20;
 
   useEffect(() => {
     if (selection.source === 'timeline') return;
@@ -29,11 +50,13 @@ export default function TimelineEditor() {
         setCurrentTime(action.start);
         if (timelineRef.current) {
             timelineRef.current.setTime(action.start);
+            const scrollLeft = Math.max(0, (action.start / scale) * scaleWidth - 200);
+            timelineRef.current.setScrollLeft(scrollLeft);
         }
         break;
       }
     }
-  }, [selection.selectedTimelineItemId, selection.source, editorData, setCurrentTime]);
+  }, [selection.selectedTimelineItemId, selection.source, editorData, setCurrentTime, scale, scaleWidth]);
   
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -88,7 +111,16 @@ export default function TimelineEditor() {
   if (!mounted) return <div className="w-full h-full bg-gray-100 dark:bg-zinc-900 animate-pulse flex items-center justify-center text-gray-500">Loading Timeline...</div>;
 
   return (
-    <div className="w-full h-full bg-zinc-900 text-white overflow-hidden border-t border-zinc-700">
+    <div
+      ref={containerRef}
+      className="w-full h-full bg-zinc-900 text-white overflow-hidden border-t border-zinc-700"
+      onWheel={(e) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        e.preventDefault();
+        const next = Math.max(40, Math.min(280, scaleWidth + (e.deltaY > 0 ? -10 : 10)));
+        setScaleWidth(next);
+      }}
+    >
       <div className="p-2 border-b border-zinc-700 bg-zinc-800 flex justify-between items-center">
          <div className="flex items-center gap-2">
             <button 
@@ -96,6 +128,20 @@ export default function TimelineEditor() {
               className="p-1 rounded hover:bg-zinc-700 text-white"
             >
                {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+            </button>
+            <button
+              onClick={() => undo()}
+              disabled={!canUndo()}
+              className="p-1 rounded hover:bg-zinc-700 text-white disabled:opacity-40"
+            >
+              <Undo2 size={16} />
+            </button>
+            <button
+              onClick={() => redo()}
+              disabled={!canRedo()}
+              className="p-1 rounded hover:bg-zinc-700 text-white disabled:opacity-40"
+            >
+              <Redo2 size={16} />
             </button>
             <span className="text-sm font-semibold">Timeline</span>
          </div>
@@ -115,12 +161,19 @@ export default function TimelineEditor() {
         ref={timelineRef}
         editorData={editorData}
         effects={effects}
+        scale={scale}
+        scaleWidth={scaleWidth}
+        startLeft={startLeft}
         onChange={(data) => {
           setEditorData(data);
           syncTimelineFromRows(data as any);
           setDirty(true);
         }}
         autoScroll={true}
+        onActionMoveStart={() => beginHistoryGroup()}
+        onActionMoveEnd={() => endHistoryGroup()}
+        onActionResizeStart={() => beginHistoryGroup()}
+        onActionResizeEnd={() => endHistoryGroup()}
         onCursorDrag={(time) => setCurrentTime(time)}
         onClickTimeArea={(time) => { setCurrentTime(time); return true; }}
         onClickActionOnly={(e, { action }) => {
