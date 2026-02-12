@@ -39,6 +39,7 @@ function resetStores() {
       bottomPanelCollapsed: false,
       activeLeftTab: "script",
       activeRightTab: "inspector",
+      followSelection: true,
     },
     history: { undo: [], redo: [], recording: false, applying: false },
   } as any);

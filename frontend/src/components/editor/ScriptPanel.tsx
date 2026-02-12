@@ -91,6 +91,9 @@ export default function ScriptPanel() {
         toast({ title: "Generation failed", description: validation.error, variant: "destructive" });
         return;
       }
+      if (validation.issues.length > 0) {
+        toast({ title: "Partial result", description: validation.issues[0], variant: "default" });
+      }
       const hasExisting = Object.keys(data.timelineItems).length > 0;
       if (hasExisting) {
         setApplyModeDialog({ open: true, taskId, result: task.result });
@@ -117,6 +120,9 @@ export default function ScriptPanel() {
         updateGenerationTask(beatRegenJob.taskId, { error: validation.error });
         toast({ title: "Generation failed", description: validation.error, variant: "destructive" });
         return;
+      }
+      if (validation.issues.length > 0) {
+        toast({ title: "Partial result", description: validation.issues[0], variant: "default" });
       }
       applyBeatClipResult({
         taskId: beatRegenJob.taskId,
@@ -173,9 +179,11 @@ export default function ScriptPanel() {
   }, [data.beats, data.scenes]);
 
   const selectedBeatId = useEditorStore((s) => s.selection.selectedBeatId);
+  const followSelection = useEditorStore((s) => s.layout.followSelection);
 
   const handleSelectBeat = (beatId: string) => {
     selectBeat(beatId as any, "script");
+    if (!followSelection) return;
     const item = Object.values(data.timelineItems).find((t) => t.linkedBeatId === beatId);
     if (item) selectTimelineItem(item.id, "script");
   };

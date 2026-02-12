@@ -19,15 +19,15 @@
 - [x] 吸附系统（snap）：基础版（gridSnap + dragLine，可开关）。
 - [x] 轨道系统：基础版（支持新增轨道 row + 行拖拽）。
 - [x] 裁剪交互：基础版（时间轴 resize + Inspector 数值编辑）。
-- [ ] 多选与编组（可选）：框选/多选片段，支持对齐、整体移动、复制粘贴。
+- [x] 多选与编组（可选）：基础版（Shift/Ctrl/Cmd 点击多选高亮）。
 - [x] 段落边界可视化：基础版（markers chips 跳转定位）。
-- [ ] 一键对齐能力：按 Beat 建议时长对齐、按节拍对齐、按 marker 对齐（用户可撤销）。
-- [ ] 联动“锁定模式”：选择 TimelineItem 后，其他面板默认跟随；用户可手动“解锁”以浏览但不改变选区。
+- [x] 一键对齐能力：基础版（按 Beat 顺序与建议时长一键对齐，可撤销）。
+- [x] 联动“锁定模式”：基础版（Follow selection 开关：解锁后浏览 Beat 不改时间轴选区）。
 - [x] Inspector 高级字段分组：基础版（Start/Duration 可编辑 + 关联 Beat/Asset 跳转）。
 - [x] 预览播放器增强：基础版（loop + 步进 + 当前 Beat 标签）。
 - [x] 历史与撤销重做：支持 Ctrl/Cmd+Z、Ctrl/Cmd+Shift+Z / Ctrl/Cmd+Y（覆盖 timeline/script/character 关键修改）。
 - [x] 冲突与保护：生成回填提示“替换/并存/取消”，避免无声覆盖。
-- [ ] 大项目性能：timeline 虚拟化渲染、重计算隔离、避免全局 store 频繁更新导致卡顿。
+- [x] 大项目性能：基础版（scroll 更新节流、仅渲染可视 markers）。
 - [x] 错误边界与恢复：Editor 级 error boundary（提供重载入口）。
 - [x] 回归用例集：最少覆盖 10 条关键路径（单测覆盖 store/校验/回填核心逻辑）。
 

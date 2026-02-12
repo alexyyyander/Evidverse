@@ -29,32 +29,8 @@ def generate_clip_workflow(topic: str, user_id: int) -> dict:
     
     try:
         storyboard = loop.run_until_complete(story_service.generate_storyboard(topic))
-        
-        results = []
-        for scene in storyboard:
-            visual_desc = scene.get("visual_description")
-            
-            # 2a. Generate Image
-            # We reuse the logic from image_tasks. Since that task is also async wrapped in sync, 
-            # we can't easily call it as a function if it creates its own loop.
-            # We should refactor the core logic out of the Celery task wrappers.
-            # For MVP speed, let's call the task synchronously via .apply() if we want to wait, 
-            # OR refactor.
-            # Refactoring is cleaner. But let's assume we can call the underlying logic if we import it?
-            # No, logic is inside the task function.
-            
-            # Let's rely on Celery canvas (chain/chord) if possible, but dynamic length is tricky.
-            # Simple approach: Just call the task delay/apply within loop (blocking).
-            # Note: Blocking in a worker is bad for concurrency but fine for MVP workflow task.
-            
-            # However, calling .delay() returns immediately. calling .apply() executes locally.
-            # If we use .apply(), we are running the task code in this worker process.
-            # The task code creates a new loop. Nested loops might crash if not careful.
-            # Since we are in a loop already created above? No, we closed it after storyboard?
-            
-            # Let's run storyboard first, close loop.
-            pass
-        
+    except Exception as e:
+        return {"status": "failed", "error": str(e)}
     finally:
         loop.close()
 
@@ -64,6 +40,9 @@ def generate_clip_workflow(topic: str, user_id: int) -> dict:
     
     for scene in storyboard:
         visual_desc = scene.get("visual_description")
+        if not isinstance(visual_desc, str) or not visual_desc.strip():
+            final_clips.append({"scene": scene, "error": "Invalid storyboard scene: visual_description"})
+            continue
         
         # 2a. Generate Image
         # Using .apply() to run synchronously in this worker

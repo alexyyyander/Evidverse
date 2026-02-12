@@ -7,10 +7,18 @@ export function validateGenerateClipResult(result: GenerateClipResult) {
     return { ok: false as const, error: err };
   }
   if (!Array.isArray(result.clips) || result.clips.length === 0) return { ok: false as const, error: "No clips returned" };
-  for (const clip of result.clips) {
-    if (!clip) return { ok: false as const, error: "Invalid clip item" };
-    if (typeof clip.video_url !== "string" || clip.video_url.length === 0) return { ok: false as const, error: "Clip missing video_url" };
+  const issues: string[] = [];
+  let usable = 0;
+  for (let i = 0; i < result.clips.length; i += 1) {
+    const clip: any = (result.clips as any[])[i];
+    if (!clip || typeof clip !== "object") {
+      issues.push(`clips[${i}] invalid item`);
+      continue;
+    }
+    if (typeof clip.error === "string" && clip.error) issues.push(`clips[${i}] error: ${clip.error}`);
+    if (typeof clip.video_url === "string" && clip.video_url.length > 0) usable += 1;
+    else issues.push(`clips[${i}] missing video_url`);
   }
-  return { ok: true as const };
+  if (usable === 0) return { ok: false as const, error: "No usable clips (video_url missing)", issues };
+  return { ok: true as const, issues, usable };
 }
-

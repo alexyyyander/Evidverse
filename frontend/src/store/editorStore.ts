@@ -115,6 +115,7 @@ export const useEditorStore = create<EditorState>()(
       bottomPanelCollapsed: false,
       activeLeftTab: 'script',
       activeRightTab: 'inspector',
+      followSelection: true,
     },
     history: {
       undo: [],
@@ -623,8 +624,8 @@ export const useEditorStore = create<EditorState>()(
               }
               if (data.editorUi) {
                   set((state) => {
-                    state.layout = data.editorUi!.layout;
-                    state.selection = data.editorUi!.selection;
+                    state.layout = { ...state.layout, ...(data.editorUi!.layout as any) };
+                    state.selection = { ...state.selection, ...(data.editorUi!.selection as any) };
                   });
               }
           }

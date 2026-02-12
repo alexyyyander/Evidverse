@@ -4,13 +4,15 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Timeline, TimelineState } from '@xzdarcy/react-timeline-editor';
 import { useTimelineStore } from '@/store/timelineStore';
 import { useEditorStore } from '@/store/editorStore';
-import { Save, Play, Pause, Undo2, Redo2, Plus, Magnet, Layers, ChevronDown, ChevronRight } from 'lucide-react';
+import { Save, Play, Pause, Undo2, Redo2, Plus, Magnet, Layers, ChevronDown, ChevronRight, AlignLeft, Lock, Unlock } from 'lucide-react';
 
 export default function TimelineEditor() {
   const { editorData, effects, setEditorData, setCurrentTime, projectId } = useTimelineStore();
   const {
     selectTimelineItem,
     selection,
+    layout,
+    updateLayout,
     saveProject,
     syncTimelineFromRows,
     beginHistoryGroup,
@@ -22,6 +24,8 @@ export default function TimelineEditor() {
   } = useEditorStore(state => ({
     selectTimelineItem: state.selectTimelineItem,
     selection: state.selection,
+    layout: state.layout,
+    updateLayout: state.updateLayout,
     saveProject: state.saveProject,
     syncTimelineFromRows: state.syncTimelineFromRows,
     beginHistoryGroup: state.beginHistoryGroup,
@@ -47,11 +51,21 @@ export default function TimelineEditor() {
   const [collapsedRowIds, setCollapsedRowIds] = useState<string[]>([]);
   const collapsedRowSet = useMemo(() => new Set(collapsedRowIds), [collapsedRowIds]);
   const [scrollState, setScrollState] = useState({ left: 0, top: 0, viewportWidth: 0 });
+  const scrollRafRef = useRef<number | null>(null);
+  const pendingScrollRef = useRef<{ scrollLeft: number; scrollTop: number } | null>(null);
   const miniMapDragRef = useRef<{ dragging: boolean; startX: number; startScrollLeft: number }>({
     dragging: false,
     startX: 0,
     startScrollLeft: 0,
   });
+  const [multiSelectedActionIds, setMultiSelectedActionIds] = useState<string[]>([]);
+  const multiSelectedSet = useMemo(() => new Set(multiSelectedActionIds), [multiSelectedActionIds]);
+  const selectedSet = useMemo(() => {
+    const s = new Set<string>();
+    if (selection.selectedTimelineItemId) s.add(selection.selectedTimelineItemId);
+    for (const id of multiSelectedActionIds) s.add(id);
+    return s;
+  }, [selection.selectedTimelineItemId, multiSelectedActionIds]);
 
   const markers = useMemo(() => {
     const items = Object.values(editorModel.timelineItems).sort((a, b) => a.startTime - b.startTime);
@@ -91,15 +105,19 @@ export default function TimelineEditor() {
 
   const displayEditorData = useMemo(() => {
     const baseRows = editorData.map((row) => {
-      if (!collapsedRowSet.has(row.id)) return row;
-      return { ...row, actions: [], rowHeight: 14, classNames: [...(row.classNames || []), "is-collapsed"] };
+      const decorated = {
+        ...row,
+        actions: row.actions.map((a) => ({ ...a, selected: selectedSet.has(a.id) })),
+      };
+      if (!collapsedRowSet.has(row.id)) return decorated;
+      return { ...decorated, actions: [], rowHeight: 14, classNames: [...(row.classNames || []), "is-collapsed"] };
     });
     if (!markersEnabled) return baseRows;
     return [
       { id: "__markers__", rowHeight: 12, actions: markerActions, classNames: ["marker-row"] },
       ...baseRows,
     ] as any;
-  }, [editorData, collapsedRowSet, markersEnabled, markerActions]);
+  }, [editorData, collapsedRowSet, markersEnabled, markerActions, selectedSet]);
 
   const maxTime = useMemo(() => {
     let max = 0;
@@ -110,6 +128,13 @@ export default function TimelineEditor() {
   }, [editorData]);
 
   const contentWidth = useMemo(() => startLeft + (maxTime / scale) * scaleWidth + 300, [maxTime, scale, scaleWidth]);
+
+  const visibleMarkers = useMemo(() => {
+    if (!markersEnabled) return [];
+    const leftTime = (Math.max(0, scrollState.left - startLeft) / scaleWidth) * scale;
+    const rightTime = ((Math.max(0, scrollState.left - startLeft) + scrollState.viewportWidth) / scaleWidth) * scale;
+    return markers.filter((m) => m.time >= leftTime - 1 && m.time <= rightTime + 1);
+  }, [markersEnabled, markers, scrollState.left, scrollState.viewportWidth, startLeft, scaleWidth, scale]);
 
   useEffect(() => {
     if (selection.source === 'timeline') return;
@@ -178,6 +203,12 @@ export default function TimelineEditor() {
     return () => ro.disconnect();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (scrollRafRef.current) window.cancelAnimationFrame(scrollRafRef.current);
+    };
+  }, []);
+
   const handlePlayOrPause = () => {
     if (!timelineRef.current) return;
     if (isPlaying) {
@@ -187,6 +218,51 @@ export default function TimelineEditor() {
         timelineRef.current.play({ autoEnd: true });
         setIsPlaying(true);
     }
+  };
+
+  const alignTimeline = () => {
+    beginHistoryGroup();
+    const getBeatKey = (actionId: string) => {
+      const item = editorModel.timelineItems[actionId];
+      if (!item || !item.linkedBeatId) return null;
+      const beat = editorModel.beats[item.linkedBeatId];
+      if (!beat) return null;
+      const scene = editorModel.scenes[beat.sceneId];
+      return { sceneOrder: scene?.order ?? 0, beatOrder: beat.order };
+    };
+    const nextRows = editorData.map((row) => {
+      const sorted = [...row.actions].sort((a, b) => {
+        const ka = getBeatKey(a.id);
+        const kb = getBeatKey(b.id);
+        if (ka && kb) {
+          if (ka.sceneOrder !== kb.sceneOrder) return ka.sceneOrder - kb.sceneOrder;
+          if (ka.beatOrder !== kb.beatOrder) return ka.beatOrder - kb.beatOrder;
+        } else if (ka && !kb) return -1;
+        else if (!ka && kb) return 1;
+        return a.start - b.start;
+      });
+      let t = 0;
+      const nextById = new Map<string, { start: number; end: number }>();
+      for (const a of sorted) {
+        const item = editorModel.timelineItems[a.id];
+        const beat = item?.linkedBeatId ? editorModel.beats[item.linkedBeatId] : null;
+        const duration = beat?.suggestedDuration ?? Math.max(0, a.end - a.start);
+        nextById.set(a.id, { start: t, end: t + duration });
+        t += duration;
+      }
+      return {
+        ...row,
+        actions: row.actions.map((a) => {
+          const next = nextById.get(a.id);
+          if (!next) return a;
+          return { ...a, start: next.start, end: next.end };
+        }),
+      };
+    });
+    setEditorData(nextRows as any);
+    syncTimelineFromRows(nextRows as any);
+    setDirty(true);
+    endHistoryGroup();
   };
 
   if (!mounted) return <div className="w-full h-full bg-gray-100 dark:bg-zinc-900 animate-pulse flex items-center justify-center text-gray-500">Loading Timeline...</div>;
@@ -254,6 +330,22 @@ export default function TimelineEditor() {
               type="button"
             >
               <Layers size={16} />
+            </button>
+            <button
+              onClick={alignTimeline}
+              className="p-1 rounded hover:bg-zinc-700 text-white"
+              aria-label="Align timeline"
+              type="button"
+            >
+              <AlignLeft size={16} />
+            </button>
+            <button
+              onClick={() => updateLayout({ followSelection: !layout.followSelection })}
+              className={`p-1 rounded hover:bg-zinc-700 text-white ${layout.followSelection ? "bg-zinc-700" : ""}`}
+              aria-label="Toggle follow selection"
+              type="button"
+            >
+              {layout.followSelection ? <Lock size={16} /> : <Unlock size={16} />}
             </button>
             <button
               onClick={() => {
@@ -392,10 +484,29 @@ export default function TimelineEditor() {
         onClickTimeArea={(time) => { setCurrentTime(time); return true; }}
         onClickActionOnly={(e, { action }) => {
           if (action.id.startsWith("__marker_action__")) return;
+          const isMulti = e.shiftKey || e.metaKey || e.ctrlKey;
+          if (isMulti) {
+            setMultiSelectedActionIds((prev) => {
+              const set = new Set(prev);
+              if (set.has(action.id)) set.delete(action.id);
+              else set.add(action.id);
+              return Array.from(set);
+            });
+            selectTimelineItem(action.id, 'timeline');
+            return;
+          }
+          setMultiSelectedActionIds([]);
           selectTimelineItem(action.id, 'timeline');
         }}
         onScroll={(p) => {
-          setScrollState((s) => ({ ...s, left: p.scrollLeft, top: p.scrollTop }));
+          pendingScrollRef.current = { scrollLeft: p.scrollLeft, scrollTop: p.scrollTop };
+          if (scrollRafRef.current) return;
+          scrollRafRef.current = window.requestAnimationFrame(() => {
+            scrollRafRef.current = null;
+            const pending = pendingScrollRef.current;
+            if (!pending) return;
+            setScrollState((s) => ({ ...s, left: pending.scrollLeft, top: pending.scrollTop }));
+          });
         }}
         style={{ height: 'calc(100% - 68px)', width: '100%' }}
       />
@@ -403,7 +514,7 @@ export default function TimelineEditor() {
       {markersEnabled && markers.length > 0 ? (
         <>
           <div className="pointer-events-none absolute top-[68px] left-0 right-0 bottom-0 z-10">
-            {markers.map((m) => {
+            {visibleMarkers.map((m) => {
               const left = startLeft + (m.time / scale) * scaleWidth - scrollState.left;
               if (left < 0 || left > scrollState.viewportWidth) return null;
               return (

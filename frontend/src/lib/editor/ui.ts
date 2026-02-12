@@ -22,5 +22,5 @@ export interface LayoutState {
   bottomPanelCollapsed: boolean;
   activeLeftTab: LeftTab;
   activeRightTab: RightTab;
+  followSelection: boolean;
 }
-
