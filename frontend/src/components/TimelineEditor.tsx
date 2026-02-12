@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Timeline, TimelineState } from '@xzdarcy/react-timeline-editor';
 import { useTimelineStore } from '@/store/timelineStore';
 import { useEditorStore } from '@/store/editorStore';
-import { Save, Play, Pause, Undo2, Redo2, Plus, Magnet } from 'lucide-react';
+import { Save, Play, Pause, Undo2, Redo2, Plus, Magnet, Layers, ChevronDown, ChevronRight } from 'lucide-react';
 
 export default function TimelineEditor() {
   const { editorData, effects, setEditorData, setCurrentTime, projectId } = useTimelineStore();
@@ -34,6 +34,7 @@ export default function TimelineEditor() {
   const editorModel = useEditorStore((s) => s.data);
   const timelineRef = useRef<TimelineState>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const miniMapRef = useRef<HTMLDivElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [dirty, setDirty] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
@@ -41,6 +42,16 @@ export default function TimelineEditor() {
   const [scale, setScale] = useState(1);
   const startLeft = 20;
   const [snapEnabled, setSnapEnabled] = useState(true);
+  const [markersEnabled, setMarkersEnabled] = useState(true);
+  const [tracksOpen, setTracksOpen] = useState(false);
+  const [collapsedRowIds, setCollapsedRowIds] = useState<string[]>([]);
+  const collapsedRowSet = useMemo(() => new Set(collapsedRowIds), [collapsedRowIds]);
+  const [scrollState, setScrollState] = useState({ left: 0, top: 0, viewportWidth: 0 });
+  const miniMapDragRef = useRef<{ dragging: boolean; startX: number; startScrollLeft: number }>({
+    dragging: false,
+    startX: 0,
+    startScrollLeft: 0,
+  });
 
   const markers = useMemo(() => {
     const items = Object.values(editorModel.timelineItems).sort((a, b) => a.startTime - b.startTime);
@@ -55,6 +66,50 @@ export default function TimelineEditor() {
       })
       .filter(Boolean) as Array<{ id: string; time: number; title: string }>;
   }, [editorModel.timelineItems, editorModel.beats, editorModel.scenes]);
+
+  const markerActions = useMemo(() => {
+    if (!markersEnabled) return [];
+    return markers.map((m) => ({
+      id: `__marker_action__${m.id}`,
+      start: m.time,
+      end: m.time + 0.01,
+      effectId: `__marker_effect__${m.id}`,
+      movable: false,
+      flexible: false,
+      disable: true,
+    }));
+  }, [markers, markersEnabled]);
+
+  const timelineEffects = useMemo(() => {
+    if (!markersEnabled) return effects;
+    const next: Record<string, any> = { ...(effects as any) };
+    for (const m of markers) {
+      next[`__marker_effect__${m.id}`] = { id: `__marker_effect__${m.id}`, name: m.title };
+    }
+    return next;
+  }, [effects, markers, markersEnabled]);
+
+  const displayEditorData = useMemo(() => {
+    const baseRows = editorData.map((row) => {
+      if (!collapsedRowSet.has(row.id)) return row;
+      return { ...row, actions: [], rowHeight: 14, classNames: [...(row.classNames || []), "is-collapsed"] };
+    });
+    if (!markersEnabled) return baseRows;
+    return [
+      { id: "__markers__", rowHeight: 12, actions: markerActions, classNames: ["marker-row"] },
+      ...baseRows,
+    ] as any;
+  }, [editorData, collapsedRowSet, markersEnabled, markerActions]);
+
+  const maxTime = useMemo(() => {
+    let max = 0;
+    for (const row of editorData) {
+      for (const a of row.actions) max = Math.max(max, a.end);
+    }
+    return max;
+  }, [editorData]);
+
+  const contentWidth = useMemo(() => startLeft + (maxTime / scale) * scaleWidth + 300, [maxTime, scale, scaleWidth]);
 
   useEffect(() => {
     if (selection.source === 'timeline') return;
@@ -113,6 +168,16 @@ export default function TimelineEditor() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirty]);
 
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setScrollState((s) => ({ ...s, viewportWidth: el.clientWidth }));
+    update();
+    const ro = new ResizeObserver(() => update());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const handlePlayOrPause = () => {
     if (!timelineRef.current) return;
     if (isPlaying) {
@@ -131,10 +196,16 @@ export default function TimelineEditor() {
       ref={containerRef}
       className="w-full h-full bg-zinc-900 text-white overflow-hidden border-t border-zinc-700 relative"
       onWheel={(e) => {
-        if (!e.ctrlKey && !e.metaKey) return;
-        e.preventDefault();
-        const next = Math.max(40, Math.min(280, scaleWidth + (e.deltaY > 0 ? -10 : 10)));
-        setScaleWidth(next);
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          const next = Math.max(40, Math.min(280, scaleWidth + (e.deltaY > 0 ? -10 : 10)));
+          setScaleWidth(next);
+          return;
+        }
+        if (e.shiftKey && timelineRef.current) {
+          e.preventDefault();
+          timelineRef.current.setScrollLeft(Math.max(0, scrollState.left + e.deltaY));
+        }
       }}
     >
       <div className="p-2 border-b border-zinc-700 bg-zinc-800 flex justify-between items-center">
@@ -169,6 +240,22 @@ export default function TimelineEditor() {
               <Magnet size={16} />
             </button>
             <button
+              onClick={() => setMarkersEnabled((v) => !v)}
+              className={`p-1 rounded hover:bg-zinc-700 text-white ${markersEnabled ? "bg-zinc-700" : ""}`}
+              aria-label="Toggle markers"
+              type="button"
+            >
+              <ChevronDown size={16} />
+            </button>
+            <button
+              onClick={() => setTracksOpen((v) => !v)}
+              className={`p-1 rounded hover:bg-zinc-700 text-white ${tracksOpen ? "bg-zinc-700" : ""}`}
+              aria-label="Tracks"
+              type="button"
+            >
+              <Layers size={16} />
+            </button>
+            <button
               onClick={() => {
                 beginHistoryGroup();
                 const nextRows = [...editorData, { id: String(Date.now()), actions: [] }];
@@ -195,19 +282,105 @@ export default function TimelineEditor() {
             </button>
          </div>
       </div>
+
+      <div
+        ref={miniMapRef}
+        className="h-7 border-b border-zinc-700 bg-zinc-900 relative"
+        onMouseDown={(e) => {
+          if (!timelineRef.current || !miniMapRef.current) return;
+          const rect = miniMapRef.current.getBoundingClientRect();
+          const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+          const target = Math.max(0, (x / rect.width) * contentWidth - scrollState.viewportWidth / 2);
+          timelineRef.current.setScrollLeft(target);
+          miniMapDragRef.current = { dragging: true, startX: e.clientX, startScrollLeft: target };
+        }}
+        onMouseMove={(e) => {
+          if (!timelineRef.current || !miniMapRef.current) return;
+          if (!miniMapDragRef.current.dragging) return;
+          const rect = miniMapRef.current.getBoundingClientRect();
+          const dx = e.clientX - miniMapDragRef.current.startX;
+          const next = miniMapDragRef.current.startScrollLeft + (dx / rect.width) * contentWidth;
+          timelineRef.current.setScrollLeft(Math.max(0, next));
+        }}
+        onMouseUp={() => {
+          miniMapDragRef.current.dragging = false;
+        }}
+        onMouseLeave={() => {
+          miniMapDragRef.current.dragging = false;
+        }}
+      >
+        <div className="absolute inset-0 opacity-60 bg-gradient-to-r from-zinc-800 to-zinc-900" />
+        <div
+          className="absolute top-1 bottom-1 rounded bg-blue-500/40 border border-blue-400/40"
+          style={{
+            left: `${Math.min(100, (scrollState.left / contentWidth) * 100)}%`,
+            width: `${Math.max(3, Math.min(100, (scrollState.viewportWidth / contentWidth) * 100))}%`,
+          }}
+        />
+      </div>
+
+      {tracksOpen ? (
+        <div className="absolute top-[68px] left-2 z-30 w-64 rounded-lg border border-zinc-700 bg-zinc-900 shadow-lg p-2">
+          <div className="text-xs text-zinc-300 px-1 py-1">Tracks</div>
+          <div className="mt-1 max-h-56 overflow-auto">
+            {editorData.map((row) => {
+              const collapsed = collapsedRowSet.has(row.id);
+              return (
+                <button
+                  key={row.id}
+                  type="button"
+                  className="w-full flex items-center justify-between gap-2 px-2 py-1 rounded hover:bg-zinc-800 text-sm"
+                  onClick={() => {
+                    setCollapsedRowIds((prev) => {
+                      const set = new Set(prev);
+                      if (set.has(row.id)) set.delete(row.id);
+                      else set.add(row.id);
+                      return Array.from(set);
+                    });
+                  }}
+                >
+                  <span className="truncate">Track {row.id}</span>
+                  <span className={`text-xs ${collapsed ? "text-zinc-400" : "text-zinc-200"}`}>
+                    {collapsed ? "Collapsed" : "Visible"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       <Timeline
         ref={timelineRef}
-        editorData={editorData}
-        effects={effects}
+        editorData={displayEditorData}
+        effects={timelineEffects as any}
         scale={scale}
         scaleWidth={scaleWidth}
         startLeft={startLeft}
         gridSnap={snapEnabled}
         dragLine={snapEnabled}
         enableRowDrag={true}
+        getAssistDragLineActionIds={({ action, editorData }) => {
+          const ids: string[] = [];
+          for (const row of editorData) {
+            for (const a of row.actions) {
+              if (a.id === action.id) continue;
+              ids.push(a.id);
+            }
+          }
+          return ids;
+        }}
         onChange={(data) => {
-          setEditorData(data);
-          syncTimelineFromRows(data as any);
+          const nextRows = (data as any[]).filter((r) => r.id !== "__markers__");
+          const merged = nextRows.map((row) => {
+            const original = editorData.find((r) => r.id === row.id);
+            if (!original) return row;
+            const base = { ...row, rowHeight: original.rowHeight, classNames: original.classNames };
+            if (!collapsedRowSet.has(row.id)) return base;
+            return { ...base, actions: original.actions };
+          });
+          setEditorData(merged as any);
+          syncTimelineFromRows(merged as any);
           setDirty(true);
         }}
         autoScroll={true}
@@ -218,31 +391,52 @@ export default function TimelineEditor() {
         onCursorDrag={(time) => setCurrentTime(time)}
         onClickTimeArea={(time) => { setCurrentTime(time); return true; }}
         onClickActionOnly={(e, { action }) => {
+          if (action.id.startsWith("__marker_action__")) return;
           selectTimelineItem(action.id, 'timeline');
         }}
-        style={{ height: 'calc(100% - 40px)', width: '100%' }}
+        onScroll={(p) => {
+          setScrollState((s) => ({ ...s, left: p.scrollLeft, top: p.scrollTop }));
+        }}
+        style={{ height: 'calc(100% - 68px)', width: '100%' }}
       />
 
-      {markers.length > 0 ? (
-        <div className="absolute bottom-2 left-2 right-2 z-20 flex gap-2 overflow-x-auto">
-          {markers.slice(0, 20).map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              className="px-2 py-1 rounded-md bg-black/50 text-xs text-white whitespace-nowrap hover:bg-black/70"
-              onClick={() => {
-                selectTimelineItem(m.id, "timeline");
-                if (timelineRef.current) {
-                  timelineRef.current.setTime(m.time);
-                  const scrollLeft = Math.max(0, (m.time / scale) * scaleWidth - 200);
-                  timelineRef.current.setScrollLeft(scrollLeft);
-                }
-              }}
-            >
-              {m.title}
-            </button>
-          ))}
-        </div>
+      {markersEnabled && markers.length > 0 ? (
+        <>
+          <div className="pointer-events-none absolute top-[68px] left-0 right-0 bottom-0 z-10">
+            {markers.map((m) => {
+              const left = startLeft + (m.time / scale) * scaleWidth - scrollState.left;
+              if (left < 0 || left > scrollState.viewportWidth) return null;
+              return (
+                <div
+                  key={m.id}
+                  className="absolute top-0 bottom-0 w-px bg-yellow-400/50"
+                  style={{ left }}
+                  title={m.title}
+                />
+              );
+            })}
+          </div>
+          <div className="absolute bottom-2 left-2 right-2 z-20 flex gap-2 overflow-x-auto">
+            {markers.slice(0, 20).map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className="px-2 py-1 rounded-md bg-black/50 text-xs text-white whitespace-nowrap hover:bg-black/70 flex items-center gap-1"
+                onClick={() => {
+                  selectTimelineItem(m.id, "timeline");
+                  if (timelineRef.current) {
+                    timelineRef.current.setTime(m.time);
+                    const scrollLeft = Math.max(0, (m.time / scale) * scaleWidth - 200);
+                    timelineRef.current.setScrollLeft(scrollLeft);
+                  }
+                }}
+              >
+                <ChevronRight size={12} />
+                {m.title}
+              </button>
+            ))}
+          </div>
+        </>
       ) : null}
     </div>
   );
