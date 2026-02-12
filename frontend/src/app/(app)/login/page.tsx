@@ -12,11 +12,15 @@ import Input from "@/components/ui/input";
 import Button from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { useI18n } from "@/lib/i18nContext";
+import { LANG_LABEL, type Lang } from "@/lib/i18n";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { lang, setLang, t } = useI18n();
 
   const next = searchParams?.get("next") || "/projects";
 
@@ -36,12 +40,12 @@ export default function LoginPage() {
       const token = await authApi.login({ email: email.trim(), password });
       setToken(token.access_token);
       await queryClient.invalidateQueries({ queryKey: ["me"] });
-      toast({ title: "Welcome back", description: "Signed in successfully.", variant: "success" });
+      toast({ title: t("auth.welcomeBack.title"), description: t("auth.welcomeBack.desc"), variant: "success" });
       router.replace(next);
     } catch (e) {
       const message = isApiError(e) ? e.message : "Login failed";
       setError(message);
-      toast({ title: "Login failed", description: message, variant: "destructive" });
+      toast({ title: t("auth.loginFailed.title"), description: message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -51,20 +55,36 @@ export default function LoginPage() {
     <div className="min-h-[calc(100vh-64px)] py-10">
       <PageContainer>
         <div className="mx-auto max-w-md">
+          <div className="mb-3 flex items-center justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <Button variant="secondary" size="sm">
+                  {LANG_LABEL[lang]}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(["en", "zh", "ja"] as Lang[]).map((l) => (
+                  <DropdownMenuItem key={l} onSelect={() => setLang(l)}>
+                    {LANG_LABEL[l]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <Card>
             <CardContent className="pt-6 space-y-5">
               <div>
-                <div className="text-xl font-semibold text-foreground">Log in</div>
-                <div className="mt-1 text-sm text-muted-foreground">Use your email and password.</div>
+                <div className="text-xl font-semibold text-foreground">{t("auth.login.title")}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{t("auth.login.subtitle")}</div>
               </div>
 
               <form onSubmit={onSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-foreground">Email</div>
+                  <div className="text-sm font-medium text-foreground">{t("auth.email")}</div>
                   <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="email" />
                 </div>
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-foreground">Password</div>
+                  <div className="text-sm font-medium text-foreground">{t("auth.password")}</div>
                   <Input
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -76,14 +96,14 @@ export default function LoginPage() {
                 {error ? <div className="text-sm text-destructive">{error}</div> : null}
 
                 <Button type="submit" className="w-full" loading={submitting} disabled={!canSubmit}>
-                  Log in
+                  {t("auth.login")}
                 </Button>
               </form>
 
               <div className="text-sm text-muted-foreground">
-                No account?{" "}
+                {t("auth.noAccount")}{" "}
                 <Link className="text-primary hover:underline" href={`/register?next=${encodeURIComponent(next)}`}>
-                  Create one
+                  {t("auth.createOne")}
                 </Link>
               </div>
             </CardContent>
@@ -93,4 +113,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

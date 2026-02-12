@@ -61,6 +61,10 @@ Run a production-like stack (Nginx + Frontend + Backend + Worker + DB + Redis + 
 docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
+Notes:
+- The prod compose does not create the MinIO bucket automatically. Create the bucket named by `S3_BUCKET_NAME` (default `vidgit-bucket`) and set it public if you want direct asset URLs.
+- Dev v2 Publish/export requires extra binaries in the worker runtime (`ffmpeg`, `biliup`). The default backend/worker image does not install them; install in the container image or provide them in PATH.
+
 If downloads are slow (common behind certain networks), you can use a PyPI mirror during build:
 
 ```bash
@@ -84,6 +88,7 @@ Notes:
 - Python 3.11+
 - Node.js 18+
 - Docker & Docker Compose (recommended for infra: Postgres/Redis/RabbitMQ/MinIO)
+- Optional (for Dev v2 publishing): `ffmpeg`, `biliup` (Bilibili uploader)
 
 #### Start Infrastructure
 ```bash
@@ -94,6 +99,7 @@ docker-compose up -d
 ```bash
 cp .env.example backend/.env
 ```
+Edit `backend/.env` if needed (notably `POSTGRES_*`, `CELERY_*`, `S3_*`).
 
 ```bash
 cd backend
@@ -123,6 +129,17 @@ Access:
 - API docs: http://localhost:8000/docs
 - MinIO console: http://localhost:9001
 - RabbitMQ console: http://localhost:15672
+
+#### Dev v2: Publish (Stage 01) notes
+- Bilibili uploader:
+  - Install `biliup` on the machine running the Celery worker, or set `BILIUP_BIN=/absolute/path/to/biliup`.
+- Douyin uploader (experimental):
+  - Configure `DOUYIN_UPLOADER_CMD` (command template with `{video_path}`, `{credential_path}`, `{title}`, `{description}` placeholders).
+- Export behavior:
+  - If a branch HEAD has multiple clip video URLs, Vidgit can export (concat) via `ffmpeg` and upload to MinIO/S3 before publishing.
+ - Docker (prod-like):
+   - Ensure the worker container has `ffmpeg` available in PATH.
+   - Ensure the worker container can execute `biliup` (install or mount a binary and set `BILIUP_BIN`).
 
 ---
 
@@ -165,8 +182,11 @@ We ensure quality with a comprehensive testing strategy:
 # Or run directly (no extra PYTHONPATH required)
 cd backend && pytest -q
 
-# Run frontend quality gate (lint + typecheck + unit + e2e)
+# Run frontend quality gate (lint + typecheck + unit)
 ./frontend/tests/run_tests.sh
+
+# Run full CI gate (includes Next build + e2e)
+cd frontend && npm run check:ci
 ```
 
 ## 🤝 Contributing

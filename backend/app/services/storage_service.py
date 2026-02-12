@@ -44,4 +44,12 @@ class StorageService:
             return False
         return True
 
+    def upload_file_path(self, file_path: str, object_name: str) -> bool:
+        try:
+            self.s3_client.upload_file(file_path, self.bucket_name, object_name)
+        except Exception as e:
+            print(e)
+            return False
+        return True
+
 storage_service = StorageService()

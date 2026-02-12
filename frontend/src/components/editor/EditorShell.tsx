@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTimelineStore } from "@/store/timelineStore";
 import { useEditorStore } from "@/store/editorStore";
 import type { EditorClip } from "@/components/editor/AssetsGrid";
+import EditorHeaderBar from "@/components/editor/EditorHeaderBar";
 import PreviewPanel from "@/components/editor/PreviewPanel";
 import TimelinePanel from "@/components/editor/TimelinePanel";
 import LeftSidebar from "@/components/editor/LeftSidebar";
@@ -11,15 +14,37 @@ import RightSidebar from "@/components/editor/RightSidebar";
 import { ResizablePanel } from "@/components/layout/ResizablePanel";
 import IconButton from "@/components/ui/icon-button";
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
+import { isApiError } from "@/lib/api/errors";
+import { toast } from "@/components/ui/toast";
+import { useI18n } from "@/lib/i18nContext";
 
-export default function EditorShell({ projectId }: { projectId: number }) {
+export default function EditorShell({ projectId }: { projectId: string }) {
+  const router = useRouter();
+  const search = useSearchParams();
+  const { t } = useI18n();
   const { setProjectId } = useTimelineStore();
   const { layout, updateLayout, loadProject, saveProject, data, selection, selectTimelineItem, undo, redo } = useEditorStore();
+  const branchName = (search?.get("branch") || "main").trim() || "main";
 
   useEffect(() => {
     setProjectId(projectId);
-    loadProject(projectId);
-  }, [projectId, setProjectId, loadProject]);
+    let cancelled = false;
+    (async () => {
+      try {
+        await loadProject(projectId, { branchName });
+      } catch (e) {
+        if (cancelled) return;
+        if (isApiError(e) && e.status === 403) {
+          toast({ title: t("editor.notEditable.title"), description: t("editor.notEditable.desc"), variant: "destructive" });
+          router.replace(`/project/${projectId}`);
+          return;
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, setProjectId, loadProject, router, t, branchName]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -28,7 +53,7 @@ export default function EditorShell({ projectId }: { projectId: number }) {
       const shift = e.shiftKey;
       if (mod && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        saveProject(projectId, { silent: false });
+        saveProject(projectId, { silent: false, branchName });
         return;
       }
       if (mod && !shift && e.key.toLowerCase() === "z") {
@@ -44,7 +69,7 @@ export default function EditorShell({ projectId }: { projectId: number }) {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [saveProject, projectId, undo, redo]);
+  }, [saveProject, projectId, undo, redo, branchName]);
 
   const assetsProps = useMemo(() => {
     const allItems = Object.values(data.timelineItems).sort((a, b) => a.startTime - b.startTime);
@@ -135,6 +160,7 @@ export default function EditorShell({ projectId }: { projectId: number }) {
       )}
 
       <div className="flex-1 flex flex-col min-w-0 relative z-10">
+        <EditorHeaderBar projectId={projectId} />
         <div className="flex-1 overflow-hidden relative">
           <PreviewPanel videoUrl={currentClipUrl} label={previewLabel} />
         </div>
@@ -180,7 +206,7 @@ export default function EditorShell({ projectId }: { projectId: number }) {
           className="z-20 border-l border-border"
         >
           <div className="h-full relative">
-            <div className="absolute top-2 left-2 z-30">
+            <div className="absolute top-2 right-2 z-30">
               <IconButton aria-label="Collapse right panel" onClick={() => updateLayout({ rightPanelCollapsed: true })}>
                 <ChevronRight size={18} />
               </IconButton>

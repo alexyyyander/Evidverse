@@ -78,7 +78,11 @@ async def test_update_delete_project(client: AsyncClient, db_session):
     assert get_res.json()["name"] == "Updated"
 
     # Delete
-    del_res = await client.delete(f"/api/v1/projects/{project_id}", headers=headers)
+    del_res = await client.post(
+        f"/api/v1/projects/{project_id}/delete",
+        json={"confirm_project_id": project_id, "confirm_nickname": "crud_user"},
+        headers=headers,
+    )
     assert del_res.status_code == 200
 
     # Get should fail

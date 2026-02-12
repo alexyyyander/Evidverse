@@ -6,11 +6,11 @@ import { toast } from '@/components/ui/toast';
 export interface TimelineState {
   editorData: TimelineRow[];
   effects: Record<string, TimelineEffect>;
-  projectId: number | null;
+  projectId: string | null;
   currentTime: number;
   addClip: (commitId: string, message: string, duration?: number) => void;
   setEditorData: (data: TimelineRow[]) => void;
-  setProjectId: (id: number) => void;
+  setProjectId: (id: string) => void;
   setCurrentTime: (time: number) => void;
   saveToBackend: (options?: { silent?: boolean }) => Promise<void>;
   loadFromBackend: () => Promise<void>;
@@ -70,7 +70,7 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
 
   saveToBackend: async (options) => {
     const { projectId, editorData, effects } = get();
-    if (!projectId) return;
+    if (typeof projectId !== "string" || projectId.length === 0) return;
     try {
         const existing = await projectApi.getWorkspace(projectId);
         const workspace: TimelineWorkspace = { ...(existing || {}), editorData, effects };
@@ -86,7 +86,7 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
 
   loadFromBackend: async () => {
     const { projectId } = get();
-    if (!projectId) return;
+    if (typeof projectId !== "string" || projectId.length === 0) return;
     try {
          const data = await projectApi.getWorkspace(projectId);
          if (data && data.editorData) {

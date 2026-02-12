@@ -9,12 +9,29 @@ from app.schemas.project import ProjectCreate, ProjectUpdate
 
 class ProjectService:
     @staticmethod
+    async def get_project_by_public_id(db: AsyncSession, public_id: str) -> Optional[Project]:
+        query = select(Project).where(Project.public_id == public_id).options(selectinload(Project.owner), selectinload(Project.parent_project))
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def resolve_project(db: AsyncSession, project_id: str) -> Optional[Project]:
+        text = (project_id or "").strip()
+        if not text:
+            return None
+        if text.isdigit():
+            return await ProjectService.get_project(db, int(text))
+        return await ProjectService.get_project_by_public_id(db, text)
+
+    @staticmethod
     async def create_project(db: AsyncSession, project_in: ProjectCreate, owner_id: int) -> Project:
         # 1. Create Project
         db_project = Project(
             name=project_in.name,
             description=project_in.description,
-            owner_id=owner_id
+            tags=project_in.tags,
+            owner_internal_id=owner_id,
+            is_public=project_in.is_public,
         )
         db.add(db_project)
         await db.flush() # Get ID
@@ -22,24 +39,32 @@ class ProjectService:
         # 2. Create Default 'main' Branch
         main_branch = Branch(
             name="main",
-            project_id=db_project.id,
-            head_commit_id=None
+            project_id=db_project.internal_id,
+            head_commit_id=None,
+            creator_internal_id=owner_id,
         )
         db.add(main_branch)
         
         await db.commit()
         await db.refresh(db_project)
+        await db.refresh(db_project, attribute_names=["owner", "parent_project"])
         return db_project
 
     @staticmethod
     async def get_user_projects(db: AsyncSession, user_id: int, skip: int = 0, limit: int = 100) -> List[Project]:
-        query = select(Project).where(Project.owner_id == user_id).offset(skip).limit(limit)
+        query = (
+            select(Project)
+            .where(Project.owner_internal_id == user_id)
+            .options(selectinload(Project.owner), selectinload(Project.parent_project))
+            .offset(skip)
+            .limit(limit)
+        )
         result = await db.execute(query)
         return result.scalars().all()
 
     @staticmethod
     async def get_project(db: AsyncSession, project_id: int) -> Optional[Project]:
-        query = select(Project).where(Project.id == project_id)
+        query = select(Project).where(Project.internal_id == project_id).options(selectinload(Project.owner), selectinload(Project.parent_project))
         result = await db.execute(query)
         return result.scalar_one_or_none()
 
@@ -51,6 +76,10 @@ class ProjectService:
             db_project.description = project_in.description
         if project_in.workspace_data is not None:
             db_project.workspace_data = project_in.workspace_data
+        if project_in.tags is not None:
+            db_project.tags = project_in.tags
+        if project_in.is_public is not None:
+            db_project.is_public = project_in.is_public
         
         db.add(db_project)
         await db.commit()
@@ -102,8 +131,10 @@ class ProjectService:
         new_project = Project(
             name=fork_name,
             description=f"Forked from project {source_project.id}",
-            owner_id=user_id,
-            parent_project_id=source_project.id,
+            owner_internal_id=user_id,
+            parent_project_internal_id=source_project.internal_id,
+            tags=source_project.tags,
+            is_public=False,
         )
         db.add(new_project)
         await db.flush()
@@ -114,7 +145,7 @@ class ProjectService:
         # Let's create branch first.
         new_branch = Branch(
             name="main",
-            project_id=new_project.id,
+            project_id=new_project.internal_id,
             head_commit_id=None
         )
         db.add(new_branch)
@@ -126,7 +157,7 @@ class ProjectService:
             # We use CommitService to create the commit properly
             await CommitService.create_commit(
                 db=db,
-                project_id=new_project.id,
+                project_id=new_project.internal_id,
                 author_id=user_id,
                 message=f"Fork from {source_project.name} at {target_commit.id[:7]}",
                 video_assets=video_assets,
@@ -135,5 +166,4 @@ class ProjectService:
             )
         
         await db.commit()
-        await db.refresh(new_project)
-        return new_project
+        return await ProjectService.get_project(db, new_project.internal_id)

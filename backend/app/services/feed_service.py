@@ -1,6 +1,7 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, and_
+from sqlalchemy import select, func, desc, and_, or_
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import selectinload
 
 from app.models.project import Project
@@ -13,19 +14,58 @@ class FeedService:
         db: AsyncSession, 
         current_user_id: Optional[int], 
         skip: int = 0, 
-        limit: int = 20
+        limit: int = 20,
+        query_text: Optional[str] = None,
+        tag: Optional[str] = None,
+        sort: str = "new",
     ) -> List[ProjectSchema]:
         """
         Get public projects with like info.
         """
-        # Base query for public projects
-        query = select(Project).where(Project.is_public == True)
-        query = query.order_by(desc(Project.created_at)).offset(skip).limit(limit)
+        q = select(Project).where(Project.is_public == True)
+
+        if isinstance(query_text, str) and query_text.strip():
+            text = query_text.strip()
+            conditions = [Project.name.ilike(f"%{text}%")]
+            if text.isdigit():
+                conditions.append(Project.internal_id == int(text))
+            if len(text) >= 8:
+                conditions.append(Project.public_id.ilike(f"%{text}%"))
+            q = q.where(or_(*conditions))
+
+        if isinstance(tag, str) and tag.strip():
+            t = tag.strip()
+            dialect_name = ""
+            try:
+                bind = db.get_bind()
+                dialect_name = bind.dialect.name if bind is not None else ""
+            except Exception:
+                dialect_name = ""
+
+            if dialect_name == "postgresql":
+                q = q.where(Project.tags.cast(postgresql.JSONB).contains([t]))
+            else:
+                q = q.where(Project.tags.contains([t]))
+
+        if sort == "hot":
+            likes_subq = (
+                select(Like.project_id.label("project_id"), func.count(Like.id).label("likes_count"))
+                .group_by(Like.project_id)
+                .subquery()
+            )
+            q = (
+                q.outerjoin(likes_subq, likes_subq.c.project_id == Project.internal_id)
+                .order_by(desc(func.coalesce(likes_subq.c.likes_count, 0)), desc(Project.created_at))
+            )
+        else:
+            q = q.order_by(desc(Project.created_at))
+
+        q = q.offset(skip).limit(limit)
         
         # Eager load owner for display
-        query = query.options(selectinload(Project.owner))
+        q = q.options(selectinload(Project.owner))
         
-        result = await db.execute(query)
+        result = await db.execute(q)
         projects = result.scalars().all()
         
         # Enrich with like info
@@ -34,14 +74,14 @@ class FeedService:
         enriched_projects = []
         for p in projects:
             # Count likes
-            count_query = select(func.count(Like.id)).where(Like.project_id == p.id)
+            count_query = select(func.count(Like.id)).where(Like.project_id == p.internal_id)
             likes_count = (await db.execute(count_query)).scalar() or 0
             
             # Check is_liked
             is_liked = False
             if current_user_id:
                 liked_query = select(Like).where(
-                    and_(Like.project_id == p.id, Like.user_id == current_user_id)
+                    and_(Like.project_id == p.internal_id, Like.user_id == current_user_id)
                 )
                 is_liked = (await db.execute(liked_query)).scalar_one_or_none() is not None
             
@@ -52,6 +92,42 @@ class FeedService:
             enriched_projects.append(p_schema)
             
         return enriched_projects
+
+    @staticmethod
+    async def get_public_project(
+        db: AsyncSession,
+        project_id: str,
+        current_user_id: Optional[int],
+    ) -> Optional[ProjectSchema]:
+        text = (project_id or "").strip()
+        if not text:
+            return None
+        if text.isdigit():
+            id_clause = Project.internal_id == int(text)
+        else:
+            id_clause = Project.public_id == text
+        q = (
+            select(Project)
+            .where(and_(id_clause, Project.is_public == True))
+            .options(selectinload(Project.owner))
+        )
+        result = await db.execute(q)
+        p = result.scalar_one_or_none()
+        if not p:
+            return None
+
+        count_query = select(func.count(Like.id)).where(Like.project_id == p.internal_id)
+        likes_count = (await db.execute(count_query)).scalar() or 0
+
+        is_liked = False
+        if current_user_id:
+            liked_query = select(Like).where(and_(Like.project_id == p.internal_id, Like.user_id == current_user_id))
+            is_liked = (await db.execute(liked_query)).scalar_one_or_none() is not None
+
+        p_schema = ProjectSchema.model_validate(p)
+        p_schema.likes_count = likes_count
+        p_schema.is_liked = is_liked
+        return p_schema
 
     @staticmethod
     async def toggle_like(db: AsyncSession, project_id: int, user_id: int) -> bool:
@@ -87,7 +163,7 @@ class FeedService:
         For now, let's stick to public profile view.
         """
         query = select(Project).where(
-            and_(Project.owner_id == target_user_id, Project.is_public == True)
+            and_(Project.owner_internal_id == target_user_id, Project.is_public == True)
         )
         query = query.order_by(desc(Project.created_at)).offset(skip).limit(limit)
         query = query.options(selectinload(Project.owner))
@@ -97,13 +173,13 @@ class FeedService:
         
         enriched_projects = []
         for p in projects:
-            count_query = select(func.count(Like.id)).where(Like.project_id == p.id)
+            count_query = select(func.count(Like.id)).where(Like.project_id == p.internal_id)
             likes_count = (await db.execute(count_query)).scalar() or 0
             
             is_liked = False
             if current_user_id:
                 liked_query = select(Like).where(
-                    and_(Like.project_id == p.id, Like.user_id == current_user_id)
+                    and_(Like.project_id == p.internal_id, Like.user_id == current_user_id)
                 )
                 is_liked = (await db.execute(liked_query)).scalar_one_or_none() is not None
             

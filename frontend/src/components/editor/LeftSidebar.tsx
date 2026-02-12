@@ -4,7 +4,7 @@ import { useEditorStore } from "@/store/editorStore";
 import { cn } from "@/lib/cn";
 import { FileText, Users, Image as ImageIcon, GitBranch } from "lucide-react";
 import IconButton from "@/components/ui/icon-button";
-import ScriptPanel from "@/components/editor/ScriptPanel";
+import WorkflowPanel from "@/components/editor/WorkflowPanel";
 import CharactersPanel from "@/components/editor/CharactersPanel";
 import AssetsGrid from "@/components/editor/AssetsGrid";
 import dynamic from "next/dynamic";
@@ -20,7 +20,7 @@ const GitGraph = dynamic(() => import("@/components/GitGraph"), {
 });
 
 interface LeftSidebarProps {
-  projectId: number;
+  projectId: string;
   assetsProps?: any;
 }
 
@@ -54,7 +54,7 @@ export default function LeftSidebar({ projectId, assetsProps }: LeftSidebarProps
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {activeTab === "script" ? <ScriptPanel /> : null}
+        {activeTab === "script" ? <WorkflowPanel /> : null}
         {activeTab === "characters" ? <CharactersPanel /> : null}
         {activeTab === "assets" && (
           <div className="h-full p-4">

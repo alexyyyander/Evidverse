@@ -30,11 +30,11 @@ async def test_create_project(db_session):
     await db_session.refresh(owner)
     
     # Create project
-    new_project = Project(name="Test Project", owner_id=owner.id)
+    new_project = Project(name="Test Project", owner_internal_id=owner.internal_id)
     db_session.add(new_project)
     await db_session.commit()
     await db_session.refresh(new_project)
     
     assert new_project.id is not None
     assert new_project.name == "Test Project"
-    assert new_project.owner_id == owner.id
+    assert new_project.owner_internal_id == owner.internal_id

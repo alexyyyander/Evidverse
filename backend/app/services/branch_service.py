@@ -39,11 +39,7 @@ class BranchService:
             # If initial project, we can create branch with null head.
             pass
 
-        branch = Branch(
-            name=name,
-            project_id=project_id,
-            head_commit_id=from_commit_hash
-        )
+        branch = Branch(name=name, project_id=project_id, head_commit_id=from_commit_hash)
         db.add(branch)
         await db.commit()
         await db.refresh(branch)
@@ -68,6 +64,7 @@ class BranchService:
         branches_query = select(Branch).where(Branch.project_id == project_id)
         branches_res = await db.execute(branches_query)
         branches = branches_res.scalars().all()
+        id_map = {b.internal_id: b.public_id for b in branches}
 
         # Fetch all commits
         commits_query = select(Commit).where(Commit.project_id == project_id).order_by(Commit.created_at.asc())
@@ -76,7 +73,14 @@ class BranchService:
 
         data = {
             "branches": [
-                {"id": b.id, "name": b.name, "head_commit_id": b.head_commit_id} 
+                {
+                    "id": b.public_id,
+                    "name": b.name,
+                    "head_commit_id": b.head_commit_id,
+                    "description": b.description,
+                    "tags": b.tags,
+                    "parent_branch_id": id_map.get(b.parent_branch_internal_id),
+                }
                 for b in branches
             ],
             "commits": [
@@ -121,5 +125,67 @@ class BranchService:
             "message": commit.message,
             "video_assets": commit.video_assets
         }
+
+    @staticmethod
+    def _slugify(text: str) -> str:
+        out = []
+        for ch in (text or "").strip().lower():
+            if ch.isalnum() or ch in {"-", "_"}:
+                out.append(ch)
+            elif ch in {" ", "/"}:
+                out.append("_")
+        slug = "".join(out).strip("_")
+        return slug or "user"
+
+    @staticmethod
+    async def fork_as_branch(
+        db: AsyncSession,
+        project_internal_id: int,
+        creator_internal_id: int,
+        source_branch_name: str = "main",
+        from_commit_hash: Optional[str] = None,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        tags: Optional[list[str]] = None,
+    ) -> Branch:
+        res = await db.execute(select(Branch).where(Branch.project_id == project_internal_id, Branch.name == source_branch_name))
+        source_branch = res.scalar_one_or_none()
+        if not source_branch:
+            raise HTTPException(status_code=404, detail="Source branch not found")
+
+        head_commit_id = from_commit_hash or source_branch.head_commit_id
+        if from_commit_hash:
+            commit = await db.get(Commit, from_commit_hash)
+            if not commit:
+                raise HTTPException(status_code=404, detail="Source commit not found")
+
+        base_name = (name or "").strip()
+        if not base_name:
+            nickname = str(creator_internal_id)
+            base_name = f"fork/{nickname}"
+
+        candidate = base_name
+        suffix = 0
+        while True:
+            exists = await db.execute(select(Branch.internal_id).where(Branch.project_id == project_internal_id, Branch.name == candidate))
+            if not exists.first():
+                break
+            suffix += 1
+            candidate = f"{base_name}_{suffix}"
+
+        branch = Branch(
+            name=candidate,
+            project_id=project_internal_id,
+            head_commit_id=head_commit_id,
+            creator_internal_id=creator_internal_id,
+            description=description,
+            tags=tags,
+            parent_branch_internal_id=source_branch.internal_id,
+        )
+        db.add(branch)
+        await db.commit()
+        await db.refresh(branch)
+        await cache.delete(f"project_graph:{project_internal_id}")
+        return branch
 
 branch_service = BranchService()

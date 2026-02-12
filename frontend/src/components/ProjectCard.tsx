@@ -10,16 +10,21 @@ import IconButton from "@/components/ui/icon-button";
 import { Card } from "@/components/ui/card";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { useI18n } from "@/lib/i18nContext";
 
 interface ProjectCardProps {
   project: ProjectFeedItem;
+  viewerId?: string | null;
 }
 
-export default function ProjectCard({ project: initialProject }: ProjectCardProps) {
+export default function ProjectCard({ project: initialProject, viewerId }: ProjectCardProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [project, setProject] = useState(initialProject);
   const queryClient = useQueryClient();
+  const isOwner = typeof viewerId === "string" && !!project.owner?.id && project.owner.id === viewerId;
+  const primaryHref = isOwner ? `/editor/${project.id}` : `/project/${project.id}`;
 
   const copyText = async (text: string, label: string) => {
     try {
@@ -50,7 +55,7 @@ export default function ProjectCard({ project: initialProject }: ProjectCardProp
     },
     onSuccess: (isLikedNow) => {
       setProject((prev) => ({ ...prev, is_liked: isLikedNow }));
-      queryClient.invalidateQueries({ queryKey: queryKeys.feed() });
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
       if (project.owner?.id) {
         queryClient.invalidateQueries({ queryKey: queryKeys.userProjects(project.owner.id) });
       }
@@ -58,11 +63,12 @@ export default function ProjectCard({ project: initialProject }: ProjectCardProp
   });
 
   const forkMutation = useMutation({
-    mutationFn: async () => projectApi.fork(project.id),
-    onSuccess: (newProject) => {
+    mutationFn: async () => projectApi.forkBranch(project.id),
+    onSuccess: (newBranch) => {
       toast({ title: "Forked", description: "Opening editor...", variant: "success" });
       queryClient.invalidateQueries({ queryKey: queryKeys.projects() });
-      router.push(`/editor/${newProject.id}`);
+      const branch = encodeURIComponent(newBranch.name);
+      router.push(`/editor/${project.id}?branch=${branch}`);
     },
     onError: () => {
       toast({ title: "Fork failed", description: "Check permissions and try again.", variant: "destructive" });
@@ -95,7 +101,7 @@ export default function ProjectCard({ project: initialProject }: ProjectCardProp
 
       <div className="p-4">
         <div className="flex justify-between items-start mb-2">
-          <Link href={`/editor/${project.id}`} className="hover:text-primary transition-colors">
+          <Link href={primaryHref} className="hover:text-primary transition-colors">
             <h3 className="font-semibold text-lg text-card-foreground truncate">{project.name}</h3>
           </Link>
         </div>
@@ -104,10 +110,23 @@ export default function ProjectCard({ project: initialProject }: ProjectCardProp
           {project.description || "No description provided."}
         </p>
 
+        {Array.isArray(project.tags) && project.tags.length > 0 ? (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {project.tags.slice(0, 4).map((t) => (
+              <span
+                key={t}
+                className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
         <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-3">
           <div className="flex items-center space-x-2">
             <UserIcon size={14} />
-            <span>{project.owner?.full_name || project.owner?.email?.split("@")[0] || "Unknown"}</span>
+            <span>{project.owner?.full_name || project.owner?.email?.split("@")[0] || t("common.unknown")}</span>
             {project.parent_project_id ? (
               <button
                 onClick={(e) => {

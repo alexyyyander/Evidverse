@@ -11,11 +11,15 @@ import Textarea from "@/components/ui/textarea";
 import Button from "@/components/ui/button";
 import LinkButton from "@/components/ui/link-button";
 import ErrorState from "@/components/ui/error-state";
+import { useI18n } from "@/lib/i18nContext";
 
 export default function NewProjectPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [tags, setTags] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,9 +30,18 @@ export default function NewProjectPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await projectApi.create({ name: name.trim(), description: description.trim() || undefined });
+      const rawTags = tags
+        .split(/[,\n]/g)
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const res = await projectApi.create({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        tags: rawTags.length > 0 ? Array.from(new Set(rawTags)) : undefined,
+        is_public: isPublic,
+      });
       const projectId = res.id;
-      if (typeof projectId !== "number") {
+      if (typeof projectId !== "string" || projectId.length === 0) {
         throw new Error("Invalid project response");
       }
       router.push(`/editor/${projectId}`);
@@ -48,21 +61,21 @@ export default function NewProjectPage() {
       <PageContainer>
         <div className="max-w-3xl">
           <div className="mb-8">
-            <SectionHeader title="Create Project" subtitle="Start a new video project and jump into the editor." />
+            <SectionHeader title={t("createProject.title")} subtitle={t("createProject.subtitle")} />
           </div>
 
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-foreground">Project Name</label>
+                  <label className="block text-sm font-medium text-foreground">{t("createProject.name")}</label>
                   <div className="mt-2">
                     <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Cat Adventure" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground">Description (optional)</label>
+                  <label className="block text-sm font-medium text-foreground">{t("createProject.desc")}</label>
                   <div className="mt-2">
                     <Textarea
                       value={description}
@@ -72,8 +85,41 @@ export default function NewProjectPage() {
                     />
                   </div>
                 </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-foreground">{t("createProject.tags")}</label>
+                  <div className="mt-2">
+                    <Input
+                      value={tags}
+                      onChange={(e) => setTags(e.target.value)}
+                      placeholder="e.g. 动画, 番剧, 电影"
+                    />
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">{t("createProject.tagsHint")}</div>
+                </div>
 
-                {error ? <ErrorState title="Create failed" description={error} /> : null}
+                <div>
+                  <label className="block text-sm font-medium text-foreground">{t("projects.visibility")}</label>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant={isPublic ? "secondary" : "primary"}
+                      onClick={() => setIsPublic(false)}
+                    >
+                      {t("projects.private")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={isPublic ? "primary" : "secondary"}
+                      onClick={() => setIsPublic(true)}
+                    >
+                      {t("projects.public")}
+                    </Button>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">{t("createProject.visibilityDesc")}</div>
+                </div>
+
+                {error ? <ErrorState title={t("common.error")} description={error} /> : null}
 
                 <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                   <div className="text-xs text-muted-foreground">
@@ -82,10 +128,10 @@ export default function NewProjectPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <LinkButton href="/projects" variant="secondary">
-                      Back
+                      {t("common.back")}
                     </LinkButton>
                     <Button onClick={handleCreate} disabled={!canSubmit} loading={submitting}>
-                      Create & Open Editor
+                      {t("createProject.submit")}
                     </Button>
                   </div>
                 </div>

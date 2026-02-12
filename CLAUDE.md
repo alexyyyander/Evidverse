@@ -6,7 +6,7 @@ This file is the Single Source of Truth for project status, next actions, and op
 You have to use git commit after each stage test is passed.
 ## 🚀 Workflow
 1. **Check Status**: Read `current_stage&FAQ.md` to identify the active stage (e.g., "Stage 01") and remember to update the current stage if it's finished. Publish the FAQ in it if it's finished.
-2. **Read Plan**: Open the corresponding stage plan (e.g., `plan/stage_plan/stage_01.md`) to understand the goals and functional requirements.
+2. **Read Plan**: Open the corresponding stage plan (e.g., `plan/stage_plan_dev_v2/stage_*.md`) to understand the goals and functional requirements.
 3. **Execute**: Implement the features listed in the "Todo List" of the stage plan.
 4. **Update**:
    - Mark completed items in the `stage_XX.md` todo list.
@@ -18,20 +18,33 @@ You have to use git commit after each stage test is passed.
 ## 🎯 当前工作目标 (Updated)
 - **已达成（阶段性）**：20 个 Stage 的 MVP 功能已完成（后端、AI 工作流、CLI、社区页、部署与 CI/CD 等）。
 - **当前目标**：对前端进行“美化 + 重构”，让 UI 更有设计感、组件更可复用、API/状态更清晰、测试与工程规范更健壮。
-- **前端重构计划**：见 `plan/stage_plan_frontend/`（未来 10 个前端重构 Stage 的路线图）。
+- **（已达成）前端重构计划**：见 `plan/stage_plan_frontend/`（未来 10 个前端重构 Stage 的路线图）。
+- **（开发中）Dev v2 开发计划**：见 `plan/stage_plan_dev_v2/`（导出投稿 + 协作分支 + 多世界线）
 
 ## 🛠️ Common Commands
-- **Backend Dev**: `cd backend && uvicorn app.main:app --reload`
+- **Infra (dev)**: `docker-compose up -d`
+- **Backend Dev**:
+  - `cp .env.example backend/.env`
+  - `cd backend && uvicorn app.main:app --reload`
+- **Worker (Celery)**: `cd backend && celery -A app.core.celery_app worker --loglevel=info`
 - **Frontend Dev**: `cd frontend && npm run dev`
 - **DB Migration**: `cd backend && alembic revision --autogenerate && alembic upgrade head`
-- **Docker**: `docker-compose up -d`
+
+### Dev v2: Publish / Export
+- **Bilibili**: install `biliup` or set `BILIUP_BIN=/path/to/biliup`
+- **Douyin (experimental)**: set `DOUYIN_UPLOADER_CMD` (uses `{video_path}`, `{credential_path}`, `{title}`, `{description}`)
+- **Export concat**: `ffmpeg` must be available in PATH
+- **Docker (prod-like)**:
+  - `docker-compose -f docker-compose.prod.yml up -d --build`
+  - Ensure the worker container has `ffmpeg` in PATH.
+  - Ensure the worker container can execute `biliup` (install or mount it and set `BILIUP_BIN`).
+  - Create `S3_BUCKET_NAME` (default `vidgit-bucket`) in MinIO.
 
 ## 🧩 Project Structure
 - `backend/`: FastAPI application
 - `frontend/`: Next.js application
 - `ai_engine/`: AI logic and pipelines
-- `cli/`: Python command-line tool
-- `plan/stage_plan/`: Detailed development stages
+- `plan/`: Roadmaps & stage plans (`stage_plan_dev_v2/`, `stage_plan_frontend/`, etc.)
 
 ---
 *Follow these rules to ensure smooth collaboration and progress tracking.*

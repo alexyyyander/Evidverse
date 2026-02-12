@@ -98,7 +98,7 @@ export interface IdeaVersion {
 
 export interface GenerationTask {
   id: string;
-  type: "clip" | "character";
+  type: "clip" | "character" | "beat_image" | "segment";
   status: TaskStatus;
   createdAt: string;
   input: Record<string, any>;

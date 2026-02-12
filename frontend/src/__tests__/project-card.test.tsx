@@ -3,6 +3,7 @@ import ProjectCard from "@/components/ProjectCard";
 import type { ProjectFeedItem } from "@/lib/api/types";
 import { vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { I18nProvider } from "@/lib/i18nContext";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -21,14 +22,14 @@ describe("ProjectCard", () => {
     });
 
     const project: ProjectFeedItem = {
-      id: 123,
+      id: "123",
       name: "Demo",
       description: null,
       created_at: new Date().toISOString(),
       owner: null,
       likes_count: 0,
       is_liked: false,
-      parent_project_id: 99,
+      parent_project_id: "99",
     };
 
     const queryClient = new QueryClient({
@@ -37,12 +38,14 @@ describe("ProjectCard", () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <ProjectCard project={project} />
+        <I18nProvider>
+          <ProjectCard project={project} />
+        </I18nProvider>
       </QueryClientProvider>
     );
 
     expect(screen.getByText("Demo")).toBeInTheDocument();
-    expect(screen.getByText("Unknown")).toBeInTheDocument();
+    expect(screen.getByText(/Unknown|未知|不明/)).toBeInTheDocument();
     expect(screen.getByText("#123")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /copy project id/i }));

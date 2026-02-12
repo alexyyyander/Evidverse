@@ -11,6 +11,8 @@ import Spinner from "@/components/ui/spinner";
 import Button from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
+import { LANG_LABEL, type Lang } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18nContext";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -18,11 +20,13 @@ export default function Navbar() {
   const queryClient = useQueryClient();
   const token = useAuthToken();
   const meQuery = useMe();
+  const { lang, setLang, t } = useI18n();
   
   const navItems = [
-    { name: "Home", path: "/" },
-    { name: "Discover", path: "/discover" },
-    { name: "My Projects", path: "/projects" },
+    { name: t("nav.home"), path: "/" },
+    { name: t("nav.discover"), path: "/discover" },
+    { name: t("nav.projects"), path: "/projects" },
+    { name: t("nav.publish"), path: "/publish" },
   ];
 
   return (
@@ -54,15 +58,29 @@ export default function Navbar() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <Button variant="secondary" size="sm">
+                  {LANG_LABEL[lang]}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(["en", "zh", "ja"] as Lang[]).map((l) => (
+                  <DropdownMenuItem key={l} onSelect={() => setLang(l)}>
+                    {LANG_LABEL[l]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             {typeof token !== "string" || token.length === 0 ? (
               <div className="flex items-center gap-2">
                 <Link href="/login">
                   <Button variant="secondary" size="sm">
-                    Log in
+                    {t("auth.login")}
                   </Button>
                 </Link>
                 <Link href="/register">
-                  <Button size="sm">Sign up</Button>
+                  <Button size="sm">{t("auth.signup")}</Button>
                 </Link>
               </div>
             ) : meQuery.isLoading ? (
@@ -82,7 +100,7 @@ export default function Navbar() {
                   <DropdownMenuContent align="end">
                     <div className="px-3 py-2 text-xs text-muted-foreground">{meQuery.data.email}</div>
                     <DropdownMenuItem onSelect={() => router.push(`/profile/${meQuery.data.id}`)}>
-                      Profile
+                      {t("menu.profile")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onSelect={() => {
@@ -91,7 +109,7 @@ export default function Navbar() {
                         router.push("/login");
                       }}
                     >
-                      Logout
+                      {t("menu.logout")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </div>
@@ -100,11 +118,11 @@ export default function Navbar() {
               <div className="flex items-center gap-2">
                 <Link href="/login">
                   <Button variant="secondary" size="sm">
-                    Log in
+                    {t("auth.login")}
                   </Button>
                 </Link>
                 <Link href="/register">
-                  <Button size="sm">Sign up</Button>
+                  <Button size="sm">{t("auth.signup")}</Button>
                 </Link>
               </div>
             )}

@@ -33,6 +33,7 @@ async def register(
     
     user = User(
         email=user_in.email,
+        full_name=user_in.full_name,
         hashed_password=security.get_password_hash(user_in.password),
     )
     db.add(user)
@@ -60,7 +61,7 @@ async def login(
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
         "access_token": security.create_access_token(
-            user.id, expires_delta=access_token_expires
+            user.internal_id, expires_delta=access_token_expires
         ),
         "token_type": "bearer",
     }

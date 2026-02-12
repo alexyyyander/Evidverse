@@ -23,7 +23,11 @@ const DropdownContext = createContext<DropdownContextValue | null>(null);
 export function DropdownMenu({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const ctx = useMemo(() => ({ open, setOpen }), [open]);
-  return <DropdownContext.Provider value={ctx}>{children}</DropdownContext.Provider>;
+  return (
+    <DropdownContext.Provider value={ctx}>
+      <div className="relative">{children}</div>
+    </DropdownContext.Provider>
+  );
 }
 
 export function DropdownMenuTrigger({ children }: { children: ReactElement }) {

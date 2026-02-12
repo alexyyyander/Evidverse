@@ -4,13 +4,17 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Frontend Optimization v1 - Stage 03](./stage_plan_frontend_v1/stage_03.md)
+**Current Stage**: [Dev v2 - Stage 01: 导出与投稿（B 站 / 抖音）](./stage_plan_dev_v2/stage_01.md)
 **Status**: in_progress
 **Last Updated**: 2026-02-12
 
 ### Frontend Optimization v1（进行中）
 - 目标：把“视频编辑页面”做得足够高级与复杂（点子→剧本→人物→生成→时间轴联动）
 - 计划：仅 3 个阶段，见 [stage_plan_frontend_v1/README](./stage_plan_frontend_v1/README.md)
+
+### Dev v2（计划中）
+- 目标：把“创作 → 协作 → 发行”升级为可规模化模型（多平台投稿、主项目+分支协作、多世界线剧情与可视化）
+- 计划：4 个阶段，见 [stage_plan_dev_v2/README](./stage_plan_dev_v2/README.md)
 
 ## 📅 Stage Roadmap
 - [x] **Stage 01**: 环境与数据库
@@ -34,6 +38,12 @@
 - [x] **Stage 19**: 系统集成测试与性能优化
 - [x] **Stage 20**: 部署与发布准备 (Completed)
 
+## 🧭 Dev v2 Stage Plan
+- [ ] **Dev v2 - Stage 01**: 导出与投稿（B 站 / 抖音）
+- [ ] **Dev v2 - Stage 02**: Galgame/VN → 多世界线番剧（截图 + 引擎脚本导入）
+- [ ] **Dev v2 - Stage 03**: Fork/Branch 协作深化（Merge、ClipSegment、归因）
+- [ ] **Dev v2 - Stage 04**: 剧情关系图与剧情拓展线路（可视化 + 生成 + 贡献统计）
+
 ## 🎉 Project Milestones
 - **MVP Delivered**: All core features including Video Editing, Git Version Control, and AI Generation are implemented.
 - **Production Ready**: Docker configurations and CI/CD pipelines are set.
@@ -44,8 +54,9 @@
 ## 🛠️ Quick Actions
 - **启动开发环境**:
   ```bash
-  docker-compose up -d  # 启动 DB/Redis/MQ/MinIO
-  cd backend && source venv/bin/activate && uvicorn app.main:app --reload
+  docker-compose up -d  # 启动 DB/Redis/MQ/MinIO + 创建 bucket
+  cp .env.example backend/.env
+  cd backend && source venv/bin/activate && alembic upgrade head && uvicorn app.main:app --reload
   cd frontend && npm run dev
   ```
 - **启动 Celery Worker**:
@@ -72,7 +83,7 @@ A: 检查端口是否被占用 (5432, 6379, 5672, 9000, 9001)。使用 `docker l
 ### Q: 数据库连接不上 (ConnectionRefusedError)？
 A:
 1. 确保 Docker 容器已启动: `docker-compose up -d`。
-2. 确保 `.env` 文件中的 `DATABASE_URL` host 是 `localhost` (本地开发时) 而不是 `db`。
+2. 确保 `backend/.env` 里 `POSTGRES_SERVER=localhost`（本地跑后端时），而不是 `db`（Docker 网络内）。
 3. 如果是 WSL2 环境，确保 Docker Desktop 开启了 WSL 集成。
 
 ### Q: Alembic 找不到模型？
@@ -86,6 +97,17 @@ A: 这是一个已知的 `passlib` 和新版 `bcrypt` 的兼容性问题。解�
 
 ### Q: MinIO 访问被拒绝？
 A: 确保 `docker-compose.yml` 中的 `MINIO_ROOT_USER` 和 `MINIO_ROOT_PASSWORD` 与 `backend/app/core/config.py` 中的配置一致。默认是 `minioadmin`/`minioadmin`。
+
+### Q: Publish（投稿）失败，提示找不到 biliup / ffmpeg？
+A:
+1. B 站上传依赖 `biliup`：安装到 Celery worker 机器上，或设置 `BILIUP_BIN=/path/to/biliup`。
+2. 多片段导出依赖 `ffmpeg`：确保 worker 环境 PATH 中可执行 `ffmpeg`。
+3. 抖音投稿为实验性：需要配置 `DOUYIN_UPLOADER_CMD`（外部 uploader 命令模板）。
+
+### Q: docker-compose.prod.yml 启动后投稿/导出失败？
+A:
+1. prod compose 默认不会自动创建 MinIO bucket：请创建 `S3_BUCKET_NAME` 指定的 bucket（默认 `vidgit-bucket`），并按需要设置 public。
+2. prod 的 worker 容器需要包含 `ffmpeg` 与 `biliup`：建议把它们安装进 backend/worker 镜像，或挂载二进制并设置 `BILIUP_BIN`。
 
 ---
 *Maintainer: Vidgit Bot*

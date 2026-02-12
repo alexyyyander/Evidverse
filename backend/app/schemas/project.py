@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel
 from app.schemas.user import UserPublic
@@ -6,7 +6,8 @@ from app.schemas.user import UserPublic
 class ProjectBase(BaseModel):
     name: str
     description: Optional[str] = None
-    is_public: bool = True
+    tags: Optional[List[str]] = None
+    is_public: bool = False
 
 class ProjectCreate(ProjectBase):
     pass
@@ -15,15 +16,20 @@ class ProjectUpdate(ProjectBase):
     name: Optional[str] = None
     description: Optional[str] = None
     workspace_data: Optional[dict] = None # JSON
+    tags: Optional[List[str]] = None
     is_public: Optional[bool] = None
 
 class ProjectFork(BaseModel):
     commit_hash: Optional[str] = None
 
+class ProjectDeleteConfirm(BaseModel):
+    confirm_project_id: str
+    confirm_nickname: str
+
 class Project(ProjectBase):
-    id: int
-    owner_id: int
-    parent_project_id: Optional[int] = None
+    id: str
+    owner_id: str
+    parent_project_id: Optional[str] = None
     created_at: datetime
     workspace_data: Optional[dict] = None
     likes_count: int = 0

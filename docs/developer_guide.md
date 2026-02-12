@@ -61,12 +61,34 @@ Frontend stores token in `localStorage` and injects `Authorization` header via a
 - Backend maintains commit DAG and branch heads per project
 - Frontend renders the DAG via ReactFlow in the editor “History” tab and allows fork/add-to-timeline actions
 
+#### Branch-scoped workspace (Dev v2)
+- Editor saves/loads workspace per branch (instead of storing a single `workspace_data` on Project):
+  - `GET /api/v1/projects/{project_id}/workspace?branch_name=<name>`
+  - `PUT /api/v1/projects/{project_id}/workspace?branch_name=<name>`
+- Fork as branch (public project collaboration):
+  - `POST /api/v1/projects/{project_id}/fork-branch`
+- Editor supports `?branch=<branchName>` and includes a branch switcher in the header.
+
+#### Publish/export (Dev v2 Stage 01)
+- Accounts + jobs:
+  - `POST /api/v1/publish/accounts`, `GET /api/v1/publish/accounts`
+  - `POST /api/v1/publish/jobs`, `GET /api/v1/publish/jobs/{job_id}`
+- Video source selection:
+  - If `video_url` is provided, the job publishes that file/URL.
+  - If `project_id + branch_name` are provided, backend resolves the branch HEAD video source.
+  - If HEAD contains multiple clip video URLs, the worker exports a single mp4 via `ffmpeg` and uploads to MinIO/S3 before publishing.
+- Worker runtime requirements (local/dev):
+  - `ffmpeg` must be available in PATH for export/concat.
+  - Bilibili publishing uses `biliup` (set `BILIUP_BIN` if not in PATH).
+  - Douyin publishing is experimental via external command template `DOUYIN_UPLOADER_CMD`.
+
 ## Local Development Setup
 
 ### Prerequisites
 - Docker & Docker Compose
 - Python 3.11+
 - Node.js 18+
+- Optional (Dev v2 publishing): `ffmpeg`, `biliup`
 
 ### Option A: Local dev (recommended)
 
@@ -119,6 +141,15 @@ docker-compose -f docker-compose.prod.yml up -d --build
 Access:
 - Frontend: http://localhost
 - Backend docs: http://localhost/docs
+
+Production notes:
+- MinIO bucket:
+  - `docker-compose.prod.yml` does not create buckets automatically.
+  - Create `S3_BUCKET_NAME` (default `vidgit-bucket`) and optionally set it public if you rely on direct asset URLs.
+- Dev v2 publish/export:
+  - The worker container must have `ffmpeg` available in PATH (used for concat/export).
+  - Bilibili upload uses `biliup` CLI; install it in the worker image or provide it in PATH and set `BILIUP_BIN` if needed.
+  - Douyin upload is experimental and runs an external command template `DOUYIN_UPLOADER_CMD`.
 
 ## Testing
 - Backend: `./backend/tests/run_tests.sh`

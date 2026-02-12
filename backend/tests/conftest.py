@@ -69,5 +69,5 @@ async def normal_user(db_session):
 
 @pytest.fixture(scope="function")
 def normal_user_token_headers(normal_user):
-    access_token = create_access_token(subject=normal_user.id)
+    access_token = create_access_token(subject=normal_user.internal_id)
     return {"Authorization": f"Bearer {access_token}"}

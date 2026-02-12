@@ -2,7 +2,8 @@ import type { TimelineEffect, TimelineRow } from "@xzdarcy/timeline-engine";
 import type { EditorStateData } from "@/lib/editor/types";
 import type { LayoutState, SelectionState } from "@/lib/editor/ui";
 
-export type ID = number;
+export type ID = string;
+export type InternalID = number;
 
 export type ISODateTime = string;
 
@@ -12,9 +13,42 @@ export type UserPublic = {
   full_name?: string | null;
 };
 
+export type PublishAccount = {
+  id: ID;
+  platform: "bilibili" | "douyin";
+  label?: string | null;
+  status?: string | null;
+  last_checked_at?: ISODateTime | null;
+  last_error?: string | null;
+};
+
+export type PublishJob = {
+  id: ID;
+  platform: "bilibili" | "douyin";
+  account_id: ID;
+  project_id?: ID | null;
+  branch_name?: string | null;
+  video_url: string;
+  title?: string | null;
+  description?: string | null;
+  tags?: string[] | null;
+  bilibili_tid?: number | null;
+  cover_url?: string | null;
+  scheduled_publish_at?: ISODateTime | null;
+  multi_part?: boolean | null;
+  input_artifacts?: any;
+  attempts?: number | null;
+  task_id?: string | null;
+  status: string;
+  result?: any;
+  logs?: any;
+  error?: string | null;
+};
+
 export type UserMe = {
   id: ID;
   email: string;
+  full_name?: string | null;
   is_active: boolean;
 };
 
@@ -22,8 +56,10 @@ export type ProjectSummary = {
   id: ID;
   name: string;
   description?: string | null;
+  tags?: string[] | null;
   parent_project_id?: ID | null;
   created_at: ISODateTime;
+  is_public?: boolean;
 };
 
 export type ProjectFeedItem = ProjectSummary & {
@@ -33,9 +69,12 @@ export type ProjectFeedItem = ProjectSummary & {
 };
 
 export type Branch = {
-  id?: ID;
+  id: ID;
   name: string;
-  head_commit_id: string;
+  head_commit_id?: string | null;
+  description?: string | null;
+  tags?: string[] | null;
+  parent_branch_id?: ID | null;
 };
 
 export type Commit = {
@@ -93,5 +132,24 @@ export type GenerateClipResultSuccessItem = {
 export type GenerateClipResult = {
   status: "succeeded" | "failed";
   clips?: GenerateClipResultSuccessItem[];
+  error?: string;
+};
+
+export type StoryboardScene = {
+  scene_number?: number;
+  narration?: string;
+  visual_description?: string;
+  [key: string]: any;
+};
+
+export type GenerateStoryboardResponse = {
+  storyboard: StoryboardScene[];
+};
+
+export type GenerateSegmentResult = {
+  status: "succeeded" | "failed";
+  narration?: string;
+  image_url?: string;
+  video_url?: string;
   error?: string;
 };

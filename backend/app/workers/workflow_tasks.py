@@ -72,3 +72,37 @@ def generate_clip_workflow(topic: str, user_id: int) -> dict:
         })
 
     return {"status": "succeeded", "clips": final_clips}
+
+
+@celery_app.task
+def generate_segment_workflow(narration: str, visual_description: str, user_id: int, image_url: str | None = None) -> dict:
+    """
+    Generate one segment clip:
+    - Use provided image_url if present; otherwise generate an image from visual_description.
+    - Generate a short video from the image.
+    """
+    visual_desc = visual_description
+    if not isinstance(visual_desc, str) or not visual_desc.strip():
+        return {"status": "failed", "error": "visual_description is required"}
+
+    final_image_url = image_url
+    if not isinstance(final_image_url, str) or not final_image_url.strip():
+        img_task_res = generate_character_image.apply(args=[visual_desc, user_id]).result
+        if img_task_res.get("status") != "succeeded":
+            return {"status": "failed", "error": img_task_res.get("error") or "Image generation failed"}
+        final_image_url = img_task_res.get("image_url")
+
+    try:
+        vid_task_res = generate_video_from_image.apply(args=[final_image_url, visual_desc]).result
+    except Exception as e:
+        return {"status": "failed", "error": str(e), "image_url": final_image_url}
+
+    if vid_task_res.get("status") != "succeeded":
+        return {"status": "failed", "error": vid_task_res.get("error") or "Video generation failed", "image_url": final_image_url}
+
+    return {
+        "status": "succeeded",
+        "narration": narration,
+        "image_url": final_image_url,
+        "video_url": vid_task_res.get("video_url"),
+    }

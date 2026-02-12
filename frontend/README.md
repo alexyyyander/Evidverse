@@ -15,7 +15,9 @@
 - Install: `npm i`
 - Dev: `npm run dev`
 - Lint: `npm run lint`
-- Quality gate: `npm run check`
+- Typecheck: `npm run typecheck`
+- Quality gate: `npm run check` (lint + typecheck + unit)
+- CI gate: `npm run check:ci` (includes Next build + e2e)
 
 Notes:
 - The frontend expects the API at `NEXT_PUBLIC_API_URL` (default `http://localhost:8000/api/v1`).
@@ -63,3 +65,6 @@ Notes:
 ## Conventions
 - Use Server Components by default; introduce Client Components only for real interaction/state.
 - Use React Query for server-state (fetching/caching/invalidation) and zustand for local editor timeline state.
+
+## Troubleshooting
+- If you see `Cannot find module './<number>.js'` under `.next/server/webpack-runtime.js`, stop `npm run dev`, delete `frontend/.next`, and restart `npm run dev`.

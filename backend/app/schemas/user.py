@@ -4,6 +4,7 @@ from pydantic import BaseModel, EmailStr
 # Shared properties
 class UserBase(BaseModel):
     email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
     is_active: Optional[bool] = True
 
 # Properties to receive via API on creation
@@ -21,13 +22,13 @@ class UserLogin(BaseModel):
 
 # Properties to return to client
 class User(UserBase):
-    id: int
+    id: str
     
     class Config:
         from_attributes = True
 
 class UserPublic(BaseModel):
-    id: int
+    id: str
     email: EmailStr
     full_name: Optional[str] = None
 

@@ -14,6 +14,8 @@ export default function GenerationQueuePanel() {
   const updateGenerationTask = useEditorStore((s) => s.updateGenerationTask);
   const applyClipTaskResult = useEditorStore((s) => s.applyClipTaskResult);
   const applyCharacterTaskResult = useEditorStore((s) => s.applyCharacterTaskResult);
+  const applyBeatImageTaskResult = useEditorStore((s) => s.applyBeatImageTaskResult);
+  const applySegmentTaskResult = useEditorStore((s) => s.applySegmentTaskResult);
 
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const activeTask = useMemo(() => tasks.find((t) => t.id === activeTaskId) || null, [tasks, activeTaskId]);
@@ -23,19 +25,33 @@ export default function GenerationQueuePanel() {
   useEffect(() => {
     if (!activeTaskId) return;
     if (!taskResp) return;
-    updateGenerationTask(activeTaskId, { status: String(taskResp.status) as any, result: taskResp.result as any });
-    if (String(taskResp.status) === "SUCCESS") {
-      if (!activeTask) return;
-      if (activeTask.type === "clip") applyClipTaskResult(activeTaskId, taskResp.result);
-      if (activeTask.type === "character") {
-        const characterId = activeTask.refIds?.characterId;
+    const status = String(taskResp.status);
+    updateGenerationTask(activeTaskId, { status: status as any, result: taskResp.result as any });
+
+    const currentTask =
+      useEditorStore.getState().data.generationTasks?.find((t) => t.id === activeTaskId) || null;
+
+    if (status === "SUCCESS") {
+      if (!currentTask) return;
+      if (currentTask.type === "clip") applyClipTaskResult(activeTaskId, taskResp.result);
+      if (currentTask.type === "character") {
+        const characterId = currentTask.refIds?.characterId;
         if (characterId) applyCharacterTaskResult({ taskId: activeTaskId, characterId: characterId as any, result: taskResp.result });
       }
+      if (currentTask.type === "beat_image") {
+        const beatId = currentTask.refIds?.beatId;
+        if (beatId) applyBeatImageTaskResult({ taskId: activeTaskId, beatId: beatId as any, result: taskResp.result });
+      }
+      if (currentTask.type === "segment") {
+        const beatId = currentTask.refIds?.beatId;
+        if (beatId) applySegmentTaskResult({ taskId: activeTaskId, beatId: beatId as any, result: taskResp.result as any });
+      }
     }
-    if (String(taskResp.status) === "FAILURE") {
+
+    if (status === "FAILURE") {
       updateGenerationTask(activeTaskId, { error: (taskResp.result as any)?.error || "Task failed" });
     }
-  }, [activeTaskId, taskResp, activeTask, updateGenerationTask, applyClipTaskResult, applyCharacterTaskResult]);
+  }, [activeTaskId, taskResp, updateGenerationTask, applyClipTaskResult, applyCharacterTaskResult, applyBeatImageTaskResult, applySegmentTaskResult]);
 
   const retry = async (taskId: string) => {
     const t = tasks.find((x) => x.id === taskId);
@@ -69,6 +85,41 @@ export default function GenerationQueuePanel() {
         });
         setActiveTaskId(task_id);
         toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
+        return;
+      }
+      if (t.type === "beat_image") {
+        const prompt = String(t.input?.prompt || "");
+        const beatId = String(t.refIds?.beatId || "");
+        if (!prompt.trim() || !beatId) return;
+        const { task_id } = await generationApi.generateCharacter({ prompt: prompt.trim(), anchor_id: null });
+        useEditorStore.getState().addGenerationTask({
+          ...t,
+          id: task_id,
+          status: "PENDING",
+          createdAt: new Date().toISOString(),
+          refIds: { beatId },
+        });
+        setActiveTaskId(task_id);
+        toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
+        return;
+      }
+      if (t.type === "segment") {
+        const narration = String(t.input?.narration || "");
+        const visual_description = String(t.input?.visual_description || "");
+        const image_url = t.input?.image_url ?? null;
+        const beatId = String(t.refIds?.beatId || "");
+        if (!visual_description.trim() || !beatId) return;
+        const { task_id } = await generationApi.generateSegment({ narration, visual_description, image_url });
+        useEditorStore.getState().addGenerationTask({
+          ...t,
+          id: task_id,
+          status: "PENDING",
+          createdAt: new Date().toISOString(),
+          refIds: { beatId },
+        });
+        setActiveTaskId(task_id);
+        toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
+        return;
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : "Retry failed";
@@ -88,7 +139,15 @@ export default function GenerationQueuePanel() {
           <div key={t.id} className={cn("rounded-lg border border-border p-3", selected ? "ring-2 ring-ring" : "")}>
             <button type="button" className="w-full text-left" onClick={() => setActiveTaskId(t.id)}>
               <div className="flex items-center justify-between gap-2">
-                <div className="text-sm font-semibold">{t.type === "clip" ? "视频生成" : "人物参考图"}</div>
+                <div className="text-sm font-semibold">
+                  {t.type === "clip"
+                    ? "工作流生成"
+                    : t.type === "character"
+                      ? "人物参考图"
+                      : t.type === "beat_image"
+                        ? "场景参考图"
+                        : "片段视频"}
+                </div>
                 <div className="text-xs text-muted-foreground">{t.status}</div>
               </div>
               <div className="mt-1 text-xs text-muted-foreground break-all">{t.id}</div>
@@ -105,4 +164,3 @@ export default function GenerationQueuePanel() {
     </div>
   );
 }
-

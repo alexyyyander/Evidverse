@@ -34,7 +34,7 @@ const nodeTypes = {
 };
 
 interface GraphProps {
-  projectId: number;
+  projectId: string;
 }
 
 export default function GitGraph({ projectId }: GraphProps) {

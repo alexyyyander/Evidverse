@@ -18,21 +18,30 @@ import { useProjects } from "@/lib/queries/useProjects";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import IconButton from "@/components/ui/icon-button";
-import { Copy, Pencil } from "lucide-react";
+import { Copy, Pencil, Trash2 } from "lucide-react";
+import { useI18n } from "@/lib/i18nContext";
+import { useMe } from "@/lib/queries/useMe";
 
 export default function ProjectsClient() {
   const router = useRouter();
+  const { t } = useI18n();
   const [showImportModal, setShowImportModal] = useState(false);
   const [importSourceId, setImportSourceId] = useState("");
   const [showRenameModal, setShowRenameModal] = useState(false);
-  const [renameProjectId, setRenameProjectId] = useState<number | null>(null);
+  const [renameProjectId, setRenameProjectId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null);
+  const [deleteConfirmProjectId, setDeleteConfirmProjectId] = useState("");
+  const [deleteConfirmNickname, setDeleteConfirmNickname] = useState("");
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error } = useProjects();
+  const meQuery = useMe();
+  const expectedNickname = (meQuery.data?.full_name || meQuery.data?.email?.split("@")[0] || "").trim();
 
   const forkMutation = useMutation({
-    mutationFn: async (projectId: number) => projectApi.fork(projectId),
+    mutationFn: async (projectId: string) => projectApi.fork(projectId),
     onSuccess: (newProject) => {
       toast({ title: "Forked", description: "Opening editor...", variant: "success" });
       queryClient.invalidateQueries({ queryKey: queryKeys.projects() });
@@ -44,8 +53,21 @@ export default function ProjectsClient() {
     },
   });
 
+  const visibilityMutation = useMutation({
+    mutationFn: async (payload: { projectId: string; is_public: boolean }) =>
+      projectApi.update(payload.projectId, { is_public: payload.is_public }),
+    onSuccess: () => {
+      toast({ title: t("projects.visibilityUpdated"), description: "", variant: "success" });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects() });
+    },
+    onError: (e) => {
+      const message = e instanceof Error ? e.message : "Failed to update visibility";
+      toast({ title: t("common.error"), description: message, variant: "destructive" });
+    },
+  });
+
   const renameMutation = useMutation({
-    mutationFn: async (payload: { projectId: number; name: string }) =>
+    mutationFn: async (payload: { projectId: string; name: string }) =>
       projectApi.update(payload.projectId, { name: payload.name }),
     onSuccess: () => {
       toast({ title: "Renamed", description: "Project name updated.", variant: "success" });
@@ -60,6 +82,26 @@ export default function ProjectsClient() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (payload: { projectId: string; confirm_project_id: string; confirm_nickname: string }) =>
+      projectApi.delete(payload.projectId, {
+        confirm_project_id: payload.confirm_project_id,
+        confirm_nickname: payload.confirm_nickname,
+      }),
+    onSuccess: () => {
+      toast({ title: t("projects.deleted"), description: "", variant: "success" });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects() });
+      setShowDeleteModal(false);
+      setDeleteProjectId(null);
+      setDeleteConfirmProjectId("");
+      setDeleteConfirmNickname("");
+    },
+    onError: (e) => {
+      const message = e instanceof Error ? e.message : "Failed to delete project";
+      toast({ title: t("common.error"), description: message, variant: "destructive" });
+    },
+  });
+
   const copyText = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -71,14 +113,21 @@ export default function ProjectsClient() {
 
   const handleImport = async () => {
     if (!importSourceId) return;
-    forkMutation.mutate(Number(importSourceId));
+    forkMutation.mutate(importSourceId.trim());
     setShowImportModal(false);
   };
 
-  const openRename = (projectId: number, currentName: string) => {
+  const openRename = (projectId: string, currentName: string) => {
     setRenameProjectId(projectId);
     setRenameValue(currentName);
     setShowRenameModal(true);
+  };
+
+  const openDelete = (projectId: string) => {
+    setDeleteProjectId(projectId);
+    setDeleteConfirmProjectId("");
+    setDeleteConfirmNickname("");
+    setShowDeleteModal(true);
   };
 
   const handleRename = async () => {
@@ -88,19 +137,37 @@ export default function ProjectsClient() {
     renameMutation.mutate({ projectId: renameProjectId, name: trimmed });
   };
 
+  const canDelete =
+    typeof deleteProjectId === "string" &&
+    deleteProjectId.length > 0 &&
+    deleteConfirmProjectId.trim() === deleteProjectId &&
+    deleteConfirmNickname.trim().length > 0 &&
+    expectedNickname.length > 0 &&
+    deleteConfirmNickname.trim().toLowerCase() === expectedNickname.toLowerCase() &&
+    !deleteMutation.isPending;
+
+  const handleDelete = async () => {
+    if (!canDelete || !deleteProjectId) return;
+    deleteMutation.mutate({
+      projectId: deleteProjectId,
+      confirm_project_id: deleteConfirmProjectId.trim(),
+      confirm_nickname: deleteConfirmNickname.trim(),
+    });
+  };
+
   return (
     <div className="min-h-[calc(100vh-64px)] py-8">
       <PageContainer className="h-full flex flex-col">
         <div className="mb-8">
           <SectionHeader
-            title="My Projects"
-            subtitle="Manage your projects and jump into the editor."
+            title={t("projects.title")}
+            subtitle={t("projects.subtitle")}
             right={
               <>
                 <Button variant="secondary" onClick={() => setShowImportModal(true)}>
-                  Import / Fork
+                  {t("projects.import")}
                 </Button>
-                <LinkButton href="/editor/new">Create Project</LinkButton>
+                <LinkButton href="/editor/new">{t("projects.create")}</LinkButton>
               </>
             }
           />
@@ -123,24 +190,23 @@ export default function ProjectsClient() {
               setImportSourceId("");
             }
           }}
-          title="Import Project"
-          description="Enter the ID of the Vidgit project to fork."
+          title={t("projects.import.title")}
+          description={t("projects.import.desc")}
           footer={
             <div className="flex items-center justify-end gap-2">
               <Button variant="ghost" onClick={() => setShowImportModal(false)}>
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button loading={forkMutation.isPending} onClick={handleImport}>
-                Fork Project
+                {t("projects.import.fork")}
               </Button>
             </div>
           }
         >
           <div className="space-y-2">
-            <div className="text-sm font-medium text-foreground">Source Project ID</div>
+            <div className="text-sm font-medium text-foreground">{t("projects.import.sourceId")}</div>
             <Input
-              type="number"
-              placeholder="e.g. 123"
+              placeholder="e.g. 9f4d2c7a-...."
               value={importSourceId}
               onChange={(e) => setImportSourceId(e.target.value)}
             />
@@ -156,21 +222,21 @@ export default function ProjectsClient() {
               setRenameValue("");
             }
           }}
-          title="Rename Project"
-          description="Update your project name."
+          title={t("projects.rename.title")}
+          description={t("projects.rename.desc")}
           footer={
             <div className="flex items-center justify-end gap-2">
               <Button variant="ghost" onClick={() => setShowRenameModal(false)}>
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button loading={renameMutation.isPending} onClick={handleRename}>
-                Save
+                {t("common.save")}
               </Button>
             </div>
           }
         >
           <div className="space-y-2">
-            <div className="text-sm font-medium text-foreground">Project Name</div>
+            <div className="text-sm font-medium text-foreground">{t("createProject.name")}</div>
             <Input
               placeholder="Enter a new name"
               value={renameValue}
@@ -179,17 +245,58 @@ export default function ProjectsClient() {
           </div>
         </Dialog>
 
+        <Dialog
+          open={showDeleteModal}
+          onOpenChange={(open) => {
+            setShowDeleteModal(open);
+            if (!open) {
+              setDeleteProjectId(null);
+              setDeleteConfirmProjectId("");
+              setDeleteConfirmNickname("");
+            }
+          }}
+          title={t("projects.delete.title")}
+          description={t("projects.delete.desc")}
+          footer={
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="ghost" onClick={() => setShowDeleteModal(false)}>
+                {t("common.cancel")}
+              </Button>
+              <Button variant="destructive" loading={deleteMutation.isPending} disabled={!canDelete} onClick={handleDelete}>
+                {t("projects.delete.confirm")}
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <div className="rounded-md border border-border p-3 text-xs text-muted-foreground">
+              Project ID: <span className="text-foreground">{deleteProjectId || "-"}</span>
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-foreground">{t("projects.delete.projectId")}</div>
+              <Input value={deleteConfirmProjectId} onChange={(e) => setDeleteConfirmProjectId(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-foreground">{t("projects.delete.nickname")}</div>
+              <Input value={deleteConfirmNickname} onChange={(e) => setDeleteConfirmNickname(e.target.value)} />
+              <div className="text-xs text-muted-foreground">
+                {t("projects.delete.nicknameHint")}
+              </div>
+            </div>
+          </div>
+        </Dialog>
+
         <div className="flex-1">
           {isLoading ? (
             <div className="min-h-[calc(100vh-64px-8rem)] flex items-center justify-center text-muted-foreground">
-              Loading...
+              {t("projects.loading")}
             </div>
           ) : (data || []).length === 0 ? (
             <div className="min-h-[calc(100vh-64px-8rem)] flex items-center justify-center">
               <EmptyState
-                title="No projects yet"
-                description="Create a project to start editing."
-                action={<LinkButton href="/editor/new">Create Project</LinkButton>}
+                title={t("projects.empty.title")}
+                description={t("projects.empty.desc")}
+                action={<LinkButton href="/editor/new">{t("projects.create")}</LinkButton>}
               />
             </div>
           ) : (
@@ -202,17 +309,43 @@ export default function ProjectsClient() {
                         <h5 className="mb-2 text-xl font-semibold tracking-tight text-card-foreground truncate">
                           {project.name}
                         </h5>
-                        <IconButton
-                          aria-label="Rename project"
-                          title="Rename"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            openRename(project.id, project.name);
-                          }}
-                        >
-                          <Pencil size={16} />
-                        </IconButton>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const next = !(project.is_public === true);
+                              visibilityMutation.mutate({ projectId: project.id, is_public: next });
+                            }}
+                            loading={visibilityMutation.isPending}
+                          >
+                            {project.is_public === true ? t("projects.public") : t("projects.private")}
+                          </Button>
+                          <IconButton
+                            aria-label="Delete project"
+                            title="Delete"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openDelete(project.id);
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </IconButton>
+                          <IconButton
+                            aria-label="Rename project"
+                            title="Rename"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openRename(project.id, project.name);
+                            }}
+                          >
+                            <Pencil size={16} />
+                          </IconButton>
+                        </div>
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-2">
                         {project.description || "No description provided."}

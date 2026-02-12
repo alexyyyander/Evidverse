@@ -6,11 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.models.user import User
 from app.services.commit_service import commit_service
+from app.services.project_service import ProjectService
 
 router = APIRouter()
 
 class CommitCreate(BaseModel):
-    project_id: int
+    project_id: str
     message: str
     video_assets: Dict[str, Any]
     branch_name: str = "main"
@@ -18,7 +19,7 @@ class CommitCreate(BaseModel):
 
 class CommitResponse(BaseModel):
     id: str
-    project_id: int
+    project_id: str
     message: str
     parent_hash: Optional[str]
     video_assets: Dict[str, Any]
@@ -37,13 +38,25 @@ async def create_commit(
     Create a new commit.
     """
     # Service will handle project validation
+    project = await ProjectService.resolve_project(db, commit_in.project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
     commit = await commit_service.create_commit(
         db=db,
-        project_id=commit_in.project_id,
-        author_id=current_user.id,
+        project_id=project.internal_id,
+        author_id=current_user.internal_id,
         message=commit_in.message,
         video_assets=commit_in.video_assets,
         branch_name=commit_in.branch_name,
         parent_hash=commit_in.parent_hash
     )
-    return commit
+    return CommitResponse.model_validate(
+        {
+            "id": commit.id,
+            "project_id": project.public_id,
+            "message": commit.message,
+            "parent_hash": commit.parent_hash,
+            "video_assets": commit.video_assets,
+            "created_at": commit.created_at,
+        }
+    )

@@ -31,7 +31,7 @@ async def get_current_user(
             detail="Could not validate credentials",
         )
     
-    result = await db.execute(select(User).where(User.id == int(token_data.sub)))
+    result = await db.execute(select(User).where(User.internal_id == int(token_data.sub)))
     user = result.scalar_one_or_none()
     
     if not user:
@@ -52,6 +52,6 @@ async def get_current_user_optional(
     except (JWTError, ValidationError):
         return None
     
-    result = await db.execute(select(User).where(User.id == int(token_data.sub)))
+    result = await db.execute(select(User).where(User.internal_id == int(token_data.sub)))
     user = result.scalar_one_or_none()
     return user

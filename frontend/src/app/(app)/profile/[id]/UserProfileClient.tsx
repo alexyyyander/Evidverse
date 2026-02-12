@@ -10,9 +10,11 @@ import EmptyState from "@/components/ui/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
 import { useUserProfile } from "@/lib/queries/useUserProfile";
+import { useMe } from "@/lib/queries/useMe";
 
-export default function UserProfileClient({ userId }: { userId: number }) {
+export default function UserProfileClient({ userId }: { userId: string }) {
   const { userQuery, projectsQuery } = useUserProfile(userId);
+  const meQuery = useMe();
 
   useEffect(() => {
     if (!userQuery.isError) return;
@@ -72,7 +74,7 @@ export default function UserProfileClient({ userId }: { userId: number }) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard key={project.id} project={project} viewerId={meQuery.data?.id || null} />
             ))}
           </div>
         )}
@@ -80,4 +82,3 @@ export default function UserProfileClient({ userId }: { userId: number }) {
     </div>
   );
 }
-

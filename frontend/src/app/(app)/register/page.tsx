@@ -12,15 +12,18 @@ import Input from "@/components/ui/input";
 import Button from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { useI18n } from "@/lib/i18nContext";
 
 export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { t } = useI18n();
 
   const next = searchParams?.get("next") || "/projects";
 
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -28,10 +31,10 @@ export default function RegisterPage() {
 
   const validationError = useMemo(() => {
     if (password.length === 0 || confirm.length === 0) return null;
-    if (password !== confirm) return "Passwords do not match";
-    if (password.length < 6) return "Password must be at least 6 characters";
+    if (password !== confirm) return t("auth.validation.mismatch");
+    if (password.length < 6) return t("auth.validation.minLen");
     return null;
-  }, [confirm, password]);
+  }, [confirm, password, t]);
 
   const canSubmit = useMemo(() => {
     return email.trim().length > 0 && password.length > 0 && confirm.length > 0 && !validationError && !submitting;
@@ -43,7 +46,7 @@ export default function RegisterPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await authApi.register({ email: email.trim(), password });
+      await authApi.register({ email: email.trim(), password, full_name: fullName.trim() || null });
       const token = await authApi.login({ email: email.trim(), password });
       setToken(token.access_token);
       await queryClient.invalidateQueries({ queryKey: ["me"] });
@@ -65,17 +68,21 @@ export default function RegisterPage() {
           <Card>
             <CardContent className="pt-6 space-y-5">
               <div>
-                <div className="text-xl font-semibold text-foreground">Create account</div>
-                <div className="mt-1 text-sm text-muted-foreground">Sign up to start creating projects.</div>
+                <div className="text-xl font-semibold text-foreground">{t("auth.register.title")}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{t("auth.register.subtitle")}</div>
               </div>
 
               <form onSubmit={onSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-foreground">Email</div>
+                  <div className="text-sm font-medium text-foreground">{t("auth.email")}</div>
                   <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="email" />
                 </div>
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-foreground">Password</div>
+                  <div className="text-sm font-medium text-foreground">{t("auth.nameOptional")}</div>
+                  <Input value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-foreground">{t("auth.password")}</div>
                   <Input
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -84,7 +91,7 @@ export default function RegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-foreground">Confirm password</div>
+                  <div className="text-sm font-medium text-foreground">{t("auth.confirm")}</div>
                   <Input
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
@@ -97,7 +104,7 @@ export default function RegisterPage() {
                 {error ? <div className="text-sm text-destructive">{error}</div> : null}
 
                 <Button type="submit" className="w-full" loading={submitting} disabled={!canSubmit}>
-                  Create account
+                  {t("auth.signup")}
                 </Button>
               </form>
 
@@ -114,4 +121,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-

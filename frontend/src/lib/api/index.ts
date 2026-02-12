@@ -8,3 +8,4 @@ export { userApi } from "@/lib/api/domains/user";
 export { generationApi } from "@/lib/api/domains/generation";
 export { tasksApi } from "@/lib/api/domains/tasks";
 export { authApi } from "@/lib/api/domains/auth";
+export { publishApi } from "@/lib/api/domains/publish";

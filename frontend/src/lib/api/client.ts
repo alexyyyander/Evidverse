@@ -28,7 +28,7 @@ apiClient.interceptors.response.use(
   (res) => res,
   (err) => {
     const normalized = normalizeAxiosError(err);
-    if (normalized.status === 401 || normalized.status === 403) {
+    if (normalized.status === 401) {
       clearToken();
       toast({
         title: "Authentication expired",
@@ -50,8 +50,8 @@ export async function post<T>(url: string, body?: any) {
   return res.data;
 }
 
-export async function put<T>(url: string, body?: any) {
-  const res = await apiClient.put<T>(url, body);
+export async function put<T>(url: string, body?: any, params?: Record<string, any>) {
+  const res = await apiClient.put<T>(url, body, params ? { params } : undefined);
   return res.data;
 }
 

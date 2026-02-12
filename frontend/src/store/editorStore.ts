@@ -3,10 +3,14 @@ import { immer } from 'zustand/middleware/immer';
 import { useTimelineStore } from './timelineStore';
 import { projectApi, TimelineWorkspace } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
+import { isApiError } from "@/lib/api/errors";
 import { createId } from "@/lib/editor/id";
 import { extractCharactersFromBeats, toEditorStateFromGenerateClipResult } from "@/lib/editor/fromGenerateClip";
+import { toEditorStateFromStoryboard } from "@/lib/editor/fromStoryboard";
 import { 
   EditorStateData, 
+  Asset,
+  Clip,
   Beat,
   BeatId, 
   Character,
@@ -16,9 +20,10 @@ import {
   IdeaVersion,
   IdeaVersionId,
   GenerationTask,
-  TaskStatus
+  TaskStatus,
+  TimelineItem
 } from '@/lib/editor/types';
-import type { GenerateClipResult } from "@/lib/api";
+import type { GenerateClipResult, GenerateSegmentResult, StoryboardScene } from "@/lib/api";
 import type { LayoutState, SelectionState, SelectionSource } from "@/lib/editor/ui";
 
 type WorkspaceSnapshot = {
@@ -68,7 +73,12 @@ export interface EditorState {
     mode: "append" | "replace";
   }) => void;
   applyCharacterTaskResult: (params: { taskId: string; characterId: CharacterId; result: any }) => void;
+  applyBeatImageTaskResult: (params: { taskId: string; beatId: BeatId; result: any }) => void;
+  applySegmentTaskResult: (params: { taskId: string; beatId: BeatId; result: GenerateSegmentResult }) => void;
   extractCharacters: () => void;
+  applyStoryboard: (params: { topic: string; ideaParams: IdeaParameters; storyboard: StoryboardScene[]; mode?: "replace" | "append" }) => void;
+  convertShotsToSegments: () => void;
+  addBeatImageAsset: (params: { beatId: BeatId; url: string; source: Asset["source"] }) => void;
   updateBeat: (beatId: BeatId, patch: Partial<Beat>) => void;
   updateCharacter: (characterId: CharacterId, patch: Partial<Character>) => void;
   deleteCharacter: (characterId: CharacterId) => void;
@@ -81,8 +91,8 @@ export interface EditorState {
   canUndo: () => boolean;
   canRedo: () => boolean;
   
-  saveProject: (projectId: number, options?: { silent?: boolean }) => Promise<void>;
-  loadProject: (projectId: number) => Promise<void>;
+  saveProject: (projectId: string, options?: { silent?: boolean; branchName?: string }) => Promise<void>;
+  loadProject: (projectId: string, options?: { branchName?: string }) => Promise<void>;
 }
 
 export const useEditorStore = create<EditorState>()(
@@ -266,8 +276,21 @@ export const useEditorStore = create<EditorState>()(
 
     updateGenerationTask: (taskId, patch) =>
       set((state) => {
-        if (!state.data.generationTasks) return;
-        state.data.generationTasks = state.data.generationTasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t));
+        const tasks = state.data.generationTasks;
+        if (!tasks) return;
+        const index = tasks.findIndex((t) => t.id === taskId);
+        if (index < 0) return;
+        const current = tasks[index];
+        let changed = false;
+        const next: any = { ...current };
+        for (const [key, value] of Object.entries(patch as any)) {
+          if (next[key] !== value) {
+            changed = true;
+            next[key] = value;
+          }
+        }
+        if (!changed) return;
+        tasks[index] = next;
       }),
 
     applyClipTaskResult: (taskId, result, options) => {
@@ -484,6 +507,121 @@ export const useEditorStore = create<EditorState>()(
       get().selectCharacter(characterId, "queue");
     },
 
+    addBeatImageAsset: ({ beatId, url, source }) => {
+      const createdAt = new Date().toISOString();
+      const assetId = createId("asset_image");
+      set((state) => {
+        state.data.assets[assetId] = {
+          id: assetId,
+          type: "image",
+          url,
+          source,
+          relatedBeatId: beatId,
+          createdAt,
+        } as any;
+      });
+    },
+
+    applyBeatImageTaskResult: ({ taskId, beatId, result }) => {
+      const imageUrl = typeof result?.image_url === "string" ? result.image_url : "";
+      if (!imageUrl) {
+        get().updateGenerationTask(taskId, { status: "FAILURE" as TaskStatus, error: result?.error || "Invalid image result" });
+        return;
+      }
+      get().beginHistoryGroup();
+      get().addBeatImageAsset({ beatId, url: imageUrl, source: "generated" });
+      get().endHistoryGroup();
+      get().updateGenerationTask(taskId, { status: "SUCCESS" as TaskStatus, result });
+      get().selectBeat(beatId, "queue");
+    },
+
+    applySegmentTaskResult: ({ taskId, beatId, result }) => {
+      const videoUrl = typeof result?.video_url === "string" ? result.video_url : "";
+      if (!videoUrl) {
+        get().updateGenerationTask(taskId, { status: "FAILURE" as TaskStatus, error: result?.error || "Invalid segment result" });
+        return;
+      }
+
+      const createdAt = new Date().toISOString();
+      get().beginHistoryGroup();
+      set((state) => {
+        const existing = Object.values(state.data.timelineItems).find((t) => t.linkedBeatId === beatId) || null;
+        if (existing) return;
+
+        const assetId = createId("asset_video");
+        const beat = state.data.beats[beatId];
+        const duration = beat ? beat.suggestedDuration : 0;
+        state.data.assets[assetId] = {
+          id: assetId,
+          type: "video",
+          url: videoUrl,
+          duration,
+          source: "generated",
+          relatedBeatId: beatId,
+          generationParams: { taskId },
+          createdAt,
+        };
+
+        const clipId = createId("clip");
+        state.data.clips[clipId] = { id: clipId, assetId, startOffset: 0 };
+
+        const all = Object.values(state.data.timelineItems).sort((a, b) => a.startTime - b.startTime);
+        const last = all.length > 0 ? all[all.length - 1] : null;
+        const startTime = last ? last.startTime + last.duration : 0;
+        const timelineItemId = createId("timeline_item");
+        state.data.timelineItems[timelineItemId] = {
+          id: timelineItemId,
+          clipId,
+          trackId: "0",
+          startTime,
+          duration,
+          linkedBeatId: beatId,
+        };
+
+        const imageUrl = typeof result?.image_url === "string" ? result.image_url : "";
+        if (imageUrl) {
+          const imageAssetId = createId("asset_image");
+          state.data.assets[imageAssetId] = {
+            id: imageAssetId,
+            type: "image",
+            url: imageUrl,
+            source: "generated",
+            relatedBeatId: beatId,
+            generationParams: { taskId },
+            createdAt,
+          } as any;
+        }
+      });
+      get().endHistoryGroup();
+
+      const next = get().data;
+      const timelineRows = [
+        {
+          id: "0",
+          actions: Object.values(next.timelineItems)
+            .filter((t) => t.trackId === "0")
+            .sort((a, b) => a.startTime - b.startTime)
+            .map((t) => ({
+              id: t.id,
+              start: t.startTime,
+              end: t.startTime + t.duration,
+              effectId: t.id,
+            })),
+        },
+      ];
+
+      const effects: Record<string, any> = {};
+      for (const item of Object.values(next.timelineItems)) {
+        const b = item.linkedBeatId ? next.beats[item.linkedBeatId] : null;
+        effects[item.id] = { id: item.id, name: b?.narration || "Clip" };
+      }
+      useTimelineStore.getState().setEditorData(timelineRows as any);
+      useTimelineStore.setState({ effects } as any);
+
+      get().updateGenerationTask(taskId, { status: "SUCCESS" as TaskStatus, result: result as any });
+      get().selectBeat(beatId, "queue");
+    },
+
     extractCharacters: () => {
       const state = get();
       const beats = Object.values(state.data.beats).sort((a, b) => a.order - b.order);
@@ -494,6 +632,103 @@ export const useEditorStore = create<EditorState>()(
       set((draft) => {
         for (const c of added) draft.data.characters[c.id] = c;
       });
+    },
+
+    applyStoryboard: ({ topic, ideaParams, storyboard, mode }) => {
+      const nextIdea: IdeaVersion = {
+        id: createId("idea"),
+        createdAt: new Date().toISOString(),
+        text: topic,
+        params: ideaParams,
+      };
+      const nextState = toEditorStateFromStoryboard({ storyboard, ideaParams });
+      nextState.ideaVersions = [nextIdea];
+      nextState.activeIdeaVersionId = nextIdea.id;
+
+      get().beginHistoryGroup();
+      set((state) => {
+        if (mode === "append") {
+          const sceneOffset = state.data.sceneOrder.length;
+          const appended = toEditorStateFromStoryboard({ storyboard, ideaParams });
+          for (const sceneId of appended.sceneOrder) {
+            const scene = appended.scenes[sceneId];
+            state.data.scenes[sceneId] = { ...scene, order: sceneOffset + scene.order };
+            state.data.sceneOrder.push(sceneId);
+          }
+          for (const [beatId, beat] of Object.entries(appended.beats)) {
+            state.data.beats[beatId] = beat;
+          }
+          state.data.ideaVersions = [...(state.data.ideaVersions || []), nextIdea];
+          state.data.activeIdeaVersionId = nextIdea.id;
+          return;
+        }
+        state.data = nextState;
+      });
+      useTimelineStore.getState().setEditorData([{ id: "0", actions: [] }] as any);
+      useTimelineStore.setState({ effects: {} } as any);
+      get().endHistoryGroup();
+    },
+
+    convertShotsToSegments: () => {
+      get().beginHistoryGroup();
+      set((state) => {
+        const oldBeats = state.data.beats;
+        const oldScenes = state.data.scenes;
+        const oldAssets = state.data.assets;
+
+        const beatIdMap = new Map<string, string>();
+        const nextBeats: Record<string, any> = {};
+        const nextScenes: Record<string, any> = {};
+
+        for (const sceneId of state.data.sceneOrder) {
+          const scene = oldScenes[sceneId];
+          if (!scene) continue;
+          const nextBeatIds: string[] = [];
+          for (const beatId of scene.beatIds) {
+            const beat = oldBeats[beatId];
+            if (!beat) continue;
+            const shots = Array.isArray(beat.shots) && beat.shots.length > 0 ? beat.shots.slice().sort((a, b) => a.order - b.order) : null;
+            if (!shots) {
+              const newBeatId = createId("beat");
+              beatIdMap.set(beatId, newBeatId);
+              nextBeats[newBeatId] = { ...beat, id: newBeatId, order: nextBeatIds.length, shots: undefined };
+              nextBeatIds.push(newBeatId);
+              continue;
+            }
+            let firstNewBeatId: string | null = null;
+            for (const shot of shots) {
+              const newBeatId = createId("beat");
+              if (!firstNewBeatId) firstNewBeatId = newBeatId;
+              if (!beatIdMap.has(beatId)) beatIdMap.set(beatId, newBeatId);
+              nextBeats[newBeatId] = {
+                ...beat,
+                id: newBeatId,
+                narration: shot.narration || beat.narration,
+                cameraDescription: shot.cameraDescription || beat.cameraDescription,
+                suggestedDuration: shot.suggestedDuration,
+                order: nextBeatIds.length,
+                shots: undefined,
+              };
+              nextBeatIds.push(newBeatId);
+            }
+          }
+          nextScenes[sceneId] = { ...scene, beatIds: nextBeatIds };
+        }
+
+        for (const [assetId, asset] of Object.entries(oldAssets)) {
+          const rel = (asset as any).relatedBeatId;
+          if (!rel) continue;
+          const mapped = beatIdMap.get(rel);
+          if (!mapped) continue;
+          (asset as any).relatedBeatId = mapped;
+          oldAssets[assetId] = asset as any;
+        }
+
+        state.data.beats = nextBeats as any;
+        state.data.scenes = nextScenes as any;
+        state.selection.selectedBeatId = null;
+      });
+      get().endHistoryGroup();
     },
 
     updateBeat: (beatId, patch) =>
@@ -593,6 +828,7 @@ export const useEditorStore = create<EditorState>()(
       const { data } = get();
       const { editorData, effects } = useTimelineStore.getState();
       const { layout, selection } = get();
+      const branchName = options?.branchName || "main";
       
       try {
           const workspace: TimelineWorkspace = {
@@ -601,7 +837,7 @@ export const useEditorStore = create<EditorState>()(
               editorState: data,
               editorUi: { layout, selection },
           };
-          await projectApi.updateWorkspace(projectId, workspace);
+          await projectApi.updateWorkspace(projectId, workspace, { branch_name: branchName });
           if (!options?.silent) {
                toast({ title: "Saved", description: "Project saved.", variant: "success" });
           }
@@ -611,9 +847,10 @@ export const useEditorStore = create<EditorState>()(
       }
     },
 
-    loadProject: async (projectId) => {
+    loadProject: async (projectId, options) => {
+      const branchName = options?.branchName || "main";
       try {
-          const data = await projectApi.getWorkspace(projectId);
+          const data = await projectApi.getWorkspace(projectId, { branch_name: branchName });
           if (data) {
               if (data.editorData) {
                   useTimelineStore.getState().setEditorData(data.editorData);
@@ -630,8 +867,12 @@ export const useEditorStore = create<EditorState>()(
               }
           }
       } catch (e) {
+          if (isApiError(e) && e.status === 403) {
+            throw e;
+          }
           const message = e instanceof Error ? e.message : "Failed to load project";
           toast({ title: "Load failed", description: message, variant: "destructive" });
+          throw e;
       }
     }
   }))

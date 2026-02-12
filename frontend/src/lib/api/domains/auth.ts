@@ -2,7 +2,7 @@ import { apiClient } from "@/lib/api/client";
 import type { TokenResponse, UserMe } from "@/lib/api/types";
 
 export const authApi = {
-  register: async (data: { email: string; password: string }) => {
+  register: async (data: { email: string; password: string; full_name?: string | null }) => {
     const res = await apiClient.post<UserMe>("/auth/register", data);
     return res.data;
   },
@@ -16,4 +16,3 @@ export const authApi = {
     return res.data;
   },
 };
-
