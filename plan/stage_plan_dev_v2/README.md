@@ -13,6 +13,6 @@ Vidgit 已完成 MVP 闭环（AI 生成、编辑器、Git Graph、Discover、For
 
 ## Stages（v2）
 - [Stage 01: 导出与投稿（B 站 / 抖音）](./stage_01.md)（已落地，剩余：多 P/元信息/重试与日志）
-- [Stage 02: Galgame/VN → 多世界线番剧（截图 + 引擎脚本导入）](./stage_02.md)
+- [Stage 02: Galgame/VN → 多世界线番剧（截图 + 引擎脚本导入）](./stage_02.md)（已落地）
 - [Stage 03: Fork/Branch 协作深化（Merge、ClipSegment、归因）](./stage_03.md)
 - [Stage 04: 剧情关系图与剧情拓展线路（可视化 + 生成 + 贡献统计）](./stage_04.md)

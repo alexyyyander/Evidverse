@@ -4,9 +4,9 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Dev v2 - Stage 02: Galgame/VN → 多世界线番剧](./stage_plan_dev_v2/stage_02.md)
+**Current Stage**: [Dev v2 - Stage 03: Fork/Branch 协作深化（Merge、ClipSegment、归因）](./stage_plan_dev_v2/stage_03.md)
 **Status**: in_progress
-**Last Updated**: 2026-02-12
+**Last Updated**: 2026-02-13
 
 ## FAQ（阶段切换）
 ### Q: Stage 01 的投稿任务失败了，怎么排查？
@@ -53,7 +53,7 @@
 
 ## 🧭 Dev v2 Stage Plan
 - [ ] **Dev v2 - Stage 01**: 导出与投稿（B 站 / 抖音）
-- [ ] **Dev v2 - Stage 02**: Galgame/VN → 多世界线番剧（截图 + 引擎脚本导入）
+- [x] **Dev v2 - Stage 02**: Galgame/VN → 多世界线番剧（截图 + 引擎脚本导入）
 - [ ] **Dev v2 - Stage 03**: Fork/Branch 协作深化（Merge、ClipSegment、归因）
 - [ ] **Dev v2 - Stage 04**: 剧情关系图与剧情拓展线路（可视化 + 生成 + 贡献统计）
 

@@ -5,6 +5,8 @@
 - Fork=创建分支：POST /projects/{project_id}/fork-branch
 - 分支工作区：GET/PUT /projects/{project_id}/workspace?branch_name=...
 - 编辑器分支切换：顶部下拉选择分支，自动保存当前分支并切换后 reload
+- ClipSegment（MVP）：clip_segments 表 + /clips UUID 获取与列表；/vn/comic-to-video 可创建并回填 video_url
+- Merge Request（MVP）：可创建 MR（提议采纳 clip_ids），owner 可 merge/close；merge 时复制 ClipSegment 到目标分支
 
 ## 本阶段目标（剩余）
 - ClipSegment 成为稳定一等对象：对外 UUID、可引用/复用/合并、可用于导出投稿与贡献统计

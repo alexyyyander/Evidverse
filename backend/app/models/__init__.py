@@ -9,3 +9,4 @@ from .like import Like
 from .publish import PublishAccount, PublishJob
 from .vn import VNAsset, VNParseJob
 from .clip_segment import ClipSegment
+from .merge_request import MergeRequest
