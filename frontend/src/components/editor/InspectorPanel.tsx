@@ -3,10 +3,14 @@
 import { useMemo } from "react";
 import { useEditorStore } from "@/store/editorStore";
 import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import { useTimelineStore } from "@/store/timelineStore";
 
 export default function InspectorPanel() {
   const selectedTimelineItemId = useEditorStore((s) => s.selection.selectedTimelineItemId);
   const { data, selectBeat, selectAsset } = useEditorStore();
+  const { editorData, setEditorData } = useTimelineStore();
+  const syncTimelineFromRows = useEditorStore((s) => s.syncTimelineFromRows);
 
   const info = useMemo(() => {
     if (!selectedTimelineItemId) return null;
@@ -36,11 +40,39 @@ export default function InspectorPanel() {
       <div className="grid grid-cols-2 gap-2 text-sm">
         <div>
           <div className="text-xs text-muted-foreground">Start</div>
-          <div>{info.item.startTime.toFixed(2)}s</div>
+          <Input
+            value={String(info.item.startTime)}
+            onChange={(e) => {
+              const nextStart = Number(e.target.value);
+              if (!Number.isFinite(nextStart)) return;
+              const nextRows = editorData.map((row) => ({
+                ...row,
+                actions: row.actions.map((a) =>
+                  a.id === info.item.id ? { ...a, start: nextStart, end: nextStart + info.item.duration } : a
+                ),
+              }));
+              setEditorData(nextRows as any);
+              syncTimelineFromRows(nextRows as any);
+            }}
+          />
         </div>
         <div>
           <div className="text-xs text-muted-foreground">Duration</div>
-          <div>{info.item.duration.toFixed(2)}s</div>
+          <Input
+            value={String(info.item.duration)}
+            onChange={(e) => {
+              const nextDuration = Number(e.target.value);
+              if (!Number.isFinite(nextDuration) || nextDuration < 0) return;
+              const nextRows = editorData.map((row) => ({
+                ...row,
+                actions: row.actions.map((a) =>
+                  a.id === info.item.id ? { ...a, start: info.item.startTime, end: info.item.startTime + nextDuration } : a
+                ),
+              }));
+              setEditorData(nextRows as any);
+              syncTimelineFromRows(nextRows as any);
+            }}
+          />
         </div>
       </div>
 
@@ -74,4 +106,3 @@ export default function InspectorPanel() {
     </div>
   );
 }
-

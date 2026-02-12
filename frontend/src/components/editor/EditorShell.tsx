@@ -98,6 +98,14 @@ export default function EditorShell({ projectId }: { projectId: number }) {
   }, [data, selection.selectedTimelineItemId, selection.selectedBeatId, selection.selectedCharacterId, selectTimelineItem]);
 
   const currentClipUrl = assetsProps.selectedVideoUrl;
+  const previewLabel = useMemo(() => {
+    if (!selection.selectedTimelineItemId) return null;
+    const item = data.timelineItems[selection.selectedTimelineItemId];
+    if (!item) return null;
+    const beat = item.linkedBeatId ? data.beats[item.linkedBeatId] : null;
+    if (!beat) return null;
+    return beat.narration || `Beat ${beat.order + 1}`;
+  }, [data, selection.selectedTimelineItemId]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
@@ -128,7 +136,7 @@ export default function EditorShell({ projectId }: { projectId: number }) {
 
       <div className="flex-1 flex flex-col min-w-0 relative z-10">
         <div className="flex-1 overflow-hidden relative">
-          <PreviewPanel videoUrl={currentClipUrl} />
+          <PreviewPanel videoUrl={currentClipUrl} label={previewLabel} />
         </div>
 
         {layout.bottomPanelCollapsed ? (

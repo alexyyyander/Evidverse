@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Timeline, TimelineState } from '@xzdarcy/react-timeline-editor';
 import { useTimelineStore } from '@/store/timelineStore';
 import { useEditorStore } from '@/store/editorStore';
-import { Save, Play, Pause, Undo2, Redo2 } from 'lucide-react';
+import { Save, Play, Pause, Undo2, Redo2, Plus, Magnet } from 'lucide-react';
 
 export default function TimelineEditor() {
   const { editorData, effects, setEditorData, setCurrentTime, projectId } = useTimelineStore();
@@ -31,6 +31,7 @@ export default function TimelineEditor() {
     canUndo: state.canUndo,
     canRedo: state.canRedo,
   }));
+  const editorModel = useEditorStore((s) => s.data);
   const timelineRef = useRef<TimelineState>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -39,6 +40,21 @@ export default function TimelineEditor() {
   const [scaleWidth, setScaleWidth] = useState(160);
   const [scale, setScale] = useState(1);
   const startLeft = 20;
+  const [snapEnabled, setSnapEnabled] = useState(true);
+
+  const markers = useMemo(() => {
+    const items = Object.values(editorModel.timelineItems).sort((a, b) => a.startTime - b.startTime);
+    return items
+      .map((item) => {
+        if (!item.linkedBeatId) return null;
+        const beat = editorModel.beats[item.linkedBeatId];
+        if (!beat) return null;
+        const scene = editorModel.scenes[beat.sceneId];
+        const title = scene?.title ? `${scene.title} / Beat ${beat.order + 1}` : `Beat ${beat.order + 1}`;
+        return { id: item.id, time: item.startTime, title };
+      })
+      .filter(Boolean) as Array<{ id: string; time: number; title: string }>;
+  }, [editorModel.timelineItems, editorModel.beats, editorModel.scenes]);
 
   useEffect(() => {
     if (selection.source === 'timeline') return;
@@ -113,7 +129,7 @@ export default function TimelineEditor() {
   return (
     <div
       ref={containerRef}
-      className="w-full h-full bg-zinc-900 text-white overflow-hidden border-t border-zinc-700"
+      className="w-full h-full bg-zinc-900 text-white overflow-hidden border-t border-zinc-700 relative"
       onWheel={(e) => {
         if (!e.ctrlKey && !e.metaKey) return;
         e.preventDefault();
@@ -144,6 +160,28 @@ export default function TimelineEditor() {
               <Redo2 size={16} />
             </button>
             <span className="text-sm font-semibold">Timeline</span>
+            <button
+              onClick={() => setSnapEnabled((v) => !v)}
+              className={`p-1 rounded hover:bg-zinc-700 text-white ${snapEnabled ? "bg-zinc-700" : ""}`}
+              aria-label="Toggle snapping"
+              type="button"
+            >
+              <Magnet size={16} />
+            </button>
+            <button
+              onClick={() => {
+                beginHistoryGroup();
+                const nextRows = [...editorData, { id: String(Date.now()), actions: [] }];
+                setEditorData(nextRows as any);
+                endHistoryGroup();
+                setDirty(true);
+              }}
+              className="p-1 rounded hover:bg-zinc-700 text-white"
+              aria-label="Add track"
+              type="button"
+            >
+              <Plus size={16} />
+            </button>
          </div>
          <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400 hidden md:inline">Drag clips or use context menu to add</span>
@@ -164,6 +202,9 @@ export default function TimelineEditor() {
         scale={scale}
         scaleWidth={scaleWidth}
         startLeft={startLeft}
+        gridSnap={snapEnabled}
+        dragLine={snapEnabled}
+        enableRowDrag={true}
         onChange={(data) => {
           setEditorData(data);
           syncTimelineFromRows(data as any);
@@ -181,6 +222,28 @@ export default function TimelineEditor() {
         }}
         style={{ height: 'calc(100% - 40px)', width: '100%' }}
       />
+
+      {markers.length > 0 ? (
+        <div className="absolute bottom-2 left-2 right-2 z-20 flex gap-2 overflow-x-auto">
+          {markers.slice(0, 20).map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              className="px-2 py-1 rounded-md bg-black/50 text-xs text-white whitespace-nowrap hover:bg-black/70"
+              onClick={() => {
+                selectTimelineItem(m.id, "timeline");
+                if (timelineRef.current) {
+                  timelineRef.current.setTime(m.time);
+                  const scrollLeft = Math.max(0, (m.time / scale) * scaleWidth - 200);
+                  timelineRef.current.setScrollLeft(scrollLeft);
+                }
+              }}
+            >
+              {m.title}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
