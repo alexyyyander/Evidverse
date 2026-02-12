@@ -19,6 +19,7 @@
 
 Notes:
 - The frontend expects the API at `NEXT_PUBLIC_API_URL` (default `http://localhost:8000/api/v1`).
+- In dev, the Next.js server proxies `/api/v1/*` to `NEXT_PUBLIC_API_URL` (fallback: `http://localhost:8000/api/v1`).
 - For a full local dev stack, start infra with `docker-compose up -d`, then run backend + worker, then run `npm run dev`.
 
 ## Environment Variables
