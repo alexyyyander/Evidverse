@@ -13,3 +13,4 @@ export { filesApi } from "@/lib/api/domains/files";
 export { vnApi } from "@/lib/api/domains/vn";
 export { clipsApi } from "@/lib/api/domains/clips";
 export { mergeRequestsApi } from "@/lib/api/domains/merge_requests";
+export { cloudProjectsApi } from "@/lib/api/domains/cloud_projects";

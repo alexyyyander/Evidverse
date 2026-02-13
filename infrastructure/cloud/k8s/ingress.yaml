@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vidgit-ingress
+  namespace: vidgit
+spec:
+  rules:
+    - host: app.vidgit.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: vidgit-frontend
+                port:
+                  number: 3000
+    - host: api.vidgit.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: vidgit-backend
+                port:
+                  number: 8000
+

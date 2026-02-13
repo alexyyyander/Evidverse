@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
     POSTGRES_PORT: str = "5432"
+    DATABASE_URL: Optional[str] = None
     
     SQLALCHEMY_DATABASE_URI: Optional[Union[str, PostgresDsn]] = None
 
@@ -25,6 +26,9 @@ class Settings(BaseSettings):
     def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
         if isinstance(v, str):
             return v
+        db_url = values.get("DATABASE_URL")
+        if isinstance(db_url, str) and db_url.strip():
+            return db_url.strip()
         return PostgresDsn.build(
             scheme="postgresql+asyncpg",
             username=values.get("POSTGRES_USER"),

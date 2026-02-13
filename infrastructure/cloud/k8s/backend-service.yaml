@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vidgit-backend
+  namespace: vidgit
+spec:
+  selector:
+    app: vidgit-backend
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+

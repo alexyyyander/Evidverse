@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vidgit-frontend
+  namespace: vidgit
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: vidgit-frontend
+  template:
+    metadata:
+      labels:
+        app: vidgit-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/your-org/vidgit-frontend:cloud_version
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NEXT_PUBLIC_API_ORIGIN
+              value: "https://api.vidgit.example"
+            - name: NEXT_PUBLIC_CLOUD_API_URL
+              value: "https://api.vidgit.example/api/v1"
+
