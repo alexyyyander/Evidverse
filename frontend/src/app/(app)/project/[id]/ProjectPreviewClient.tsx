@@ -31,6 +31,7 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
   const [mrSourceBranch, setMrSourceBranch] = useState("");
   const [mrTitle, setMrTitle] = useState("");
   const [mrDescription, setMrDescription] = useState("");
+  const canLoadAuthedData = typeof token === "string" && token.length > 0 && typeof projectId === "string" && projectId.length > 0;
 
   const forkMutation = useMutation({
     mutationFn: async () => projectApi.fork(projectId as string),
@@ -51,23 +52,6 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
     toast({ title: t("project.loadFailed.title"), description: message, variant: "destructive" });
   }, [projectQuery.error, projectQuery.isError, t]);
 
-  if (projectQuery.isLoading) return <LoadingState label={t("common.loading")} />;
-
-  const project = projectQuery.data || null;
-  if (!project) {
-    return (
-      <div className="min-h-[calc(100vh-64px)] py-8">
-        <PageContainer>
-          <EmptyState title={t("project.preview.notFound")} description={t("project.preview.notPublic")} />
-        </PageContainer>
-      </div>
-    );
-  }
-
-  const viewerId = meQuery.data?.id || null;
-  const isOwner = typeof viewerId === "string" && !!project.owner?.id && project.owner.id === viewerId;
-  const canLoadAuthedData = typeof token === "string" && token.length > 0 && typeof projectId === "string" && projectId.length > 0;
-
   const branchesQuery = useQuery({
     queryKey: ["projectBranches", projectId],
     queryFn: () => projectApi.getBranches(projectId as string),
@@ -85,14 +69,12 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
     },
   });
 
-  const branches = branchesQuery.data || [];
-  const branchOptions = useMemo(
-    () =>
-      branches
-        .slice()
-        .sort((a, b) => (a.name === "main" ? -1 : b.name === "main" ? 1 : a.name.localeCompare(b.name))),
-    [branches]
-  );
+  const branchOptions = useMemo(() => {
+    const branches = branchesQuery.data || [];
+    return branches
+      .slice()
+      .sort((a, b) => (a.name === "main" ? -1 : b.name === "main" ? 1 : a.name.localeCompare(b.name)));
+  }, [branchesQuery.data]);
 
   const createMrMutation = useMutation({
     mutationFn: () =>
@@ -137,6 +119,22 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
       toast({ title: "Close failed", description: message, variant: "destructive" });
     },
   });
+
+  if (projectQuery.isLoading) return <LoadingState label={t("common.loading")} />;
+
+  const project = projectQuery.data || null;
+  if (!project) {
+    return (
+      <div className="min-h-[calc(100vh-64px)] py-8">
+        <PageContainer>
+          <EmptyState title={t("project.preview.notFound")} description={t("project.preview.notPublic")} />
+        </PageContainer>
+      </div>
+    );
+  }
+
+  const viewerId = meQuery.data?.id || null;
+  const isOwner = typeof viewerId === "string" && !!project.owner?.id && project.owner.id === viewerId;
 
   return (
     <div className="min-h-[calc(100vh-64px)] py-8">
