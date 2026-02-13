@@ -21,6 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     json_type = postgresql.JSONB(astext_type=sa.Text()) if op.get_bind().dialect.name == "postgresql" else sa.JSON()
+    now_default = sa.text("now()") if op.get_bind().dialect.name == "postgresql" else sa.text("CURRENT_TIMESTAMP")
 
     op.create_table(
         "vn_assets",
@@ -33,7 +34,7 @@ def upgrade() -> None:
         sa.Column("object_name", sa.String(), nullable=False),
         sa.Column("storage_url", sa.Text(), nullable=False),
         sa.Column("metadata", json_type, nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=now_default, nullable=True),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_vn_assets_public_id", "vn_assets", ["public_id"], unique=True)
@@ -55,7 +56,7 @@ def upgrade() -> None:
         sa.Column("result", json_type, nullable=True),
         sa.Column("error", sa.Text(), nullable=True),
         sa.Column("logs", json_type, nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=now_default, nullable=True),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_vn_parse_jobs_public_id", "vn_parse_jobs", ["public_id"], unique=True)

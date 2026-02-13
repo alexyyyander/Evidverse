@@ -20,6 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    now_default = sa.text("now()") if op.get_bind().dialect.name == "postgresql" else sa.text("CURRENT_TIMESTAMP")
     op.create_table(
         "publish_accounts",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -28,7 +29,7 @@ def upgrade() -> None:
         sa.Column("platform", sa.String(), nullable=False),
         sa.Column("label", sa.String(), nullable=True),
         sa.Column("credential_enc", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=now_default, nullable=True),
     )
     op.create_index("ix_publish_accounts_public_id", "publish_accounts", ["public_id"], unique=True)
     op.create_index("ix_publish_accounts_owner_id", "publish_accounts", ["owner_id"], unique=False)
@@ -53,7 +54,7 @@ def upgrade() -> None:
         sa.Column("status", sa.String(), nullable=False, server_default="pending"),
         sa.Column("result", json_type, nullable=True),
         sa.Column("error", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=now_default, nullable=True),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_publish_jobs_public_id", "publish_jobs", ["public_id"], unique=True)
@@ -81,4 +82,3 @@ def downgrade() -> None:
     op.drop_index("ix_publish_accounts_owner_id", table_name="publish_accounts")
     op.drop_index("ix_publish_accounts_public_id", table_name="publish_accounts")
     op.drop_table("publish_accounts")
-
