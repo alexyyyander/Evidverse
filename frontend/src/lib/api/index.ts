@@ -12,3 +12,4 @@ export { publishApi } from "@/lib/api/domains/publish";
 export { filesApi } from "@/lib/api/domains/files";
 export { vnApi } from "@/lib/api/domains/vn";
 export { clipsApi } from "@/lib/api/domains/clips";
+export { mergeRequestsApi } from "@/lib/api/domains/merge_requests";

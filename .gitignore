@@ -46,6 +46,7 @@ Thumbs.db
 
 # Vidgit
 .env
+backend/.env
 *.mp4
 *.log
 storage/

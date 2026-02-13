@@ -123,6 +123,24 @@ export type Branch = {
   parent_branch_id?: ID | null;
 };
 
+export type MergeRequestStatus = "open" | "merged" | "closed" | string;
+
+export type MergeRequest = {
+  id: ID;
+  project_id: ID;
+  source_branch_name: string;
+  target_branch_name: string;
+  title?: string | null;
+  description?: string | null;
+  clip_ids?: ID[] | null;
+  merged_clip_ids?: ID[] | null;
+  status: MergeRequestStatus;
+  merged_by?: ID | null;
+  merged_at?: ISODateTime | null;
+  created_at?: ISODateTime | null;
+  extra?: any;
+};
+
 export type Commit = {
   id: string;
   message: string;
