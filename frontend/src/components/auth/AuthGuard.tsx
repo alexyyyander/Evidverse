@@ -32,7 +32,7 @@ export default function AuthGuard({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!meQuery.isError) return;
     const status = isApiError(meQuery.error) ? meQuery.error.status : undefined;
-    if (status !== 403) return;
+    if (status !== 401 && status !== 403) return;
     clearToken();
     toast({ title: t("auth.session.invalid.title"), description: t("auth.session.invalid.desc"), variant: "destructive" });
     router.replace(loginUrl);

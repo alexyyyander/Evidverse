@@ -39,7 +39,7 @@ apiClient.interceptors.response.use(
   (res) => res,
   (err) => {
     const normalized = normalizeAxiosError(err);
-    if (normalized.status === 403) {
+    if (normalized.status === 401) {
       clearToken();
       toast({
         title: "Authentication expired",
