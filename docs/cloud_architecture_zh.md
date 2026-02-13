@@ -25,13 +25,27 @@ Vidgit 面向“视频 GitHub”的核心诉求是：
 - 后端使用本地 DB（SQLite 或本机 Postgres）
 - Discover/项目预览来自本地后端的 `/projects/feed`、`/projects/public/{id}`（仅在本地也可用）
 
-### 2) Local + Cloud（推荐给普通开源用户）
-- 本地后端仍用于登录/编辑/生成（私有数据）
-- 前端额外配置一个“云端只读 API”用于公共浏览（Discover/公共项目预览）
-  - `NEXT_PUBLIC_CLOUD_API_URL` 指向云端中心站点的 `/api/v1`
-  - 前端在 `useFeed`、`usePublicProject` 等只读查询中优先走 cloud API（不影响本地 auth）
+### 2) Cloud only（中心站点/示例站）
+- 前端设置 `NEXT_PUBLIC_APP_MODE=cloud`
+- 前端 `NEXT_PUBLIC_API_ORIGIN` 指向云端后端
+- 所有编辑与保存都直接写入云端 Postgres（没有本地来源切换）
 
-这样用户能在本地完成编辑，同时在同一个前端里浏览云端的公共项目与类目。
+### 3) Local + Cloud（推荐给开源普通用户）
+- 前端设置 `NEXT_PUBLIC_APP_MODE=local`
+- 本地后端仍用于登录/编辑/生成（私有数据）
+- 前端额外配置一个“云端读取 API”用于：
+  - 浏览云端公共内容（Discover / Public Project）
+  - 查看“我在云端的项目列表”
+  - 把云端项目一键导入到本地进行编辑
+
+配置与数据流：
+- `NEXT_PUBLIC_CLOUD_API_URL`：云端中心站点的 `/api/v1`
+- 云端登录与 token：
+  - 本地前端会维护一个独立的 cloud token（与本地 token 分离）
+  - 用于调用云端的私有接口（例如 `/projects` 获取“我在云端的项目”）
+- 导入到本地编辑：
+  - 云端导出：`GET /api/v1/projects/{project_id}/export?branch_name=main`
+  - 本地导入：`POST /api/v1/projects/import`（把导出 payload 写入本地 DB 并打开编辑器）
 
 ## 云端参考架构（推荐）
 
@@ -116,9 +130,10 @@ Vidgit 面向“视频 GitHub”的核心诉求是：
 - `BACKEND_CORS_ORIGINS`：前端域名白名单（云端必配）
 
 ### Frontend 环境变量（关键）
+- `NEXT_PUBLIC_APP_MODE`：`cloud` 或 `local`
 - `NEXT_PUBLIC_API_ORIGIN`：指向本地或云端 API origin（不带 `/api/v1`）
 - `NEXT_PUBLIC_API_URL`：也可用，但建议统一用 ORIGIN 语义
-- `NEXT_PUBLIC_CLOUD_API_URL`（可选）：云端只读 API（带 `/api/v1` 或 origin 均可）
+- `NEXT_PUBLIC_CLOUD_API_URL`（local 模式可选）：云端中心站点 API（建议带 `/api/v1`）
 
 ## 部署参考实现（Kubernetes）
 
@@ -170,4 +185,3 @@ Postgres：
 ### 阶段 3：多租户/协作（可选）
 - 团队/协作者权限
 - 项目协作 MR 审核与合并策略
-

@@ -20,8 +20,7 @@ spec:
           ports:
             - containerPort: 3000
           env:
+            - name: NEXT_PUBLIC_APP_MODE
+              value: "cloud"
             - name: NEXT_PUBLIC_API_ORIGIN
               value: "https://api.vidgit.example"
-            - name: NEXT_PUBLIC_CLOUD_API_URL
-              value: "https://api.vidgit.example/api/v1"
-

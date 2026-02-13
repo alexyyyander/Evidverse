@@ -1,4 +1,4 @@
-import type { ProjectFeedItem } from "@/lib/api/types";
+import type { ProjectExportPayload, ProjectFeedItem, ProjectSummary } from "@/lib/api/types";
 import { cloudApiClient } from "@/lib/api/cloudClient";
 
 export const cloudProjectsApi = {
@@ -7,9 +7,16 @@ export const cloudProjectsApi = {
     const res = await cloudApiClient.get<ProjectFeedItem[]>("/projects/feed", { params });
     return res.data;
   },
+  getMine: async (params?: { skip?: number; limit?: number }) => {
+    const res = await cloudApiClient.get<ProjectSummary[]>("/projects", { params });
+    return res.data;
+  },
   getPublic: async (projectId: string) => {
     const res = await cloudApiClient.get<ProjectFeedItem>(`/projects/public/${projectId}`);
     return res.data;
   },
+  exportProject: async (projectId: string, params?: { branch_name?: string }) => {
+    const res = await cloudApiClient.get<ProjectExportPayload>(`/projects/${projectId}/export`, { params });
+    return res.data;
+  },
 };
-

@@ -7,12 +7,13 @@ from sqlalchemy import select
 from app.api import deps
 from app.models.user import User
 from app.models.branch import Branch
-from app.schemas.project import Project, ProjectCreate, ProjectUpdate, ProjectFork, ProjectFeedItem, ProjectDeleteConfirm
+from app.schemas.project import Project, ProjectCreate, ProjectUpdate, ProjectFork, ProjectFeedItem, ProjectDeleteConfirm, ProjectExportPayload
 from app.schemas.branch import Branch as BranchSchema
 from app.services.project_service import ProjectService
 from app.services.branch_service import branch_service
 from app.services.feed_service import FeedService
 from pydantic import BaseModel
+from app.models.commit import Commit
 
 router = APIRouter()
 
@@ -129,6 +130,79 @@ async def delete_project(
         raise HTTPException(status_code=400, detail="Nickname confirmation does not match")
     
     return await ProjectService.delete_project(db, project)
+
+
+@router.get("/{project_id}/export", response_model=ProjectExportPayload)
+async def export_project(
+    project_id: str,
+    branch_name: str = "main",
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Optional[User] = Depends(deps.get_current_user_optional),
+) -> Any:
+    project = await ProjectService.resolve_project(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    user_id = current_user.internal_id if current_user else None
+    can_read = project.is_public or (user_id is not None and project.owner_internal_id == user_id)
+    if not can_read:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    res = await db.execute(select(Branch).where(Branch.project_id == project.internal_id, Branch.name == branch_name))
+    branch = res.scalar_one_or_none()
+    if not branch:
+        raise HTTPException(status_code=404, detail="Branch not found")
+
+    head_commit = None
+    if branch.head_commit_id:
+        commit = await db.get(Commit, branch.head_commit_id)
+        if commit:
+            head_commit = {"message": commit.message, "video_assets": commit.video_assets}
+
+    return {
+        "source": {"cloud_project_id": project.public_id, "cloud_branch_name": branch.name, "cloud_origin": None},
+        "project": {"name": project.name, "description": project.description, "tags": project.tags},
+        "branch": {"name": branch.name, "description": branch.description, "tags": branch.tags, "workspace_data": branch.workspace_data or {}},
+        "head_commit": head_commit,
+    }
+
+
+@router.post("/import", response_model=Project)
+async def import_project(
+    payload: ProjectExportPayload,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    project_in = ProjectCreate(
+        name=payload.project.name,
+        description=payload.project.description,
+        tags=payload.project.tags,
+        is_public=False,
+    )
+    project = await ProjectService.create_project(db, project_in, current_user.internal_id)
+
+    res = await db.execute(select(Branch).where(Branch.project_id == project.internal_id, Branch.name == "main"))
+    main_branch = res.scalar_one_or_none()
+    if main_branch:
+        main_branch.description = payload.branch.description
+        main_branch.tags = payload.branch.tags
+        main_branch.workspace_data = payload.branch.workspace_data or {}
+        db.add(main_branch)
+        await db.commit()
+
+    if payload.head_commit and isinstance(payload.head_commit.video_assets, dict):
+        from app.services.commit_service import CommitService
+
+        await CommitService.create_commit(
+            db=db,
+            project_id=project.internal_id,
+            author_id=current_user.internal_id,
+            message=payload.head_commit.message or f"Imported from cloud {payload.source.cloud_project_id}",
+            video_assets=payload.head_commit.video_assets or {},
+            branch_name="main",
+            parent_hash=None,
+        )
+
+    return project
 
 @router.get("/{project_id}/branches", response_model=List[BranchSchema])
 async def read_project_branches(

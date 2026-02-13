@@ -1,5 +1,6 @@
 import axios from "axios";
 import { normalizeAxiosError } from "@/lib/api/errors";
+import { getCloudToken } from "@/lib/api/cloudAuth";
 
 function normalizeApiBase(input?: string) {
   const raw = String(input || "").trim();
@@ -21,10 +22,17 @@ export const cloudApiClient = axios.create({
   },
 });
 
+cloudApiClient.interceptors.request.use((config) => {
+  const token = getCloudToken();
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 cloudApiClient.interceptors.response.use(
   (res) => res,
   (err) => {
     throw normalizeAxiosError(err);
   }
 );
-

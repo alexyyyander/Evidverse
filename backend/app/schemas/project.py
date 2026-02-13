@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Any, Dict
 from datetime import datetime
 from pydantic import BaseModel
 from app.schemas.user import UserPublic
@@ -40,3 +40,34 @@ class Project(ProjectBase):
 
 class ProjectFeedItem(Project):
     owner: Optional[UserPublic] = None
+
+
+class ProjectExportSource(BaseModel):
+    cloud_project_id: str
+    cloud_branch_name: str
+    cloud_origin: Optional[str] = None
+
+
+class ProjectExportProject(BaseModel):
+    name: str
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
+class ProjectExportBranch(BaseModel):
+    name: str
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+    workspace_data: Optional[Dict[str, Any]] = None
+
+
+class ProjectExportHeadCommit(BaseModel):
+    message: Optional[str] = None
+    video_assets: Optional[Dict[str, Any]] = None
+
+
+class ProjectExportPayload(BaseModel):
+    source: ProjectExportSource
+    project: ProjectExportProject
+    branch: ProjectExportBranch
+    head_commit: Optional[ProjectExportHeadCommit] = None

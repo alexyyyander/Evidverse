@@ -1,5 +1,5 @@
 import { get, post, put } from "@/lib/api/client";
-import type { Branch, ProjectDetail, ProjectFeedItem, ProjectGraph, ProjectSummary, TimelineWorkspace } from "@/lib/api/types";
+import type { Branch, ProjectDetail, ProjectExportPayload, ProjectFeedItem, ProjectGraph, ProjectSummary, TimelineWorkspace } from "@/lib/api/types";
 
 export const projectApi = {
   create: (data: { name: string; description?: string; tags?: string[]; is_public?: boolean }) =>
@@ -25,4 +25,5 @@ export const projectApi = {
   },
   updateWorkspace: (projectId: string, workspace: TimelineWorkspace, params?: { branch_name?: string }) =>
     put<TimelineWorkspace>(`/projects/${projectId}/workspace`, workspace as any, params),
+  importFromCloud: (payload: ProjectExportPayload) => post<ProjectSummary>("/projects/import", payload as any),
 };
