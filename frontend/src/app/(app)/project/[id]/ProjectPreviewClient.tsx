@@ -88,11 +88,11 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
       await queryClient.invalidateQueries({ queryKey: ["mergeRequests", projectId] });
       setMrTitle("");
       setMrDescription("");
-      toast({ title: "Merge request created", description: mr.id, variant: "success" });
+      toast({ title: t("mr.toast.created.title"), description: mr.id, variant: "success" });
     },
     onError: (e) => {
-      const message = e instanceof Error ? e.message : "Failed to create merge request";
-      toast({ title: "Create MR failed", description: message, variant: "destructive" });
+      const message = e instanceof Error ? e.message : t("mr.toast.createFailed.desc");
+      toast({ title: t("mr.toast.createFailed.title"), description: message, variant: "destructive" });
     },
   });
 
@@ -100,11 +100,11 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
     mutationFn: (mrId: string) => mergeRequestsApi.merge(mrId),
     onSuccess: async (mr) => {
       await queryClient.invalidateQueries({ queryKey: ["mergeRequests", projectId] });
-      toast({ title: "Merged", description: mr.id, variant: "success" });
+      toast({ title: t("mr.toast.merged.title"), description: mr.id, variant: "success" });
     },
     onError: (e) => {
-      const message = e instanceof Error ? e.message : "Failed to merge";
-      toast({ title: "Merge failed", description: message, variant: "destructive" });
+      const message = e instanceof Error ? e.message : t("mr.toast.mergeFailed.desc");
+      toast({ title: t("mr.toast.mergeFailed.title"), description: message, variant: "destructive" });
     },
   });
 
@@ -112,11 +112,11 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
     mutationFn: (mrId: string) => mergeRequestsApi.close(mrId),
     onSuccess: async (mr) => {
       await queryClient.invalidateQueries({ queryKey: ["mergeRequests", projectId] });
-      toast({ title: "Closed", description: mr.id, variant: "success" });
+      toast({ title: t("mr.toast.closed.title"), description: mr.id, variant: "success" });
     },
     onError: (e) => {
-      const message = e instanceof Error ? e.message : "Failed to close";
-      toast({ title: "Close failed", description: message, variant: "destructive" });
+      const message = e instanceof Error ? e.message : t("mr.toast.closeFailed.desc");
+      toast({ title: t("mr.toast.closeFailed.title"), description: message, variant: "destructive" });
     },
   });
 
@@ -212,13 +212,13 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardContent className="pt-6 space-y-4">
-                <div className="text-sm font-medium text-foreground">Branches</div>
+                <div className="text-sm font-medium text-foreground">{t("mr.branches.title")}</div>
                 {branchesQuery.isLoading ? (
                   <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
                 ) : branchesQuery.isError ? (
-                  <div className="text-sm text-destructive">Failed to load branches</div>
+                  <div className="text-sm text-destructive">{t("mr.branches.loadFailed")}</div>
                 ) : branchOptions.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No branches</div>
+                  <div className="text-sm text-muted-foreground">{t("mr.branches.empty")}</div>
                 ) : (
                   <div className="space-y-2">
                     {branchOptions.map((b) => (
@@ -233,10 +233,10 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
                             variant="secondary"
                             onClick={() => {
                               setMrSourceBranch(b.name);
-                              setMrTitle(`Merge ${b.name} → main`);
+                              setMrTitle(`${t("mr.titlePrefix")} ${b.name} → main`);
                             }}
                           >
-                            Create MR
+                            {t("mr.create")}
                           </Button>
                         ) : null}
                       </div>
@@ -248,26 +248,31 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
 
             <Card>
               <CardContent className="pt-6 space-y-4">
-                <div className="text-sm font-medium text-foreground">Merge Requests</div>
+                <div className="text-sm font-medium text-foreground">{t("mr.title")}</div>
 
                 <div className="space-y-2 rounded-md border border-border p-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <div className="text-xs text-muted-foreground">Source branch</div>
-                      <Input value={mrSourceBranch} onChange={(e) => setMrSourceBranch(e.target.value)} placeholder="e.g. fork/you" />
+                      <div className="text-xs text-muted-foreground">{t("mr.form.source")}</div>
+                      <Input value={mrSourceBranch} onChange={(e) => setMrSourceBranch(e.target.value)} placeholder={t("mr.form.sourcePlaceholder")} />
                     </div>
                     <div className="space-y-1">
-                      <div className="text-xs text-muted-foreground">Target branch</div>
+                      <div className="text-xs text-muted-foreground">{t("mr.form.target")}</div>
                       <Input value="main" disabled />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <div className="text-xs text-muted-foreground">Title</div>
-                    <Input value={mrTitle} onChange={(e) => setMrTitle(e.target.value)} placeholder="Optional title" />
+                    <div className="text-xs text-muted-foreground">{t("mr.form.title")}</div>
+                    <Input value={mrTitle} onChange={(e) => setMrTitle(e.target.value)} placeholder={t("mr.form.titlePlaceholder")} />
                   </div>
                   <div className="space-y-1">
-                    <div className="text-xs text-muted-foreground">Description</div>
-                    <Textarea value={mrDescription} onChange={(e) => setMrDescription(e.target.value)} placeholder="Optional description" className="min-h-[84px]" />
+                    <div className="text-xs text-muted-foreground">{t("mr.form.desc")}</div>
+                    <Textarea
+                      value={mrDescription}
+                      onChange={(e) => setMrDescription(e.target.value)}
+                      placeholder={t("mr.form.descPlaceholder")}
+                      className="min-h-[84px]"
+                    />
                   </div>
                   <div className="flex items-center justify-end gap-2">
                     <Button
@@ -275,7 +280,7 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
                       disabled={!mrSourceBranch.trim()}
                       onClick={() => createMrMutation.mutate()}
                     >
-                      Create MR
+                      {t("mr.create")}
                     </Button>
                   </div>
                 </div>
@@ -283,9 +288,9 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
                 {mrsQuery.isLoading ? (
                   <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
                 ) : mrsQuery.isError ? (
-                  <div className="text-sm text-destructive">Failed to load merge requests</div>
+                  <div className="text-sm text-destructive">{t("mr.loadFailed")}</div>
                 ) : (mrsQuery.data || []).length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No merge requests</div>
+                  <div className="text-sm text-muted-foreground">{t("mr.empty")}</div>
                 ) : (
                   <div className="space-y-2">
                     {(mrsQuery.data || []).map((mr) => {
@@ -305,16 +310,18 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
                             {canAct ? (
                               <div className="flex items-center gap-2">
                                 <Button size="sm" variant="secondary" loading={mergeMrMutation.isPending} onClick={() => mergeMrMutation.mutate(mr.id)}>
-                                  Merge
+                                  {t("mr.merge")}
                                 </Button>
                                 <Button size="sm" variant="ghost" loading={closeMrMutation.isPending} onClick={() => closeMrMutation.mutate(mr.id)}>
-                                  Close
+                                  {t("mr.close")}
                                 </Button>
                               </div>
                             ) : null}
                           </div>
                           {Array.isArray(mr.merged_clip_ids) && mr.merged_clip_ids.length > 0 ? (
-                            <div className="text-xs text-muted-foreground">merged clips: {mr.merged_clip_ids.length}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {t("mr.mergedClips")}: {mr.merged_clip_ids.length}
+                            </div>
                           ) : null}
                         </div>
                       );

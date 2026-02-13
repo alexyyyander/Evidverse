@@ -12,6 +12,7 @@ import { cn } from "@/lib/cn";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEditorStore } from "@/store/editorStore";
 import type { IdeaParameters } from "@/lib/editor/types";
+import { useI18n } from "@/lib/i18nContext";
 
 function guessAssetType(fileName: string): VNAssetType {
   const name = (fileName || "").toLowerCase();
@@ -86,6 +87,7 @@ function eventsToStoryboard(events: any[]): StoryboardScene[] {
 
 export default function VNImportPanel({ projectId, branchName }: { projectId: string; branchName: string }) {
   const qc = useQueryClient();
+  const { t } = useI18n();
   const [engine, setEngine] = useState<"RENPY" | "KIRIKIRI">("RENPY");
   const [scriptText, setScriptText] = useState("");
   const [assetType, setAssetType] = useState<VNAssetType>("VN_SCRIPT");
@@ -119,7 +121,7 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
       vnApi.createParseJob({ project_id: projectId, branch_name: branchName, engine, ...payload }),
     onSuccess: (job) => {
       setJobId(job.id);
-      toast({ title: "Parse job created", description: job.id, variant: "success" });
+      toast({ title: t("vn.toast.jobCreated.title"), description: job.id, variant: "success" });
     },
   });
 
@@ -188,7 +190,7 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
       });
       setSelectedAssetIds((prev) => (prev.includes(created.id) ? prev : [created.id, ...prev]));
       await qc.invalidateQueries({ queryKey: ["vnAssets", projectId, branchName] });
-      toast({ title: "Asset created", description: created.id, variant: "success" });
+      toast({ title: t("vn.toast.assetCreated.title"), description: created.id, variant: "success" });
     },
   });
 
@@ -238,13 +240,13 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
   const importFromEvents = useCallback((events: any[], mode: "append" | "replace") => {
     const storyboard = eventsToStoryboard(events || []);
     if (storyboard.length === 0) {
-      toast({ title: "Nothing to import", description: "No usable events found.", variant: "destructive" });
+      toast({ title: t("vn.toast.nothing.title"), description: t("vn.toast.nothing.desc"), variant: "destructive" });
       return;
     }
-    applyStoryboard({ topic: `VN Import (${engine})`, ideaParams: currentIdeaParams, storyboard, mode });
+    applyStoryboard({ topic: `${t("vn.title")} (${engine})`, ideaParams: currentIdeaParams, storyboard, mode });
     updateLayout({ activeLeftTab: "script" });
-    toast({ title: "Imported", description: `${storyboard.length} beats`, variant: "success" });
-  }, [applyStoryboard, currentIdeaParams, engine, updateLayout]);
+    toast({ title: t("vn.toast.imported.title"), description: `${storyboard.length} ${t("vn.beats")}`, variant: "success" });
+  }, [applyStoryboard, currentIdeaParams, engine, t, updateLayout]);
 
   useEffect(() => {
     if (!pendingImport) return;
@@ -270,19 +272,19 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
 
   const attachScreenshotToBeat = (asset: VNAsset) => {
     if (!selectedBeatId) {
-      toast({ title: "No beat selected", description: "Select a beat in Script first.", variant: "destructive" });
+      toast({ title: t("vn.toast.noBeat.title"), description: t("vn.toast.noBeat.desc"), variant: "destructive" });
       return;
     }
     const url = String(asset.storage_url || "").trim();
     if (!url) {
-      toast({ title: "Invalid asset", description: "storage_url is missing.", variant: "destructive" });
+      toast({ title: t("vn.toast.invalidAsset.title"), description: t("vn.toast.invalidAsset.desc"), variant: "destructive" });
       return;
     }
     beginHistoryGroup();
     addBeatImageAsset({ beatId: selectedBeatId as any, url, source: "upload" });
     endHistoryGroup();
     updateLayout({ activeLeftTab: "script" });
-    toast({ title: "Screenshot attached", description: asset.metadata?.filename || asset.object_name, variant: "success" });
+    toast({ title: t("vn.toast.screenshotAttached.title"), description: asset.metadata?.filename || asset.object_name, variant: "success" });
   };
 
   const comicMutation = useMutation({
@@ -299,17 +301,17 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
     onSuccess: async (clip) => {
       setClipId(clip.id);
       await qc.invalidateQueries({ queryKey: ["clips", projectId, branchName] });
-      toast({ title: "Clip created", description: clip.id, variant: "success" });
+      toast({ title: t("vn.toast.clipCreated.title"), description: clip.id, variant: "success" });
     },
   });
 
   return (
     <div className="h-full p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-medium text-foreground">VN Import</div>
+        <div className="text-sm font-medium text-foreground">{t("vn.title")}</div>
         {jobId ? (
           <Button variant="ghost" size="sm" onClick={() => setJobId(null)}>
-            Clear Job
+            {t("vn.clearJob")}
           </Button>
         ) : null}
       </div>
@@ -317,16 +319,16 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
       <Tabs defaultValue="script">
         <TabsList className="w-full">
           <TabsTrigger value="script" className="flex-1">
-            Script
+            {t("vn.tab.script")}
           </TabsTrigger>
           <TabsTrigger value="assets" className="flex-1">
-            Assets
+            {t("vn.tab.assets")}
           </TabsTrigger>
           <TabsTrigger value="clips" className="flex-1">
-            Clips
+            {t("vn.tab.clips")}
           </TabsTrigger>
           <TabsTrigger value="job" className="flex-1">
-            Job
+            {t("vn.tab.job")}
           </TabsTrigger>
         </TabsList>
 
@@ -338,7 +340,7 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
               variant={engine === "RENPY" ? "secondary" : "ghost"}
               onClick={() => setEngine("RENPY")}
             >
-              Ren&apos;Py
+              {t("vn.engine.renpy")}
             </Button>
             <Button
               type="button"
@@ -346,43 +348,45 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
               variant={engine === "KIRIKIRI" ? "secondary" : "ghost"}
               onClick={() => setEngine("KIRIKIRI")}
             >
-              KiriKiri
+              {t("vn.engine.kirikiri")}
             </Button>
           </div>
 
           <Textarea
             value={scriptText}
             onChange={(e) => setScriptText(e.target.value)}
-            placeholder='Paste script text here. Example:\nlabel start:\n  e "Hello"\n'
+            placeholder={t("vn.script.placeholder")}
             className="min-h-[200px] font-mono text-xs"
           />
 
           <div className="flex items-center gap-2">
             <Button loading={previewMutation.isPending} disabled={!canPreview} onClick={() => previewMutation.mutate()}>
-              Preview
+              {t("vn.preview")}
             </Button>
             <Button variant="secondary" loading={parseJobMutation.isPending} disabled={!canCreateJob} onClick={() => createJobAndImport("append")}>
-              Create + Append
+              {t("vn.createAppend")}
             </Button>
             <Button variant="destructive" loading={parseJobMutation.isPending} disabled={!canCreateJob} onClick={() => createJobAndImport("replace")}>
-              Create + Replace
+              {t("vn.createReplace")}
             </Button>
           </div>
 
           {previewMutation.isError ? (
-            <div className="text-xs text-destructive">{(previewMutation.error as any)?.message || "Preview failed"}</div>
+            <div className="text-xs text-destructive">{(previewMutation.error as any)?.message || t("vn.previewFailed")}</div>
           ) : null}
 
           {previewSummary ? (
             <div className="rounded-md border border-border bg-background p-3 space-y-2">
-              <div className="text-xs text-muted-foreground">events: {previewSummary.count}</div>
+              <div className="text-xs text-muted-foreground">
+                {t("vn.events")}: {previewSummary.count}
+              </div>
               <pre className="text-xs overflow-x-auto">{JSON.stringify(previewSummary.head, null, 2)}</pre>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="secondary" onClick={() => importFromEvents(previewEvents || [], "append")}>
-                  Append to Script
+                  {t("vn.appendToScript")}
                 </Button>
                 <Button size="sm" variant="destructive" onClick={() => importFromEvents(previewEvents || [], "replace")}>
-                  Replace Script
+                  {t("vn.replaceScript")}
                 </Button>
               </div>
             </div>
@@ -391,8 +395,10 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
 
         <TabsContent value="assets" className="space-y-3">
           <div className="text-xs text-muted-foreground">
-            Selected beat:{" "}
-            <span className="text-foreground">{selectedBeat ? selectedBeat.narration || `Beat ${selectedBeat.order + 1}` : "none"}</span>
+            {t("vn.selectedBeat")}:{" "}
+            <span className="text-foreground">
+              {selectedBeat ? selectedBeat.narration || `${t("vn.beat")} ${selectedBeat.order + 1}` : t("vn.none")}
+            </span>
           </div>
           <div className="grid grid-cols-1 gap-2">
             <div className="flex items-center gap-2">
@@ -402,7 +408,7 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
                 variant={assetType === "VN_SCRIPT" ? "secondary" : "ghost"}
                 onClick={() => setAssetType("VN_SCRIPT")}
               >
-                Script
+                {t("vn.assetType.script")}
               </Button>
               <Button
                 type="button"
@@ -410,10 +416,10 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
                 variant={assetType === "SCREENSHOT" ? "secondary" : "ghost"}
                 onClick={() => setAssetType("SCREENSHOT")}
               >
-                Screenshot
+                {t("vn.assetType.screenshot")}
               </Button>
               <Button type="button" size="sm" variant={assetType === "OTHER" ? "secondary" : "ghost"} onClick={() => setAssetType("OTHER")}>
-                Other
+                {t("vn.assetType.other")}
               </Button>
             </div>
 
@@ -426,15 +432,23 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
                 e.target.value = "";
               }}
             />
-            {uploadingName ? <div className="text-xs text-muted-foreground">Uploading: {uploadingName}</div> : null}
+            {uploadingName ? (
+              <div className="text-xs text-muted-foreground">
+                {t("vn.uploading")}: {uploadingName}
+              </div>
+            ) : null}
             {uploadMutation.isError ? (
-              <div className="text-xs text-destructive">{(uploadMutation.error as any)?.message || "Upload failed"}</div>
+              <div className="text-xs text-destructive">{(uploadMutation.error as any)?.message || t("vn.uploadFailed")}</div>
             ) : null}
           </div>
 
           <div className="space-y-2">
             <div className="text-xs text-muted-foreground">
-              {assetsQuery.isLoading ? "Loading assets..." : assetsQuery.isError ? "Failed to load assets" : `${assets.length} assets`}
+              {assetsQuery.isLoading
+                ? t("vn.assets.loading")
+                : assetsQuery.isError
+                  ? t("vn.assets.loadFailed")
+                  : `${assets.length} ${t("vn.assets.count")}`}
             </div>
             <div className="space-y-2">
               {assets.map((a) => {
@@ -458,10 +472,10 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
                       {a.type === "SCREENSHOT" ? (
                         <div className="flex items-center gap-1">
                           <Button size="sm" variant="ghost" onClick={() => attachScreenshotToBeat(a)}>
-                            Attach
+                            {t("vn.attach")}
                           </Button>
                           <Button size="sm" variant="secondary" loading={comicMutation.isPending} onClick={() => comicMutation.mutate(a)}>
-                            Video
+                            {t("vn.video")}
                           </Button>
                         </div>
                       ) : null}
@@ -475,7 +489,11 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
 
         <TabsContent value="clips" className="space-y-3">
           <div className="text-xs text-muted-foreground">
-            {clipsListQuery.isLoading ? "Loading clips..." : clipsListQuery.isError ? "Failed to load clips" : `${(clipsListQuery.data || []).length} clips`}
+            {clipsListQuery.isLoading
+              ? t("vn.clips.loading")
+              : clipsListQuery.isError
+                ? t("vn.clips.loadFailed")
+                : `${(clipsListQuery.data || []).length} ${t("vn.clips.count")}`}
           </div>
           <div className="space-y-2">
             {(clipsListQuery.data || []).map((c) => {
@@ -505,7 +523,9 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
           {clipId ? (
             <div className="rounded-md border border-border bg-background p-3 space-y-2">
               <div className="text-xs text-muted-foreground font-mono">{clipId}</div>
-              <div className="text-sm">status: {clipQuery.data?.status || "unknown"}</div>
+              <div className="text-sm">
+                {t("vn.status")}: {clipQuery.data?.status || t("common.unknown")}
+              </div>
               {clipQuery.data?.assets_ref?.video_url ? (
                 <div className="text-xs break-all">{clipQuery.data.assets_ref.video_url}</div>
               ) : null}
@@ -515,23 +535,28 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
         </TabsContent>
 
         <TabsContent value="job" className="space-y-3">
-          {!jobId ? <div className="text-sm text-muted-foreground">Create a parse job to see status and logs.</div> : null}
+          {!jobId ? <div className="text-sm text-muted-foreground">{t("vn.job.empty")}</div> : null}
 
           {jobId ? (
             <div className="space-y-2">
               <div className="text-xs text-muted-foreground font-mono">{jobId}</div>
               <div className="text-sm">
-                status:{" "}
+                {t("vn.status")}:{" "}
                 <span className={cn((parseJobQuery.data?.status || "").toLowerCase().includes("fail") ? "text-destructive" : "text-foreground")}>
-                  {parseJobQuery.data?.status || "unknown"}
+                  {parseJobQuery.data?.status || t("common.unknown")}
                 </span>
-                {typeof parseJobQuery.data?.attempts === "number" ? <span className="text-muted-foreground"> · attempts: {parseJobQuery.data.attempts}</span> : null}
+                {typeof parseJobQuery.data?.attempts === "number" ? (
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {t("vn.attempts")}: {parseJobQuery.data.attempts}
+                  </span>
+                ) : null}
               </div>
 
               {parseJobQuery.data?.error ? <div className="text-xs text-destructive">{parseJobQuery.data.error}</div> : null}
 
               <div className="rounded-md border border-border bg-background p-3 space-y-2">
-                <div className="text-xs text-muted-foreground">logs</div>
+                <div className="text-xs text-muted-foreground">{t("vn.logs")}</div>
                 <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
                   {JSON.stringify((logsQuery.data as any)?.items || [], null, 2)}
                 </pre>
@@ -539,15 +564,15 @@ export default function VNImportPanel({ projectId, branchName }: { projectId: st
 
               {parseJobQuery.data?.result ? (
                 <div className="rounded-md border border-border bg-background p-3 space-y-2">
-                  <div className="text-xs text-muted-foreground">result</div>
+                  <div className="text-xs text-muted-foreground">{t("vn.result")}</div>
                   <pre className="text-xs overflow-x-auto whitespace-pre-wrap">{JSON.stringify(parseJobQuery.data.result, null, 2)}</pre>
                   {Array.isArray(jobEvents) && jobEvents.length > 0 ? (
                     <div className="flex items-center gap-2">
                       <Button size="sm" variant="secondary" onClick={() => importFromEvents(jobEvents, "append")}>
-                        Append to Script
+                        {t("vn.appendToScript")}
                       </Button>
                       <Button size="sm" variant="destructive" onClick={() => importFromEvents(jobEvents, "replace")}>
-                        Replace Script
+                        {t("vn.replaceScript")}
                       </Button>
                     </div>
                   ) : null}

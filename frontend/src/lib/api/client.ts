@@ -3,8 +3,19 @@ import { clearToken, getToken } from "@/lib/api/auth";
 import { normalizeAxiosError } from "@/lib/api/errors";
 import { toast } from "@/components/ui/toast";
 
+function normalizeApiBase(input?: string) {
+  const raw = String(input || "").trim();
+  if (!raw) return "/api/v1";
+  if (raw.startsWith("/")) return raw;
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    const trimmed = raw.replace(/\/+$/, "");
+    return trimmed.endsWith("/api/v1") ? trimmed : `${trimmed}/api/v1`;
+  }
+  return "/api/v1";
+}
+
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "/api/v1",
+  baseURL: normalizeApiBase(process.env.NEXT_PUBLIC_API_URL),
   headers: {
     "Content-Type": "application/json",
   },
@@ -28,7 +39,7 @@ apiClient.interceptors.response.use(
   (res) => res,
   (err) => {
     const normalized = normalizeAxiosError(err);
-    if (normalized.status === 401) {
+    if (normalized.status === 403) {
       clearToken();
       toast({
         title: "Authentication expired",

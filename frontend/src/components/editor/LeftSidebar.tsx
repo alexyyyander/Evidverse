@@ -10,6 +10,7 @@ import AssetsGrid from "@/components/editor/AssetsGrid";
 import VNImportPanel from "@/components/editor/VNImportPanel";
 import dynamic from "next/dynamic";
 import Spinner from "@/components/ui/spinner";
+import { useI18n } from "@/lib/i18nContext";
 
 const GitGraph = dynamic(() => import("@/components/GitGraph"), {
   ssr: false,
@@ -29,13 +30,14 @@ interface LeftSidebarProps {
 export default function LeftSidebar({ projectId, branchName, assetsProps }: LeftSidebarProps) {
   const activeTab = useEditorStore((state) => state.layout.activeLeftTab);
   const updateLayout = useEditorStore((state) => state.updateLayout);
+  const { t } = useI18n();
 
   const tabs = [
-    { id: "script", icon: FileText, label: "Script" },
-    { id: "vn", icon: BookOpen, label: "VN" },
-    { id: "characters", icon: Users, label: "Characters" },
-    { id: "assets", icon: ImageIcon, label: "Assets" },
-    { id: "history", icon: GitBranch, label: "History" },
+    { id: "script", icon: FileText, label: t("editor.left.script") },
+    { id: "vn", icon: BookOpen, label: t("editor.left.vn") },
+    { id: "characters", icon: Users, label: t("editor.left.characters") },
+    { id: "assets", icon: ImageIcon, label: t("editor.left.assets") },
+    { id: "history", icon: GitBranch, label: t("editor.left.history") },
   ] as const;
 
   return (
@@ -62,7 +64,7 @@ export default function LeftSidebar({ projectId, branchName, assetsProps }: Left
         {activeTab === "characters" ? <CharactersPanel /> : null}
         {activeTab === "assets" && (
           <div className="h-full p-4">
-            {assetsProps ? <AssetsGrid {...assetsProps} /> : <div className="text-sm text-muted-foreground">No clips yet.</div>}
+            {assetsProps ? <AssetsGrid {...assetsProps} /> : <div className="text-sm text-muted-foreground">{t("editor.left.assets.empty")}</div>}
           </div>
         )}
         {activeTab === "history" && (

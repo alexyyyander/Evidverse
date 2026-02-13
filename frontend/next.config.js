@@ -8,11 +8,17 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    const raw = process.env.NEXT_PUBLIC_API_ORIGIN || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const normalizedOrigin = (() => {
+      const v = String(raw || "").trim().replace(/\/+$/, "");
+      if (v.endsWith("/api/v1")) return v.slice(0, -"/api/v1".length);
+      if (v.endsWith("/api/v1/")) return v.slice(0, -"/api/v1/".length);
+      return v;
+    })();
     return [
       {
         source: "/api/v1/:path*",
-        destination: `${apiBase}/:path*`,
+        destination: `${normalizedOrigin}/api/v1/:path*`,
       },
     ];
   },
