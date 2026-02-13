@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vidgit-backend
+  namespace: vidgit
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: vidgit-backend
+  template:
+    metadata:
+      labels:
+        app: vidgit-backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/your-org/vidgit-backend:cloud_version
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: vidgit-config
+            - secretRef:
+                name: vidgit-secret
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+

@@ -19,6 +19,18 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table("projects") as batch_op:
+            batch_op.add_column(sa.Column("parent_project_id", sa.Integer(), nullable=True))
+            batch_op.create_foreign_key(
+                "fk_projects_parent_project_id",
+                "projects",
+                ["parent_project_id"],
+                ["id"],
+                ondelete="SET NULL",
+            )
+            batch_op.create_index(op.f("ix_projects_parent_project_id"), ["parent_project_id"], unique=False)
+        return
     op.add_column("projects", sa.Column("parent_project_id", sa.Integer(), nullable=True))
     op.create_foreign_key(
         "fk_projects_parent_project_id",
@@ -32,7 +44,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table("projects") as batch_op:
+            batch_op.drop_index(op.f("ix_projects_parent_project_id"))
+            batch_op.drop_constraint("fk_projects_parent_project_id", type_="foreignkey")
+            batch_op.drop_column("parent_project_id")
+        return
     op.drop_index(op.f("ix_projects_parent_project_id"), table_name="projects")
     op.drop_constraint("fk_projects_parent_project_id", "projects", type_="foreignkey")
     op.drop_column("projects", "parent_project_id")
-

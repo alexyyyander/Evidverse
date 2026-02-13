@@ -114,6 +114,29 @@ export type ProjectFeedItem = ProjectSummary & {
   is_liked: boolean;
 };
 
+export type ProjectExportPayload = {
+  source: {
+    cloud_project_id: ID;
+    cloud_branch_name: string;
+    cloud_origin?: string | null;
+  };
+  project: {
+    name: string;
+    description?: string | null;
+    tags?: string[] | null;
+  };
+  branch: {
+    name: string;
+    description?: string | null;
+    tags?: string[] | null;
+    workspace_data?: any;
+  };
+  head_commit?: {
+    message?: string | null;
+    video_assets?: any;
+  } | null;
+};
+
 export type Branch = {
   id: ID;
   name: string;

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { projectApi } from "@/lib/api";
+import { cloudAuthApi, cloudProjectsApi, projectApi } from "@/lib/api";
 import PageContainer from "@/components/layout/PageContainer";
 import SectionHeader from "@/components/layout/SectionHeader";
 import Button from "@/components/ui/button";
@@ -21,12 +21,24 @@ import IconButton from "@/components/ui/icon-button";
 import { Copy, Pencil, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18nContext";
 import { useMe } from "@/lib/queries/useMe";
+import { getAppMode } from "@/lib/appMode";
+import { clearCloudToken, setCloudToken } from "@/lib/api/cloudAuth";
+import { useCloudAuthToken } from "@/lib/auth/useCloudAuthToken";
+import { useQuery } from "@tanstack/react-query";
+import type { ProjectSummary } from "@/lib/api/types";
 
 export default function ProjectsClient() {
   const router = useRouter();
   const { t } = useI18n();
+  const appMode = getAppMode();
+  const cloudEnabled = appMode === "local" && cloudProjectsApi.enabled();
+  const cloudToken = useCloudAuthToken();
+  const [source, setSource] = useState<"local" | "cloud">("local");
   const [showImportModal, setShowImportModal] = useState(false);
   const [importSourceId, setImportSourceId] = useState("");
+  const [showCloudLogin, setShowCloudLogin] = useState(false);
+  const [cloudEmail, setCloudEmail] = useState("");
+  const [cloudPassword, setCloudPassword] = useState("");
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameProjectId, setRenameProjectId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -39,6 +51,15 @@ export default function ProjectsClient() {
   const { data, isLoading, isError, error } = useProjects();
   const meQuery = useMe();
   const expectedNickname = (meQuery.data?.full_name || meQuery.data?.email?.split("@")[0] || "").trim();
+
+  const cloudProjectsQuery = useQuery({
+    queryKey: ["cloudProjects"],
+    queryFn: () => cloudProjectsApi.getMine({ limit: 100 }),
+    enabled: cloudEnabled && typeof cloudToken === "string" && cloudToken.length > 0,
+  });
+
+  const localProjects = useMemo(() => data || [], [data]);
+  const cloudProjects = useMemo(() => (cloudProjectsQuery.data || []) as ProjectSummary[], [cloudProjectsQuery.data]);
 
   const forkMutation = useMutation({
     mutationFn: async (projectId: string) => projectApi.fork(projectId),
@@ -117,6 +138,37 @@ export default function ProjectsClient() {
     setShowImportModal(false);
   };
 
+  const cloudLoginMutation = useMutation({
+    mutationFn: async () => cloudAuthApi.login({ email: cloudEmail.trim(), password: cloudPassword }),
+    onSuccess: (res) => {
+      setCloudToken(res.access_token);
+      setShowCloudLogin(false);
+      setCloudPassword("");
+      queryClient.invalidateQueries({ queryKey: ["cloudProjects"] });
+      toast({ title: "Cloud connected", description: "", variant: "success" });
+    },
+    onError: (e) => {
+      const message = e instanceof Error ? e.message : "Cloud login failed";
+      toast({ title: "Cloud login failed", description: message, variant: "destructive" });
+    },
+  });
+
+  const cloudImportMutation = useMutation({
+    mutationFn: async (projectId: string) => {
+      const payload = await cloudProjectsApi.exportProject(projectId, { branch_name: "main" });
+      return projectApi.importFromCloud(payload);
+    },
+    onSuccess: (newProject) => {
+      toast({ title: "Imported", description: "Opening editor...", variant: "success" });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects() });
+      router.push(`/editor/${newProject.id}`);
+    },
+    onError: (e) => {
+      const message = e instanceof Error ? e.message : "Failed to import from cloud";
+      toast({ title: "Import failed", description: message, variant: "destructive" });
+    },
+  });
+
   const openRename = (projectId: string, currentName: string) => {
     setRenameProjectId(projectId);
     setRenameValue(currentName);
@@ -164,14 +216,52 @@ export default function ProjectsClient() {
             subtitle={t("projects.subtitle")}
             right={
               <>
-                <Button variant="secondary" onClick={() => setShowImportModal(true)}>
-                  {t("projects.import")}
-                </Button>
-                <LinkButton href="/editor/new">{t("projects.create")}</LinkButton>
+                {appMode === "local" ? (
+                  <>
+                    <Button variant="secondary" onClick={() => setShowImportModal(true)}>
+                      {t("projects.import")}
+                    </Button>
+                    <LinkButton href="/editor/new">{t("projects.create")}</LinkButton>
+                  </>
+                ) : (
+                  <LinkButton href="/editor/new">{t("projects.create")}</LinkButton>
+                )}
               </>
             }
           />
         </div>
+
+        {appMode === "local" && cloudEnabled ? (
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Button variant={source === "local" ? "primary" : "secondary"} onClick={() => setSource("local")}>
+                Local
+              </Button>
+              <Button variant={source === "cloud" ? "primary" : "secondary"} onClick={() => setSource("cloud")}>
+                Cloud
+              </Button>
+            </div>
+            {source === "cloud" ? (
+              <div className="flex items-center gap-2">
+                {cloudToken ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      clearCloudToken();
+                      queryClient.removeQueries({ queryKey: ["cloudProjects"] });
+                    }}
+                  >
+                    Disconnect
+                  </Button>
+                ) : (
+                  <Button variant="secondary" onClick={() => setShowCloudLogin(true)}>
+                    Cloud Login
+                  </Button>
+                )}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {isError ? (
           <div className="mb-6">
@@ -210,6 +300,39 @@ export default function ProjectsClient() {
               value={importSourceId}
               onChange={(e) => setImportSourceId(e.target.value)}
             />
+          </div>
+        </Dialog>
+
+        <Dialog
+          open={showCloudLogin}
+          onOpenChange={(open) => {
+            setShowCloudLogin(open);
+            if (!open) {
+              setCloudPassword("");
+            }
+          }}
+          title="Cloud Login"
+          description="Connect your cloud account to view and import your cloud projects."
+          footer={
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="ghost" onClick={() => setShowCloudLogin(false)}>
+                {t("common.cancel")}
+              </Button>
+              <Button loading={cloudLoginMutation.isPending} onClick={() => cloudLoginMutation.mutate()}>
+                Login
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-foreground">{t("login.email")}</div>
+              <Input value={cloudEmail} onChange={(e) => setCloudEmail(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-foreground">{t("login.password")}</div>
+              <Input type="password" value={cloudPassword} onChange={(e) => setCloudPassword(e.target.value)} />
+            </div>
           </div>
         </Dialog>
 
@@ -287,11 +410,59 @@ export default function ProjectsClient() {
         </Dialog>
 
         <div className="flex-1">
-          {isLoading ? (
+          {appMode === "local" && cloudEnabled && source === "cloud" ? (
+            cloudToken ? (
+              cloudProjectsQuery.isLoading ? (
+                <div className="min-h-[calc(100vh-64px-8rem)] flex items-center justify-center text-muted-foreground">
+                  {t("common.loading")}
+                </div>
+              ) : cloudProjectsQuery.isError ? (
+                <div className="mb-6">
+                  <ErrorState
+                    title="Cloud projects unavailable"
+                    description={cloudProjectsQuery.error instanceof Error ? cloudProjectsQuery.error.message : "Failed to load cloud projects"}
+                  />
+                </div>
+              ) : cloudProjects.length === 0 ? (
+                <div className="min-h-[calc(100vh-64px-8rem)] flex items-center justify-center">
+                  <EmptyState title="No cloud projects" description="Create a project in the cloud first." />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {cloudProjects.map((project) => (
+                    <Card key={project.id} className="transition-colors hover:bg-card/70">
+                      <CardContent>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <h5 className="mb-2 text-xl font-semibold tracking-tight text-card-foreground truncate">{project.name}</h5>
+                            <div className="text-xs text-muted-foreground truncate">{project.id}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              loading={cloudImportMutation.isPending}
+                              onClick={() => cloudImportMutation.mutate(project.id)}
+                            >
+                              在本地编辑
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )
+            ) : (
+              <div className="min-h-[calc(100vh-64px-8rem)] flex items-center justify-center">
+                <EmptyState title="Cloud not connected" description="Login to cloud to view your cloud projects." action={<Button onClick={() => setShowCloudLogin(true)}>Cloud Login</Button>} />
+              </div>
+            )
+          ) : isLoading ? (
             <div className="min-h-[calc(100vh-64px-8rem)] flex items-center justify-center text-muted-foreground">
               {t("projects.loading")}
             </div>
-          ) : (data || []).length === 0 ? (
+          ) : localProjects.length === 0 ? (
             <div className="min-h-[calc(100vh-64px-8rem)] flex items-center justify-center">
               <EmptyState
                 title={t("projects.empty.title")}
@@ -301,7 +472,7 @@ export default function ProjectsClient() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {(data || []).map((project) => (
+              {localProjects.map((project) => (
                 <Link key={project.id} href={`/editor/${project.id}`} className="block">
                   <Card className="transition-colors hover:bg-card/70">
                     <CardContent>
