@@ -30,7 +30,7 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="border-b border-border bg-card/60 backdrop-blur">
+    <nav className="sticky top-0 z-50 border-b border-border bg-card/60 backdrop-blur">
       <PageContainer>
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">

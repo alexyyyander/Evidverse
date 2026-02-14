@@ -91,15 +91,15 @@ export default function ProjectsClient() {
     mutationFn: async (payload: { projectId: string; name: string }) =>
       projectApi.update(payload.projectId, { name: payload.name }),
     onSuccess: () => {
-      toast({ title: "Renamed", description: "Project name updated.", variant: "success" });
+      toast({ title: t("toast.renamed"), description: t("toast.renamed.desc"), variant: "success" });
       queryClient.invalidateQueries({ queryKey: queryKeys.projects() });
       setShowRenameModal(false);
       setRenameProjectId(null);
       setRenameValue("");
     },
     onError: (e) => {
-      const message = e instanceof Error ? e.message : "Failed to rename project";
-      toast({ title: "Rename failed", description: message, variant: "destructive" });
+      const message = e instanceof Error ? e.message : t("common.error");
+      toast({ title: t("toast.renameFailed"), description: message, variant: "destructive" });
     },
   });
 
@@ -126,7 +126,7 @@ export default function ProjectsClient() {
   const copyText = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast({ title: "Copied", description: `${label} copied to clipboard.`, variant: "success" });
+      toast({ title: t("toast.copied"), description: `${label} ${t("toast.copied.desc")}`, variant: "success" });
     } catch {
       window.prompt(`Copy ${label}:`, text);
     }
@@ -145,11 +145,11 @@ export default function ProjectsClient() {
       setShowCloudLogin(false);
       setCloudPassword("");
       queryClient.invalidateQueries({ queryKey: ["cloudProjects"] });
-      toast({ title: "Cloud connected", description: "", variant: "success" });
+      toast({ title: t("toast.cloudConnected"), description: "", variant: "success" });
     },
     onError: (e) => {
-      const message = e instanceof Error ? e.message : "Cloud login failed";
-      toast({ title: "Cloud login failed", description: message, variant: "destructive" });
+      const message = e instanceof Error ? e.message : t("common.error");
+      toast({ title: t("toast.cloudLoginFailed"), description: message, variant: "destructive" });
     },
   });
 
@@ -159,13 +159,13 @@ export default function ProjectsClient() {
       return projectApi.importFromCloud(payload);
     },
     onSuccess: (newProject) => {
-      toast({ title: "Imported", description: "Opening editor...", variant: "success" });
+      toast({ title: t("toast.imported"), description: t("toast.forked.desc"), variant: "success" });
       queryClient.invalidateQueries({ queryKey: queryKeys.projects() });
       router.push(`/editor/${newProject.id}`);
     },
     onError: (e) => {
-      const message = e instanceof Error ? e.message : "Failed to import from cloud";
-      toast({ title: "Import failed", description: message, variant: "destructive" });
+      const message = e instanceof Error ? e.message : t("common.error");
+      toast({ title: t("toast.importFailed"), description: message, variant: "destructive" });
     },
   });
 
@@ -235,10 +235,10 @@ export default function ProjectsClient() {
           <div className="mb-6 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Button variant={source === "local" ? "primary" : "secondary"} onClick={() => setSource("local")}>
-                Local
+                {t("projects.local")}
               </Button>
               <Button variant={source === "cloud" ? "primary" : "secondary"} onClick={() => setSource("cloud")}>
-                Cloud
+                {t("projects.cloud")}
               </Button>
             </div>
             {source === "cloud" ? (
@@ -251,11 +251,11 @@ export default function ProjectsClient() {
                       queryClient.removeQueries({ queryKey: ["cloudProjects"] });
                     }}
                   >
-                    Disconnect
+                    {t("projects.disconnect")}
                   </Button>
                 ) : (
                   <Button variant="secondary" onClick={() => setShowCloudLogin(true)}>
-                    Cloud Login
+                    {t("projects.cloudLogin")}
                   </Button>
                 )}
               </div>
@@ -266,8 +266,8 @@ export default function ProjectsClient() {
         {isError ? (
           <div className="mb-6">
             <ErrorState
-              title="Projects unavailable"
-              description={error instanceof Error ? error.message : "Failed to load projects"}
+              title={t("projects.loadFailed")}
+              description={error instanceof Error ? error.message : t("common.error")}
             />
           </div>
         ) : null}
@@ -311,15 +311,15 @@ export default function ProjectsClient() {
               setCloudPassword("");
             }
           }}
-          title="Cloud Login"
-          description="Connect your cloud account to view and import your cloud projects."
+          title={t("projects.cloudLogin")}
+          description={t("projects.loginToView")}
           footer={
             <div className="flex items-center justify-end gap-2">
               <Button variant="ghost" onClick={() => setShowCloudLogin(false)}>
                 {t("common.cancel")}
               </Button>
               <Button loading={cloudLoginMutation.isPending} onClick={() => cloudLoginMutation.mutate()}>
-                Login
+                {t("auth.login")}
               </Button>
             </div>
           }
@@ -419,13 +419,13 @@ export default function ProjectsClient() {
               ) : cloudProjectsQuery.isError ? (
                 <div className="mb-6">
                   <ErrorState
-                    title="Cloud projects unavailable"
-                    description={cloudProjectsQuery.error instanceof Error ? cloudProjectsQuery.error.message : "Failed to load cloud projects"}
+                    title={t("projects.cloudUnavailable")}
+                    description={cloudProjectsQuery.error instanceof Error ? cloudProjectsQuery.error.message : t("common.error")}
                   />
                 </div>
               ) : cloudProjects.length === 0 ? (
                 <div className="min-h-[calc(100vh-64px-8rem)] flex items-center justify-center">
-                  <EmptyState title="No cloud projects" description="Create a project in the cloud first." />
+                  <EmptyState title={t("projects.noCloudProjects")} description={t("projects.createCloudFirst")} />
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -434,8 +434,8 @@ export default function ProjectsClient() {
                       <CardContent>
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
-                            <h5 className="mb-2 text-xl font-semibold tracking-tight text-card-foreground truncate">{project.name}</h5>
-                            <div className="text-xs text-muted-foreground truncate">{project.id}</div>
+                            <h5 className="mb-2 text-xl font-semibold tracking-tight text-card-foreground truncate" title={project.name}>{project.name}</h5>
+                            <div className="text-xs text-muted-foreground truncate" title={project.id}>#{project.id.slice(0, 8)}</div>
                           </div>
                           <div className="flex items-center gap-2">
                             <Button
@@ -444,7 +444,7 @@ export default function ProjectsClient() {
                               loading={cloudImportMutation.isPending}
                               onClick={() => cloudImportMutation.mutate(project.id)}
                             >
-                              在本地编辑
+                              {t("projects.editLocal")}
                             </Button>
                           </div>
                         </div>
@@ -455,7 +455,7 @@ export default function ProjectsClient() {
               )
             ) : (
               <div className="min-h-[calc(100vh-64px-8rem)] flex items-center justify-center">
-                <EmptyState title="Cloud not connected" description="Login to cloud to view your cloud projects." action={<Button onClick={() => setShowCloudLogin(true)}>Cloud Login</Button>} />
+                <EmptyState title={t("projects.cloudNotConnected")} description={t("projects.loginToView")} action={<Button onClick={() => setShowCloudLogin(true)}>{t("projects.cloudLogin")}</Button>} />
               </div>
             )
           ) : isLoading ? (
@@ -473,11 +473,11 @@ export default function ProjectsClient() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {localProjects.map((project) => (
-                <Link key={project.id} href={`/editor/${project.id}`} className="block">
+                <Link key={project.id} href={`/project/${project.id}`} className="block">
                   <Card className="transition-colors hover:bg-card/70">
                     <CardContent>
                       <div className="flex items-start justify-between gap-3">
-                        <h5 className="mb-2 text-xl font-semibold tracking-tight text-card-foreground truncate">
+                        <h5 className="mb-2 text-xl font-semibold tracking-tight text-card-foreground truncate" title={project.name}>
                           {project.name}
                         </h5>
                         <div className="flex items-center gap-2">
@@ -518,12 +518,12 @@ export default function ProjectsClient() {
                           </IconButton>
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {project.description || "No description provided."}
+                      <p className="text-sm text-muted-foreground line-clamp-2" title={project.description || ""}>
+                        {project.description || t("projects.desc.none")}
                       </p>
                       <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
                         <div className="flex items-center gap-2">
-                          <span>#{project.id}</span>
+                          <span title={project.id}>#{project.id.slice(0, 8)}</span>
                           <IconButton
                             aria-label="Copy project ID"
                             title="Copy ID"
@@ -540,7 +540,7 @@ export default function ProjectsClient() {
                       </div>
                       {project.parent_project_id ? (
                         <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>Parent #{project.parent_project_id}</span>
+                          <span title={project.parent_project_id}>Parent #{project.parent_project_id.slice(0, 8)}</span>
                           <IconButton
                             aria-label="Copy parent project ID"
                             title="Copy Parent ID"

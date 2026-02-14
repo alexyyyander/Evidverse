@@ -16,10 +16,12 @@ You have to use git commit after each stage test is passed.
 7. **Auto Unit Test**: Auto fully test the code before submit and consider totally to avoid bugs. Use pytest for backend and Playwright (E2E) for frontend (unit test framework can be added later if needed). Do not skip any test. Try all test with auto bash script in `backend/tests/` and `frontend/tests/`.
 
 ## 🎯 当前工作目标 (Updated)
-- **已达成（阶段性）**：20 个 Stage 的 MVP 功能已完成（后端、AI 工作流、CLI、社区页、部署与 CI/CD 等）。
-- **当前目标**：对前端进行“美化 + 重构”，让 UI 更有设计感、组件更可复用、API/状态更清晰、测试与工程规范更健壮。
-- **（已达成）前端重构计划**：见 `plan/stage_plan_frontend/`（未来 10 个前端重构 Stage 的路线图）。
-- **（开发中）Dev v2 开发计划**：见 `plan/stage_plan_dev_v2/`（导出投稿 + 协作分支 + 多世界线）
+- **已达成（阶段性）**：
+  - MVP 功能（后端、AI 工作流、CLI、部署）。
+  - **Frontend Refactor**: i18n 国际化支持、首页/Navbar 布局修复、**Project Detail Page** (详情页/GitGraph/分支管理)。
+- **当前目标**：继续推进 Frontend Optimization，完善 MR 交互、编辑器体验优化。
+- **（已达成）前端重构计划**：见 `plan/stage_plan_frontend/`。
+- **（开发中）Dev v2 开发计划**：见 `plan/stage_plan_dev_v2/`。
 
 ## 🛠️ Common Commands
 - **Infra (dev)**: `docker-compose up -d`

@@ -5,8 +5,10 @@ import { useEditorStore } from "@/store/editorStore";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { useTimelineStore } from "@/store/timelineStore";
+import { useI18n } from "@/lib/i18nContext";
 
 export default function InspectorPanel() {
+  const { t } = useI18n();
   const selectedTimelineItemId = useEditorStore((s) => s.selection.selectedTimelineItemId);
   const { data, selectBeat, selectAsset } = useEditorStore();
   const { editorData, setEditorData } = useTimelineStore();
@@ -23,23 +25,23 @@ export default function InspectorPanel() {
   }, [selectedTimelineItemId, data]);
 
   if (!selectedTimelineItemId) {
-    return <div className="text-muted-foreground">选择一个片段查看详情</div>;
+    return <div className="text-muted-foreground">{t("inspector.select")}</div>;
   }
 
   if (!info) {
-    return <div className="text-muted-foreground">未找到该片段</div>;
+    return <div className="text-muted-foreground">{t("inspector.notFound")}</div>;
   }
 
   return (
     <div className="space-y-3">
       <div>
-        <div className="text-sm font-semibold">Timeline Item</div>
+        <div className="text-sm font-semibold">{t("inspector.item")}</div>
         <div className="mt-1 text-xs text-muted-foreground break-all">{info.item.id}</div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-sm">
         <div>
-          <div className="text-xs text-muted-foreground">Start</div>
+          <div className="text-xs text-muted-foreground">{t("inspector.start")}</div>
           <Input
             value={String(info.item.startTime)}
             onChange={(e) => {
@@ -57,7 +59,7 @@ export default function InspectorPanel() {
           />
         </div>
         <div>
-          <div className="text-xs text-muted-foreground">Duration</div>
+          <div className="text-xs text-muted-foreground">{t("inspector.duration")}</div>
           <Input
             value={String(info.item.duration)}
             onChange={(e) => {
@@ -78,12 +80,12 @@ export default function InspectorPanel() {
 
       {info.beat ? (
         <div>
-          <div className="text-sm font-semibold">Beat</div>
+          <div className="text-sm font-semibold">{t("inspector.beat")}</div>
           <div className="mt-1 text-xs text-muted-foreground break-all">{info.beat.id}</div>
           <div className="mt-2 text-sm whitespace-pre-wrap">{info.beat.narration || ""}</div>
           <div className="mt-2 flex gap-2">
             <Button size="sm" variant="secondary" onClick={() => selectBeat(info.beat!.id, "inspector")}>
-              定位到 Beat
+              {t("inspector.locateBeat")}
             </Button>
           </div>
         </div>
@@ -91,14 +93,14 @@ export default function InspectorPanel() {
 
       {info.asset ? (
         <div>
-          <div className="text-sm font-semibold">Asset</div>
+          <div className="text-sm font-semibold">{t("inspector.asset")}</div>
           <div className="mt-1 text-xs text-muted-foreground">{info.asset.type}</div>
           <a href={info.asset.url} target="_blank" className="mt-1 block text-xs text-primary underline break-all">
-            打开资源
+            {t("inspector.openAsset")}
           </a>
           <div className="mt-2 flex gap-2">
             <Button size="sm" variant="secondary" onClick={() => selectAsset(info.asset!.id, "inspector")}>
-              选中资源
+              {t("inspector.selectAsset")}
             </Button>
           </div>
         </div>

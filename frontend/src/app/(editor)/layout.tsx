@@ -1,11 +1,8 @@
-import AuthGuard from "@/components/auth/AuthGuard";
-
 export default function EditorLayout({ children }: { children: React.ReactNode }) {
+  // AuthGuard removed to allow public access or custom redirect
   return (
-    <AuthGuard>
-      <main id="main-content" className="flex-1">
-        {children}
-      </main>
-    </AuthGuard>
+    <main id="main-content" className="flex-1">
+      {children}
+    </main>
   );
 }

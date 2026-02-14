@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18nContext";
 
 export type EditorClip = {
   id: string;
@@ -18,8 +19,9 @@ export default function AssetsGrid({
   selectedVideoUrl: string | null;
   onSelect: (videoUrl: string) => void;
 }) {
+  const { t } = useI18n();
   if (clips.length === 0) {
-    return <div className="text-sm text-muted-foreground">No clips yet. Generate a video to see assets here.</div>;
+    return <div className="text-sm text-muted-foreground">{t("assets.empty")}</div>;
   }
 
   return (

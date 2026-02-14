@@ -34,10 +34,17 @@ export default function EditorShell({ projectId }: { projectId: string }) {
         await loadProject(projectId, { branchName });
       } catch (e) {
         if (cancelled) return;
-        if (isApiError(e) && e.status === 403) {
-          toast({ title: t("editor.notEditable.title"), description: t("editor.notEditable.desc"), variant: "destructive" });
-          router.replace(`/project/${projectId}`);
-          return;
+        if (isApiError(e)) {
+          console.log('[EditorShell] Caught error:', e.status);
+          if (e.status === 401 || e.status === 403) {
+            toast({
+              title: t("editor.notEditable.title"),
+              description: t("editor.notEditable.desc"),
+              variant: "destructive",
+            });
+            router.replace(`/project/${projectId}`);
+            return;
+          }
         }
       }
     })();

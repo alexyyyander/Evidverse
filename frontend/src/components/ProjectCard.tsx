@@ -24,12 +24,12 @@ export default function ProjectCard({ project: initialProject, viewerId }: Proje
   const [project, setProject] = useState(initialProject);
   const queryClient = useQueryClient();
   const isOwner = typeof viewerId === "string" && !!project.owner?.id && project.owner.id === viewerId;
-  const primaryHref = isOwner ? `/editor/${project.id}` : `/project/${project.id}`;
+  const primaryHref = `/project/${project.id}`;
 
   const copyText = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast({ title: "Copied", description: `${label} copied to clipboard.`, variant: "success" });
+      toast({ title: t("toast.copied"), description: `${label} ${t("toast.copied.desc")}`, variant: "success" });
     } catch {
       window.prompt(`Copy ${label}:`, text);
     }
@@ -51,7 +51,7 @@ export default function ProjectCard({ project: initialProject, viewerId }: Proje
     },
     onError: (_e, _vars, ctx) => {
       if (ctx?.previousProject) setProject(ctx.previousProject);
-      toast({ title: "Like failed", description: "Please try again.", variant: "destructive" });
+      toast({ title: t("toast.likeFailed"), description: t("toast.tryAgain"), variant: "destructive" });
     },
     onSuccess: (isLikedNow) => {
       setProject((prev) => ({ ...prev, is_liked: isLikedNow }));
@@ -65,13 +65,13 @@ export default function ProjectCard({ project: initialProject, viewerId }: Proje
   const forkMutation = useMutation({
     mutationFn: async () => projectApi.forkBranch(project.id),
     onSuccess: (newBranch) => {
-      toast({ title: "Forked", description: "Opening editor...", variant: "success" });
+      toast({ title: t("toast.forked"), description: t("toast.forked.desc"), variant: "success" });
       queryClient.invalidateQueries({ queryKey: queryKeys.projects() });
       const branch = encodeURIComponent(newBranch.name);
       router.push(`/editor/${project.id}?branch=${branch}`);
     },
     onError: () => {
-      toast({ title: "Fork failed", description: "Check permissions and try again.", variant: "destructive" });
+      toast({ title: t("toast.forkFailed"), description: t("toast.tryAgain"), variant: "destructive" });
     },
   });
 
@@ -101,13 +101,13 @@ export default function ProjectCard({ project: initialProject, viewerId }: Proje
 
       <div className="p-4">
         <div className="flex justify-between items-start mb-2">
-          <Link href={primaryHref} className="hover:text-primary transition-colors">
+          <Link href={primaryHref} className="hover:text-primary transition-colors min-w-0 flex-1" title={project.name}>
             <h3 className="font-semibold text-lg text-card-foreground truncate">{project.name}</h3>
           </Link>
         </div>
 
-        <p className="text-sm text-muted-foreground mb-4 h-10 overflow-hidden line-clamp-2">
-          {project.description || "No description provided."}
+        <p className="text-sm text-muted-foreground mb-4 h-10 overflow-hidden line-clamp-2" title={project.description || ""}>
+          {project.description || t("projects.desc.none")}
         </p>
 
         {Array.isArray(project.tags) && project.tags.length > 0 ? (
@@ -123,10 +123,12 @@ export default function ProjectCard({ project: initialProject, viewerId }: Proje
           </div>
         ) : null}
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-3">
-          <div className="flex items-center space-x-2">
-            <UserIcon size={14} />
-            <span>{project.owner?.full_name || project.owner?.email?.split("@")[0] || t("common.unknown")}</span>
+        <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-3 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <UserIcon size={14} className="shrink-0" />
+            <span className="truncate" title={project.owner?.full_name || project.owner?.email || t("common.unknown")}>
+              {project.owner?.full_name || project.owner?.email?.split("@")[0] || t("common.unknown")}
+            </span>
             {project.parent_project_id ? (
               <button
                 onClick={(e) => {
@@ -134,29 +136,29 @@ export default function ProjectCard({ project: initialProject, viewerId }: Proje
                   e.stopPropagation();
                   copyText(String(project.parent_project_id), "Parent Project ID");
                 }}
-                className="inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors hover:text-foreground"
+                className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 transition-colors hover:text-foreground shrink-0"
                 aria-label="Copy parent project ID"
-                title="Copy Parent ID"
+                title={`Copy Parent ID: ${project.parent_project_id}`}
               >
-                <span>Parent #{project.parent_project_id}</span>
-                <Copy size={14} />
+                <GitFork size={12} className="rotate-180" />
+                <span>#{String(project.parent_project_id).slice(0, 6)}</span>
               </button>
             ) : null}
           </div>
 
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 copyText(String(project.id), "Project ID");
               }}
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors hover:text-foreground"
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors hover:text-foreground max-w-[100px]"
               aria-label="Copy project ID"
-              title="Copy ID"
+              title={`Copy ID: ${project.id}`}
             >
-              <span>#{project.id}</span>
-              <Copy size={14} />
+              <span className="truncate">#{String(project.id).slice(0, 8)}</span>
+              <Copy size={12} className="shrink-0" />
             </button>
             <button
               onClick={handleLike}

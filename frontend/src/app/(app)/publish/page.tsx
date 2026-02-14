@@ -38,11 +38,11 @@ export default function PublishPage() {
   const validateAccountMutation = useMutation({
     mutationFn: () => publishApi.validateAccount(accountId.trim()),
     onSuccess: () => {
-      toast({ title: "OK", description: "Account validated.", variant: "success" });
+      toast({ title: "OK", description: t("publish.toast.validated"), variant: "success" });
       accountsQuery.refetch();
     },
     onError: (e) => {
-      const msg = e instanceof Error ? e.message : "Failed to validate account";
+      const msg = e instanceof Error ? e.message : t("publish.toast.validateFailed");
       toast({ title: t("common.error"), description: msg, variant: "destructive" });
     },
   });
@@ -50,11 +50,11 @@ export default function PublishPage() {
   const disableAccountMutation = useMutation({
     mutationFn: () => publishApi.disableAccount(accountId.trim()),
     onSuccess: () => {
-      toast({ title: "OK", description: "Account disabled.", variant: "success" });
+      toast({ title: "OK", description: t("publish.toast.disabled"), variant: "success" });
       accountsQuery.refetch();
     },
     onError: (e) => {
-      const msg = e instanceof Error ? e.message : "Failed to disable account";
+      const msg = e instanceof Error ? e.message : t("publish.toast.disableFailed");
       toast({ title: t("common.error"), description: msg, variant: "destructive" });
     },
   });
@@ -67,14 +67,14 @@ export default function PublishPage() {
         credential_json: credentialJson,
       }),
     onSuccess: () => {
-      toast({ title: "OK", description: "Account saved.", variant: "success" });
+      toast({ title: "OK", description: t("publish.toast.saved"), variant: "success" });
       accountsQuery.refetch();
       setShowAccountModal(false);
       setLabel("");
       setCredentialJson("");
     },
     onError: (e) => {
-      const msg = e instanceof Error ? e.message : "Failed to save account";
+      const msg = e instanceof Error ? e.message : t("publish.toast.saveFailed");
       toast({ title: t("common.error"), description: msg, variant: "destructive" });
     },
   });
@@ -103,11 +103,11 @@ export default function PublishPage() {
         multi_part: multiPart,
       }),
     onSuccess: (job) => {
-      toast({ title: "Queued", description: `Job ${job.id}`, variant: "success" });
+      toast({ title: t("workflow.toast.queued.title"), description: `Job ${job.id}`, variant: "success" });
       setLatestJobId(job.id);
     },
     onError: (e) => {
-      const msg = e instanceof Error ? e.message : "Failed to create job";
+      const msg = e instanceof Error ? e.message : t("publish.toast.createJobFailed");
       toast({ title: t("common.error"), description: msg, variant: "destructive" });
     },
   });
@@ -123,11 +123,11 @@ export default function PublishPage() {
   const retryJobMutation = useMutation({
     mutationFn: () => publishApi.retryJob(latestJobId as string),
     onSuccess: (job) => {
-      toast({ title: "Retried", description: `Job ${job.id}`, variant: "success" });
+      toast({ title: t("common.retry"), description: `Job ${job.id}`, variant: "success" });
       setLatestJobId(job.id);
     },
     onError: (e) => {
-      const msg = e instanceof Error ? e.message : "Failed to retry job";
+      const msg = e instanceof Error ? e.message : t("publish.toast.retryFailed");
       toast({ title: t("common.error"), description: msg, variant: "destructive" });
     },
   });
@@ -143,11 +143,11 @@ export default function PublishPage() {
       <PageContainer>
         <div className="mb-8">
           <SectionHeader
-            title="Publish"
-            subtitle="Upload/export to platforms (Stage 01 MVP)"
+            title={t("publish.title")}
+            subtitle={t("publish.subtitle")}
             right={
               <Button variant="secondary" onClick={() => setShowAccountModal(true)}>
-                Add Account
+                {t("publish.addAccount")}
               </Button>
             }
           />
@@ -163,8 +163,8 @@ export default function PublishPage() {
               setPlatform("bilibili");
             }
           }}
-          title="Add Publish Account"
-          description="Paste credential JSON (stored encrypted on server)."
+          title={t("publish.addAccountTitle")}
+          description={t("publish.addAccountDesc")}
           footer={
             <div className="flex items-center justify-end gap-2">
               <Button variant="ghost" onClick={() => setShowAccountModal(false)}>
@@ -178,7 +178,7 @@ export default function PublishPage() {
         >
           <div className="space-y-3">
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">Platform</div>
+              <div className="text-sm font-medium text-foreground">{t("publish.platform")}</div>
               <div className="flex items-center gap-2">
                 <Button
                   variant={platform === "bilibili" ? "primary" : "secondary"}
@@ -197,11 +197,11 @@ export default function PublishPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">Label</div>
+              <div className="text-sm font-medium text-foreground">{t("publish.label")}</div>
               <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. main" />
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">Credential JSON</div>
+              <div className="text-sm font-medium text-foreground">{t("publish.credential")}</div>
               <Input
                 value={credentialJson}
                 onChange={(e) => setCredentialJson(e.target.value)}
@@ -212,7 +212,7 @@ export default function PublishPage() {
         </Dialog>
 
         <div className="rounded-xl border border-border bg-card p-6">
-          <div className="text-lg font-semibold text-foreground mb-4">Create Publish Job</div>
+          <div className="text-lg font-semibold text-foreground mb-4">{t("publish.createJob")}</div>
           {accountOptions.length > 0 ? (
             <div className="mb-4 flex flex-wrap items-center gap-2">
               {accountOptions.map((a) => (
@@ -224,35 +224,35 @@ export default function PublishPage() {
           ) : null}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">Account</div>
+              <div className="text-sm font-medium text-foreground">{t("publish.account")}</div>
               <Input
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
-                placeholder={accountOptions[0]?.id ? `e.g. ${accountOptions[0].id}` : "Create an account first"}
+                placeholder={accountOptions[0]?.id ? `e.g. ${accountOptions[0].id}` : t("publish.placeholder.createAccountFirst")}
               />
               {selectedAccount?.last_error ? (
                 <div className="text-xs text-destructive">{selectedAccount.last_error}</div>
               ) : selectedAccount?.status ? (
-                <div className="text-xs text-muted-foreground">status: {selectedAccount.status}</div>
+                <div className="text-xs text-muted-foreground">{t("vn.status")}: {selectedAccount.status}</div>
               ) : null}
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">Video URL</div>
+              <div className="text-sm font-medium text-foreground">{t("publish.videoUrl")}</div>
               <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="file:///... or http(s)://..." />
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">Mode</div>
+              <div className="text-sm font-medium text-foreground">{t("publish.mode")}</div>
               <div className="flex items-center gap-2">
                 <Button variant={!multiPart ? "primary" : "secondary"} size="sm" onClick={() => setMultiPart(false)}>
-                  Single
+                  {t("publish.mode.single")}
                 </Button>
                 <Button variant={multiPart ? "primary" : "secondary"} size="sm" onClick={() => setMultiPart(true)}>
-                  Multi-P
+                  {t("publish.mode.multi")}
                 </Button>
               </div>
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">bilibili TID (optional)</div>
+              <div className="text-sm font-medium text-foreground">{t("publish.bilibiliTid")}</div>
               <Input
                 value={bilibiliTid}
                 onChange={(e) => setBilibiliTid(e.target.value)}
@@ -261,27 +261,27 @@ export default function PublishPage() {
               />
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">Project ID (optional)</div>
-              <Input value={projectId} onChange={(e) => setProjectId(e.target.value)} placeholder="If set, video URL can be omitted" />
+              <div className="text-sm font-medium text-foreground">{t("publish.projectId")}</div>
+              <Input value={projectId} onChange={(e) => setProjectId(e.target.value)} placeholder={t("publish.projectIdHint")} />
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">Branch (optional)</div>
+              <div className="text-sm font-medium text-foreground">{t("publish.branch")}</div>
               <Input value={branchName} onChange={(e) => setBranchName(e.target.value)} placeholder="main" />
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">Title</div>
+              <div className="text-sm font-medium text-foreground">{t("publish.titleField")}</div>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Optional" />
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">Description</div>
+              <div className="text-sm font-medium text-foreground">{t("publish.descField")}</div>
               <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">Cover URL (optional)</div>
+              <div className="text-sm font-medium text-foreground">{t("publish.coverUrl")}</div>
               <Input value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="http(s)://... or file:///..." />
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">Scheduled Publish (optional)</div>
+              <div className="text-sm font-medium text-foreground">{t("publish.schedule")}</div>
               <Input
                 type="datetime-local"
                 value={scheduledPublishAt}
@@ -289,7 +289,7 @@ export default function PublishPage() {
               />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <div className="text-sm font-medium text-foreground">Tags (comma separated)</div>
+              <div className="text-sm font-medium text-foreground">{t("publish.tags")}</div>
               <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="tag1, tag2" />
             </div>
           </div>
@@ -300,7 +300,7 @@ export default function PublishPage() {
               onClick={() => validateAccountMutation.mutate()}
               disabled={!accountId.trim()}
             >
-              Validate Account
+              {t("publish.validate")}
             </Button>
             <Button
               variant="secondary"
@@ -308,21 +308,21 @@ export default function PublishPage() {
               onClick={() => disableAccountMutation.mutate()}
               disabled={!accountId.trim()}
             >
-              Disable Account
+              {t("publish.disable")}
             </Button>
             <Button loading={createJobMutation.isPending} onClick={() => createJobMutation.mutate()}>
-              Publish
+              {t("publish.publish")}
             </Button>
           </div>
         </div>
 
         {jobQuery.data ? (
           <div className="mt-6 rounded-xl border border-border bg-card p-6">
-            <div className="text-lg font-semibold text-foreground mb-2">Latest Job</div>
+            <div className="text-lg font-semibold text-foreground mb-2">{t("publish.latestJob")}</div>
             <div className="text-sm text-muted-foreground">id: {jobQuery.data.id}</div>
-            <div className="text-sm text-muted-foreground">status: {jobQuery.data.status}</div>
+            <div className="text-sm text-muted-foreground">{t("vn.status")}: {jobQuery.data.status}</div>
             {typeof jobQuery.data.attempts === "number" ? (
-              <div className="text-sm text-muted-foreground">attempts: {jobQuery.data.attempts}</div>
+              <div className="text-sm text-muted-foreground">{t("vn.attempts")}: {jobQuery.data.attempts}</div>
             ) : null}
             {jobQuery.data.error ? <div className="text-sm text-destructive mt-2">{jobQuery.data.error}</div> : null}
             {jobQuery.data.status === "failed" ? (

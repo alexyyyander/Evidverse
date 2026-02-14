@@ -10,13 +10,13 @@ class Settings(BaseSettings):
     # JWT
     SECRET_KEY: str = "CHANGE_THIS_TO_A_SECURE_SECRET_KEY"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days
     
     # Database
-    POSTGRES_SERVER: str
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
+    POSTGRES_SERVER: str = "localhost"
+    POSTGRES_USER: str = "vidgit"
+    POSTGRES_PASSWORD: str = "vidgit_password"
+    POSTGRES_DB: str = "vidgit_db"
     POSTGRES_PORT: str = "5432"
     DATABASE_URL: Optional[str] = None
     
@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # Celery
     CELERY_BROKER_URL: str = "amqp://guest:guest@localhost:5672//"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
+    CELERY_TASK_ALWAYS_EAGER: bool = False
+    CELERY_TASK_EAGER_PROPAGATES: bool = True
+    CELERY_TASK_STORE_EAGER_RESULT: bool = False
 
     # Publish / Export
     PUBLISH_AUTO_RETRY_ENABLED: bool = False

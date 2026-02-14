@@ -7,8 +7,10 @@ if str(repo_root) not in sys.path:
 
 import pytest
 import uuid
+import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+
 from app.core.db import get_db
 from app.models.base import Base
 from app.main import app
@@ -16,16 +18,32 @@ from httpx import AsyncClient, ASGITransport
 from app.models.user import User
 from app.core.security import get_password_hash, create_access_token
 
-# Use in-memory SQLite for testing to avoid external dependencies
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite+aiosqlite:///:memory:").strip()
 
 @pytest.fixture(scope="session")
 def anyio_backend():
     return "asyncio"
 
+@pytest.fixture(scope="session", autouse=True)
+def disable_vn_parse_job_celery_delay():
+    from app.workers.vn_tasks import vn_parse_job as vn_parse_job_task
+
+    original_delay = vn_parse_job_task.delay
+
+    def fake_delay(*args, **kwargs):
+        class DummyResult:
+            id = f"test-task-{uuid.uuid4().hex}"
+
+        return DummyResult()
+
+    vn_parse_job_task.delay = fake_delay
+    yield
+    vn_parse_job_task.delay = original_delay
+
 @pytest.fixture(scope="session")
 async def db_engine():
-    engine = create_async_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+    connect_args = {"check_same_thread": False} if TEST_DATABASE_URL.startswith("sqlite") else {}
+    engine = create_async_engine(TEST_DATABASE_URL, connect_args=connect_args)
     
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

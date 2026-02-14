@@ -5,8 +5,10 @@ import { Timeline, TimelineState } from '@xzdarcy/react-timeline-editor';
 import { useTimelineStore } from '@/store/timelineStore';
 import { useEditorStore } from '@/store/editorStore';
 import { Save, Play, Pause, Undo2, Redo2, Plus, Magnet, Layers, ChevronDown, ChevronRight, AlignLeft, Lock, Unlock } from 'lucide-react';
+import { useI18n } from "@/lib/i18nContext";
 
 export default function TimelineEditor() {
+  const { t } = useI18n();
   const { editorData, effects, setEditorData, setCurrentTime, projectId } = useTimelineStore();
   const {
     selectTimelineItem,
@@ -284,11 +286,12 @@ export default function TimelineEditor() {
         }
       }}
     >
-      <div className="p-2 border-b border-zinc-700 bg-zinc-800 flex justify-between items-center">
-         <div className="flex items-center gap-2">
+      <div className="p-2 border-b border-zinc-700 bg-zinc-800 flex justify-between items-center gap-2">
+         <div className="flex items-center gap-2 flex-wrap">
             <button 
               onClick={handlePlayOrPause}
               className="p-1 rounded hover:bg-zinc-700 text-white"
+              title={isPlaying ? t("timeline.pause") : t("timeline.play")}
             >
                {isPlaying ? <Pause size={16} /> : <Play size={16} />}
             </button>
@@ -296,6 +299,7 @@ export default function TimelineEditor() {
               onClick={() => undo()}
               disabled={!canUndo()}
               className="p-1 rounded hover:bg-zinc-700 text-white disabled:opacity-40"
+              title={t("timeline.undo")}
             >
               <Undo2 size={16} />
             </button>
@@ -303,14 +307,16 @@ export default function TimelineEditor() {
               onClick={() => redo()}
               disabled={!canRedo()}
               className="p-1 rounded hover:bg-zinc-700 text-white disabled:opacity-40"
+              title={t("timeline.redo")}
             >
               <Redo2 size={16} />
             </button>
-            <span className="text-sm font-semibold">Timeline</span>
+            <span className="text-sm font-semibold">{t("timeline.title")}</span>
             <button
               onClick={() => setSnapEnabled((v) => !v)}
               className={`p-1 rounded hover:bg-zinc-700 text-white ${snapEnabled ? "bg-zinc-700" : ""}`}
-              aria-label="Toggle snapping"
+              aria-label={t("timeline.snap")}
+              title={t("timeline.snap")}
               type="button"
             >
               <Magnet size={16} />
@@ -318,7 +324,8 @@ export default function TimelineEditor() {
             <button
               onClick={() => setMarkersEnabled((v) => !v)}
               className={`p-1 rounded hover:bg-zinc-700 text-white ${markersEnabled ? "bg-zinc-700" : ""}`}
-              aria-label="Toggle markers"
+              aria-label={t("timeline.markers")}
+              title={t("timeline.markers")}
               type="button"
             >
               <ChevronDown size={16} />
@@ -326,7 +333,8 @@ export default function TimelineEditor() {
             <button
               onClick={() => setTracksOpen((v) => !v)}
               className={`p-1 rounded hover:bg-zinc-700 text-white ${tracksOpen ? "bg-zinc-700" : ""}`}
-              aria-label="Tracks"
+              aria-label={t("timeline.tracks")}
+              title={t("timeline.tracks")}
               type="button"
             >
               <Layers size={16} />
@@ -334,7 +342,8 @@ export default function TimelineEditor() {
             <button
               onClick={alignTimeline}
               className="p-1 rounded hover:bg-zinc-700 text-white"
-              aria-label="Align timeline"
+              aria-label={t("timeline.align")}
+              title={t("timeline.align")}
               type="button"
             >
               <AlignLeft size={16} />
@@ -342,7 +351,8 @@ export default function TimelineEditor() {
             <button
               onClick={() => updateLayout({ followSelection: !layout.followSelection })}
               className={`p-1 rounded hover:bg-zinc-700 text-white ${layout.followSelection ? "bg-zinc-700" : ""}`}
-              aria-label="Toggle follow selection"
+              aria-label={t("timeline.follow")}
+              title={t("timeline.follow")}
               type="button"
             >
               {layout.followSelection ? <Lock size={16} /> : <Unlock size={16} />}
@@ -356,21 +366,22 @@ export default function TimelineEditor() {
                 setDirty(true);
               }}
               className="p-1 rounded hover:bg-zinc-700 text-white"
-              aria-label="Add track"
+              aria-label={t("timeline.addTrack")}
+              title={t("timeline.addTrack")}
               type="button"
             >
               <Plus size={16} />
             </button>
          </div>
-         <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 hidden md:inline">Drag clips or use context menu to add</span>
+         <div className="flex items-center gap-2 mr-14">
+            <span className="text-xs text-gray-400 hidden md:inline">{t("timeline.help")}</span>
             <button 
               onClick={() => {
                 if(projectId) saveProject(projectId, { silent: false }).finally(() => setDirty(false));
               }} 
               className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700 transition-colors"
             >
-              <Save size={12} /> Save
+              <Save size={12} /> {t("timeline.save")}
             </button>
          </div>
       </div>

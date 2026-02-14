@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import IconButton from "@/components/ui/icon-button";
 import { Repeat, StepBack, StepForward } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18nContext";
 
 export default function PreviewPanel({ videoUrl, label }: { videoUrl: string | null; label?: string | null }) {
+  const { t } = useI18n();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [loop, setLoop] = useState(false);
 
@@ -62,7 +64,7 @@ export default function PreviewPanel({ videoUrl, label }: { videoUrl: string | n
           <video ref={videoRef} src={videoUrl} controls className="max-h-full max-w-full" autoPlay />
         </>
       ) : (
-        <div className="text-muted-foreground">Select a clip to preview</div>
+        <div className="text-muted-foreground">{t("preview.placeholder")}</div>
       )}
     </div>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import ProjectCard from "@/components/ProjectCard";
+import { Copy } from "lucide-react";
 import PageContainer from "@/components/layout/PageContainer";
 import SectionHeader from "@/components/layout/SectionHeader";
 import LoadingState from "@/components/states/LoadingState";
@@ -148,12 +149,25 @@ export default function DiscoverClient() {
               <Card key={u.id}>
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-semibold text-foreground truncate">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-foreground truncate" title={u.full_name || u.email}>
                         {u.full_name || u.email.split("@")[0]}
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground break-all">{u.email}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">#{u.id}</div>
+                      <div className="mt-1 text-xs text-muted-foreground truncate" title={u.email}>
+                        {u.email}
+                      </div>
+                      <button 
+                        className="mt-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigator.clipboard.writeText(u.id);
+                          toast({ title: "Copied", description: "User ID copied.", variant: "success" });
+                        }}
+                        title={`Copy User ID: ${u.id}`}
+                      >
+                        <span>#{u.id.slice(0, 8)}</span>
+                        <Copy size={12} />
+                      </button>
                     </div>
                     <Link
                       href={`/profile/${u.id}`}

@@ -8,8 +8,10 @@ import { toast } from "@/components/ui/toast";
 import { useEditorStore } from "@/store/editorStore";
 import type { TaskResponse } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18nContext";
 
 export default function GenerationQueuePanel() {
+  const { t } = useI18n();
   const tasks = useEditorStore((s) => s.data.generationTasks || []);
   const updateGenerationTask = useEditorStore((s) => s.updateGenerationTask);
   const applyClipTaskResult = useEditorStore((s) => s.applyClipTaskResult);
@@ -54,15 +56,15 @@ export default function GenerationQueuePanel() {
   }, [activeTaskId, taskResp, updateGenerationTask, applyClipTaskResult, applyCharacterTaskResult, applyBeatImageTaskResult, applySegmentTaskResult]);
 
   const retry = async (taskId: string) => {
-    const t = tasks.find((x) => x.id === taskId);
-    if (!t) return;
+    const targetTask = tasks.find((x) => x.id === taskId);
+    if (!targetTask) return;
     try {
-      if (t.type === "clip") {
-        const text = String(t.input?.text || "");
+      if (targetTask.type === "clip") {
+        const text = String(targetTask.input?.text || "");
         if (!text.trim()) return;
         const { task_id } = await generationApi.generateClip({ topic: text.trim() });
         useEditorStore.getState().addGenerationTask({
-          ...t,
+          ...targetTask,
           id: task_id,
           status: "PENDING",
           createdAt: new Date().toISOString(),
@@ -71,91 +73,92 @@ export default function GenerationQueuePanel() {
         toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
         return;
       }
-      if (t.type === "character") {
-        const prompt = String(t.input?.prompt || "");
-        const characterId = String(t.input?.characterId || t.refIds?.characterId || "");
+      if (targetTask.type === "character") {
+        const prompt = String(targetTask.input?.prompt || "");
+        const characterId = String(targetTask.input?.characterId || targetTask.refIds?.characterId || "");
         if (!prompt.trim() || !characterId) return;
         const { task_id } = await generationApi.generateCharacter({ prompt: prompt.trim(), anchor_id: null });
         useEditorStore.getState().addGenerationTask({
-          ...t,
+          ...targetTask,
           id: task_id,
           status: "PENDING",
           createdAt: new Date().toISOString(),
           refIds: { characterId },
         });
         setActiveTaskId(task_id);
-        toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
+        toast({ title: t("workflow.toast.refStarted.title"), description: `Task: ${task_id}`, variant: "success" });
         return;
       }
-      if (t.type === "beat_image") {
-        const prompt = String(t.input?.prompt || "");
-        const beatId = String(t.refIds?.beatId || "");
+      if (targetTask.type === "beat_image") {
+        const prompt = String(targetTask.input?.prompt || "");
+        const beatId = String(targetTask.refIds?.beatId || "");
         if (!prompt.trim() || !beatId) return;
         const { task_id } = await generationApi.generateCharacter({ prompt: prompt.trim(), anchor_id: null });
         useEditorStore.getState().addGenerationTask({
-          ...t,
+          ...targetTask,
           id: task_id,
           status: "PENDING",
           createdAt: new Date().toISOString(),
           refIds: { beatId },
         });
         setActiveTaskId(task_id);
-        toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
+        toast({ title: t("workflow.toast.refStarted.title"), description: `Task: ${task_id}`, variant: "success" });
         return;
       }
-      if (t.type === "segment") {
-        const narration = String(t.input?.narration || "");
-        const visual_description = String(t.input?.visual_description || "");
-        const image_url = t.input?.image_url ?? null;
-        const beatId = String(t.refIds?.beatId || "");
+      if (targetTask.type === "segment") {
+        const narration = String(targetTask.input?.narration || "");
+        const visual_description = String(targetTask.input?.visual_description || "");
+        const image_url = targetTask.input?.image_url ?? null;
+        const beatId = String(targetTask.refIds?.beatId || "");
         if (!visual_description.trim() || !beatId) return;
         const { task_id } = await generationApi.generateSegment({ narration, visual_description, image_url });
         useEditorStore.getState().addGenerationTask({
-          ...t,
+          ...targetTask,
           id: task_id,
           status: "PENDING",
           createdAt: new Date().toISOString(),
           refIds: { beatId },
         });
         setActiveTaskId(task_id);
-        toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
+        toast({ title: t("workflow.toast.refStarted.title"), description: `Task: ${task_id}`, variant: "success" });
         return;
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Retry failed";
-      toast({ title: "Retry failed", description: message, variant: "destructive" });
+      const message = e instanceof Error ? e.message : t("workflow.toast.retryFailed.title");
+      toast({ title: t("workflow.toast.retryFailed.title"), description: message, variant: "destructive" });
     }
   };
 
   if (tasks.length === 0) {
-    return <div className="text-sm text-muted-foreground">暂无生成任务。</div>;
+    return <div className="text-sm text-muted-foreground">{t("queue.empty")}</div>;
   }
 
   return (
     <div className="space-y-3">
-      {tasks.map((t) => {
-        const selected = t.id === activeTaskId;
+      {tasks.map((task) => {
+        const selected = task.id === activeTaskId;
         return (
-          <div key={t.id} className={cn("rounded-lg border border-border p-3", selected ? "ring-2 ring-ring" : "")}>
-            <button type="button" className="w-full text-left" onClick={() => setActiveTaskId(t.id)}>
+          <div key={task.id} className={cn("rounded-lg border border-border p-3", selected ? "ring-2 ring-ring" : "")}>
+            <button type="button" className="w-full text-left" onClick={() => setActiveTaskId(task.id)}>
               <div className="flex items-center justify-between gap-2">
                 <div className="text-sm font-semibold">
-                  {t.type === "clip"
-                    ? "工作流生成"
-                    : t.type === "character"
-                      ? "人物参考图"
-                      : t.type === "beat_image"
-                        ? "场景参考图"
-                        : "片段视频"}
+                  {task.type === "clip"
+                    ? t("queue.type.clip")
+                    : task.type === "character"
+                      ? t("queue.type.char")
+                      : task.type === "beat_image"
+                        ? t("queue.type.beat")
+                        : t("queue.type.segment")}
+
                 </div>
-                <div className="text-xs text-muted-foreground">{t.status}</div>
+                <div className="text-xs text-muted-foreground">{task.status}</div>
               </div>
-              <div className="mt-1 text-xs text-muted-foreground break-all">{t.id}</div>
-              {t.error ? <div className="mt-2 text-xs text-destructive break-words">{t.error}</div> : null}
+              <div className="mt-1 text-xs text-muted-foreground break-all">{task.id}</div>
+              {task.error ? <div className="mt-2 text-xs text-destructive break-words">{task.error}</div> : null}
             </button>
             <div className="mt-3 flex gap-2">
-              <Button size="sm" variant="secondary" onClick={() => retry(t.id)}>
-                重试
+              <Button size="sm" variant="secondary" onClick={() => retry(task.id)}>
+                {t("common.retry")}
               </Button>
             </div>
           </div>

@@ -52,6 +52,9 @@ backend/.env
 *.log
 storage/
 
+# Vercel
+.vercel/
+
 # Plans (Keep stage_plan, ignore high-level docs)
 plan/*.md
 !plan/current_stage&FAQ.md

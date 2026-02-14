@@ -63,7 +63,7 @@ class FeedService:
         q = q.offset(skip).limit(limit)
         
         # Eager load owner for display
-        q = q.options(selectinload(Project.owner))
+        q = q.options(selectinload(Project.owner), selectinload(Project.parent_project))
         
         result = await db.execute(q)
         projects = result.scalars().all()
@@ -109,7 +109,7 @@ class FeedService:
         q = (
             select(Project)
             .where(and_(id_clause, Project.is_public == True))
-            .options(selectinload(Project.owner))
+            .options(selectinload(Project.owner), selectinload(Project.parent_project))
         )
         result = await db.execute(q)
         p = result.scalar_one_or_none()
@@ -166,7 +166,7 @@ class FeedService:
             and_(Project.owner_internal_id == target_user_id, Project.is_public == True)
         )
         query = query.order_by(desc(Project.created_at)).offset(skip).limit(limit)
-        query = query.options(selectinload(Project.owner))
+        query = query.options(selectinload(Project.owner), selectinload(Project.parent_project))
         
         result = await db.execute(query)
         projects = result.scalars().all()

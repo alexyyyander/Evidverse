@@ -6,13 +6,13 @@ import { useI18n } from "@/lib/i18nContext";
 export default function Home() {
   const { t } = useI18n();
   return (
-    <div className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0">
+    <div className="relative overflow-hidden min-h-[calc(100vh-64px)]">
+      <div className="pointer-events-none absolute inset-0 z-0">
         <div className="absolute -top-24 left-1/2 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-600/20 via-sky-500/10 to-fuchsia-500/20 blur-3xl" />
         <div className="absolute -bottom-28 right-[-120px] h-[420px] w-[520px] rounded-full bg-gradient-to-tr from-emerald-500/10 to-indigo-500/10 blur-3xl" />
       </div>
 
-      <main className="relative">
+      <main className="relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-xs text-slate-300">

@@ -9,8 +9,12 @@ Vidgit is a full-stack app that combines:
 
 ### Frontend (Next.js)
 - App Router routes live in `frontend/src/app/`
-  - `(app)`: standard pages (home/discover/projects/login/register)
-  - `(editor)`: fullscreen editor layout
+  - `(app)`: standard pages
+    - `/`: Home
+    - `/discover`: Public feed
+    - `/project/[id]`: **Project Detail Page** (Overview, Git Graph, Branches, MRs)
+    - `/login`, `/register`: Auth
+  - `(editor)`: fullscreen editor layout (`/editor/[id]`)
 - HTTP layer:
   - axios client + interceptors in `frontend/src/lib/api/client.ts`
   - typed domain APIs in `frontend/src/lib/api/domains/*`

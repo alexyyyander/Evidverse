@@ -2,7 +2,7 @@ import { ButtonHTMLAttributes, forwardRef } from "react";
 import { cn } from "@/lib/cn";
 import Spinner from "@/components/ui/spinner";
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive" | "outline";
 type ButtonSize = "sm" | "md" | "lg";
 
 const variantClasses: Record<ButtonVariant, string> = {
@@ -10,6 +10,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   secondary: "bg-secondary text-secondary-foreground hover:opacity-90",
   ghost: "bg-transparent hover:bg-secondary text-foreground",
   destructive: "bg-destructive text-destructive-foreground hover:opacity-90",
+  outline: "border border-input bg-transparent hover:bg-accent hover:text-accent-foreground text-foreground",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
