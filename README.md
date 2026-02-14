@@ -22,7 +22,7 @@ Vidgit is a revolutionary platform that brings **Git-like version control** to t
 - **Commits**: Save snapshots of your timeline state. Never lose a creative iteration.
 - **Branches**: Create experimental branches (e.g., `director-cut`, `dark-theme`) without affecting the main storyline.
 - **Visual Graph**: View your project history as a DAG (Directed Acyclic Graph) using our interactive Git Graph.
-- **Project Detail Page**: Comprehensive overview of project history, branches, and merge requests.
+- **Project Detail Page**: Comprehensive overview of project history, branches, and merge requests. Serves as the gateway to the editor.
 - **Forking**: Remix public projects from the community into your own workspace.
 
 ### 🖥️ Modern Visual Editor

@@ -10,6 +10,7 @@
 
 ## Todo List
 - [x] 补齐 `/editor/new`（新建项目流程：创建项目 -> 跳转 `/editor/:id`）。
+- [x] **新增 `/project/[id]` 详情页**：作为项目入口，展示 Git Graph、分支列表、统计信息，区分“浏览”与“编辑”状态。
 - [x] 将可 server-render 的页面迁移为 Server Components（例如 Discover、Profile、Projects 列表页），只在交互区块使用 Client Components。
 - [x] 为关键路由增加 `loading.tsx` / `error.tsx`，统一用户体验。
 - [x] 引入 route groups（例如 `(app)`、`(editor)`）与子 layout，隔离 editor 的全屏布局与普通页面布局。
@@ -17,4 +18,5 @@
 
 ## 验收标准
 - `/editor/new` 可以正常工作且不产生 `NaN` 项目 ID。
+- 点击项目卡片进入详情页 `/project/[id]`，详情页提供 "Open Editor" 或 "Fork" 入口。
 - 页面加载与错误态具备一致体验，且首屏加载更快（减少不必要的 client hydration）。

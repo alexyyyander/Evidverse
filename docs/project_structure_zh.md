@@ -63,8 +63,14 @@ vidgit/
 
 - 路由目录：`frontend/src/app/`
 - Route Group：
-  - `(app)`：常规页面（discover/projects/profile/login/register/publish 等）
-  - `(editor)`：编辑器全屏布局与页面
+  - `(app)`：常规页面
+    - `/`：首页
+    - `/discover`：发现页
+    - `/projects`：我的项目
+    - `/project/[id]`：**项目详情页**（概览、Git Graph、分支、MR）
+    - `/profile/[id]`：用户主页
+    - `/login`, `/register`：认证
+  - `(editor)`：编辑器全屏布局与页面 (`/editor/[id]`)
 
 ### 4.2 数据层（HTTP/API/Server State）
 
