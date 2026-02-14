@@ -3,20 +3,20 @@ import json
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-VIDGIT_DIR = ".evidverse"
+EVIDVERSE_DIR = ".evidverse"
 CONFIG_FILE = "config.json"
 STAGING_FILE = "staging.json"
 
 class Context:
     def __init__(self):
         self.root = self._find_root()
-        self.evidverse_path = self.root / VIDGIT_DIR if self.root else None
+        self.evidverse_path = self.root / EVIDVERSE_DIR if self.root else None
 
     def _find_root(self) -> Optional[Path]:
         current = Path.cwd()
         # Look up until root
         for parent in [current] + list(current.parents):
-            if (parent / VIDGIT_DIR).exists():
+            if (parent / EVIDVERSE_DIR).exists():
                 return parent
         return None
 
@@ -24,7 +24,7 @@ class Context:
         return self.evidverse_path is not None
 
     def init(self, project_id: int, branch: str = "main"):
-        path = Path.cwd() / VIDGIT_DIR
+        path = Path.cwd() / EVIDVERSE_DIR
         path.mkdir(exist_ok=True)
         config = {"project_id": project_id, "current_branch": branch}
         with open(path / CONFIG_FILE, "w") as f:

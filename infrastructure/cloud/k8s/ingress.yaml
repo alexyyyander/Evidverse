@@ -1,28 +1,28 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: yivid-ingress
-  namespace: yivid
+  name: evidverse-ingress
+  namespace: evidverse
 spec:
   rules:
-    - host: app.yivid.example
+    - host: app.evidverse.example
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: yivid-frontend
+                name: evidverse-frontend
                 port:
                   number: 3000
-    - host: api.yivid.example
+    - host: api.evidverse.example
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: yivid-backend
+                name: evidverse-backend
                 port:
                   number: 8000
 

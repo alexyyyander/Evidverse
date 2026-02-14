@@ -126,8 +126,8 @@ A:
 
 ### Q: docker-compose.prod.yml 启动后投稿/导出失败？
 A:
-1. prod compose 默认不会自动创建 MinIO bucket：请创建 `S3_BUCKET_NAME` 指定的 bucket（默认 `yivid-bucket`），并按需要设置 public。
+1. prod compose 默认不会自动创建 MinIO bucket：请创建 `S3_BUCKET_NAME` 指定的 bucket（默认 `evidverse-bucket`），并按需要设置 public。
 2. prod 的 worker 容器需要包含 `ffmpeg` 与 `biliup`：建议把它们安装进 backend/worker 镜像，或挂载二进制并设置 `BILIUP_BIN`。
 
 ---
-*Maintainer: Yivid Bot*
+*Maintainer: Evidverse Bot*

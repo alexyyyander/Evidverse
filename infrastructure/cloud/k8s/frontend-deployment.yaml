@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: yivid-frontend
-  namespace: yivid
+  name: evidverse-frontend
+  namespace: evidverse
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: yivid-frontend
+      app: evidverse-frontend
   template:
     metadata:
       labels:
-        app: yivid-frontend
+        app: evidverse-frontend
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/your-org/yivid-frontend:cloud_version
+          image: ghcr.io/your-org/evidverse-frontend:cloud_version
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
@@ -23,4 +23,4 @@ spec:
             - name: NEXT_PUBLIC_APP_MODE
               value: "cloud"
             - name: NEXT_PUBLIC_API_ORIGIN
-              value: "https://api.yivid.example"
+              value: "https://api.evidverse.example"

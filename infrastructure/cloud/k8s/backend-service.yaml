@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: yivid-backend
-  namespace: yivid
+  name: evidverse-backend
+  namespace: evidverse
 spec:
   selector:
-    app: yivid-backend
+    app: evidverse-backend
   ports:
     - name: http
       port: 8000

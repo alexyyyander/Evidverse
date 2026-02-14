@@ -1,8 +1,8 @@
-# Yivid 云端架构（cloud_version）开发说明
+# Evidverse 云端架构（cloud_version）开发说明
 
 ## 背景与目标
 
-Yivid 面向“视频 GitHub”的核心诉求是：
+Evidverse 面向“视频 GitHub”的核心诉求是：
 - 线上提供一个可公开访问的示例网站（Discover/分类/标签/项目预览）
 - 支持 Git 风格的项目历史（Commit DAG / Branch / Fork / Merge Request）
 - 支持异步生成与导入（VN 导入、生成 clip、发布）
@@ -76,9 +76,9 @@ Yivid 面向“视频 GitHub”的核心诉求是：
 ### 流量与域名
 
 推荐域名拆分：
-- `app.yivid.example`：前端站点
-- `api.yivid.example`：后端 API（FastAPI）
-- `cdn.yivid.example`：公共对象分发（CDN）
+- `app.evidverse.example`：前端站点
+- `api.evidverse.example`：后端 API（FastAPI）
+- `cdn.evidverse.example`：公共对象分发（CDN）
 
 前端与 API 最好同站点或同根域，避免跨域复杂度；如果拆域名，务必配置 CORS 与 Cookie/Token 策略。
 

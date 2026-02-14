@@ -1,6 +1,6 @@
 # Architecture
 
-Yivid is a full-stack app that combines:
+Evidverse is a full-stack app that combines:
 - a Git-like project history model (commits/branches),
 - an in-browser video editor (timeline + preview),
 - async AI generation workflows (Celery tasks that produce assets and store them in S3/MinIO).

@@ -1,13 +1,13 @@
-# 🎬 Yivid
+# 🎬 Evidverse
 
 > **AI-Powered Video Editor meets Git Version Control.**  
 > Create, version, branch, and share your AI-generated video projects with the workflow developers love.
 
-![Yivid Status](https://img.shields.io/badge/Status-MVP%20Ready-success)
+![Evidverse Status](https://img.shields.io/badge/Status-MVP%20Ready-success)
 ![Version](https://img.shields.io/badge/version-v0.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-Yivid is a revolutionary platform that brings **Git-like version control** to the world of **AI video generation**. It allows creators to experiment fearlessly with different prompts, characters, and editing styles by managing their project history as a tree of commits and branches.
+Evidverse is a revolutionary platform that brings **Git-like version control** to the world of **AI video generation**. It allows creators to experiment fearlessly with different prompts, characters, and editing styles by managing their project history as a tree of commits and branches.
 
 ---
 
@@ -31,13 +31,13 @@ Yivid is a revolutionary platform that brings **Git-like version control** to th
 - **Asset Management**: Centralized storage for all your generated video assets.
 
 ### 🌍 Community & Discovery
-- **Discover Feed**: Browse trending projects created by the Yivid community.
+- **Discover Feed**: Browse trending projects created by the Evidverse community.
 - **User Profiles**: Showcase your portfolio and public projects.
 - **Social Interactions**: Like and star your favorite creators' work.
 
 ### 💻 CLI Tool
 - **Power User Friendly**: Manage your projects directly from the terminal.
-- **Commands**: `yivid login`, `yivid clone`, `yivid status`, `yivid commit`.
+- **Commands**: `evidverse login`, `evidverse clone`, `evidverse status`, `evidverse commit`.
 
 ---
 
@@ -63,7 +63,7 @@ docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
 Notes:
-- The prod compose does not create the MinIO bucket automatically. Create the bucket named by `S3_BUCKET_NAME` (default `yivid-bucket`) and set it public if you want direct asset URLs.
+- The prod compose does not create the MinIO bucket automatically. Create the bucket named by `S3_BUCKET_NAME` (default `evidverse-bucket`) and set it public if you want direct asset URLs.
 - Dev v2 Publish/export requires extra binaries in the worker runtime (`ffmpeg`, `biliup`). The default backend/worker image does not install them; install in the container image or provide them in PATH.
 
 If downloads are slow (common behind certain networks), you can use a PyPI mirror during build:
@@ -137,7 +137,7 @@ Access:
 - Douyin uploader (experimental):
   - Configure `DOUYIN_UPLOADER_CMD` (command template with `{video_path}`, `{credential_path}`, `{title}`, `{description}` placeholders).
 - Export behavior:
-  - If a branch HEAD has multiple clip video URLs, Yivid can export (concat) via `ffmpeg` and upload to MinIO/S3 before publishing.
+  - If a branch HEAD has multiple clip video URLs, Evidverse can export (concat) via `ffmpeg` and upload to MinIO/S3 before publishing.
  - Docker (prod-like):
    - Ensure the worker container has `ffmpeg` available in PATH.
    - Ensure the worker container can execute `biliup` (install or mount a binary and set `BILIUP_BIN`).
@@ -147,7 +147,7 @@ Access:
 ## 📂 Project Structure
 
 ```
-yivid/
+evidverse/
 ├── backend/            # FastAPI application
 │   ├── app/            # Application logic (API, Models, Services)
 │   ├── alembic/        # Database migrations

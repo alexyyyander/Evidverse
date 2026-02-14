@@ -44,7 +44,7 @@ test-results/
 .DS_Store
 Thumbs.db
 
-# Yivid
+# Evidverse
 .env
 backend/.env
 *.db

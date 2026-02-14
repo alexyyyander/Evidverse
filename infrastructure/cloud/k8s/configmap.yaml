@@ -1,15 +1,15 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: yivid-config
-  namespace: yivid
+  name: evidverse-config
+  namespace: evidverse
 data:
   API_V1_STR: "/api/v1"
   ACCESS_TOKEN_EXPIRE_MINUTES: "30"
-  BACKEND_CORS_ORIGINS: "[\"https://app.yivid.example\"]"
-  CELERY_BROKER_URL: "amqp://guest:guest@rabbitmq.yivid.svc.cluster.local:5672//"
-  CELERY_RESULT_BACKEND: "redis://redis.yivid.svc.cluster.local:6379/0"
+  BACKEND_CORS_ORIGINS: "[\"https://app.evidverse.example\"]"
+  CELERY_BROKER_URL: "amqp://guest:guest@rabbitmq.evidverse.svc.cluster.local:5672//"
+  CELERY_RESULT_BACKEND: "redis://redis.evidverse.svc.cluster.local:6379/0"
   S3_ENDPOINT_URL: "https://s3.us-east-1.amazonaws.com"
-  S3_BUCKET_NAME: "yivid-bucket"
+  S3_BUCKET_NAME: "evidverse-bucket"
   S3_REGION_NAME: "us-east-1"
 

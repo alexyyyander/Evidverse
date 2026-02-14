@@ -1,8 +1,8 @@
-# Yivid 数据库与中心存储设计说明（面向“视频 GitHub”）
+# Evidverse 数据库与中心存储设计说明（面向“视频 GitHub”）
 
 ## 目标与约束
 
-Yivid 的产品初衷可以理解为“视频 GitHub”：
+Evidverse 的产品初衷可以理解为“视频 GitHub”：
 - 以项目（Project）为核心，拥有 Git 风格的提交图（Commit DAG）与分支（Branch）
 - 支持 Fork、Merge Request、公开浏览与二创
 - 作为示例网站，需要支持“按类目/标签浏览不同的视频族”（可理解为主题、品类、系列、合集等）

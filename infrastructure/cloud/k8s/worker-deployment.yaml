@@ -1,27 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: yivid-worker
-  namespace: yivid
+  name: evidverse-worker
+  namespace: evidverse
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: yivid-worker
+      app: evidverse-worker
   template:
     metadata:
       labels:
-        app: yivid-worker
+        app: evidverse-worker
     spec:
       containers:
         - name: worker
-          image: ghcr.io/your-org/yivid-backend:cloud_version
+          image: ghcr.io/your-org/evidverse-backend:cloud_version
           imagePullPolicy: IfNotPresent
           command: ["celery"]
           args: ["-A", "app.core.celery_app", "worker", "--loglevel=info"]
           envFrom:
             - configMapRef:
-                name: yivid-config
+                name: evidverse-config
             - secretRef:
-                name: yivid-secret
+                name: evidverse-secret
 

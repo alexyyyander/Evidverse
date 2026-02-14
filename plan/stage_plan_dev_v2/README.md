@@ -1,7 +1,7 @@
 # Stage Plan Dev v2（内容协作 + 多平台投稿 + 多世界线）
 
 ## 背景
-Yivid 已完成 MVP 闭环（AI 生成、编辑器、Git Graph、Discover、Fork/Like 等）。Dev v2 的目标是把“创作 → 协作 → 发行”升级为可规模化的内容生产与社区协作模型：
+Evidverse 已完成 MVP 闭环（AI 生成、编辑器、Git Graph、Discover、Fork/Like 等）。Dev v2 的目标是把“创作 → 协作 → 发行”升级为可规模化的内容生产与社区协作模型：
 - 发行：项目可一键导出并投稿到各大平台（先做 B 站、抖音）
 - 协作：Fork 不再只是复制一个项目，而是围绕“主项目（Root Project）+ 多分支（Branch）”协作、贡献与归因
 - 叙事：支持 Galgame/视觉小说素材输入，生成多世界线番剧，并能可视化剧情关系图与拓展线路

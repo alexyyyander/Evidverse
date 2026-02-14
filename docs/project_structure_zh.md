@@ -1,10 +1,10 @@
-# Yivid 项目结构总览（可维护版）
+# Evidverse 项目结构总览（可维护版）
 
-本文目标：用一份文档把 Yivid 仓库的模块边界、关键入口与常见改动落点讲清楚，方便快速上手与协作开发。
+本文目标：用一份文档把 Evidverse 仓库的模块边界、关键入口与常见改动落点讲清楚，方便快速上手与协作开发。
 
 ## 1. 仓库定位
 
-Yivid 是一个 Monorepo，核心能力是「AI 视频生成 + Web 可视化编辑器 + 类 Git 版本控制（commit/branch/fork/merge）+ 社区/发布」，整体由以下组件构成：
+Evidverse 是一个 Monorepo，核心能力是「AI 视频生成 + Web 可视化编辑器 + 类 Git 版本控制（commit/branch/fork/merge）+ 社区/发布」，整体由以下组件构成：
 
 - Frontend：Next.js 14 Web 应用（编辑器、项目页、社区页、发布页）
 - Backend：FastAPI API 服务（业务模型、鉴权、版本控制逻辑、导入导出、发布、VN 解析等）
@@ -13,16 +13,16 @@ Yivid 是一个 Monorepo，核心能力是「AI 视频生成 + Web 可视化编�
 - Infra：Docker Compose / Nginx /（可选）K8s 部署资源
 
 更宏观的数据流与接口说明可参考：
-- [architecture.md](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/docs/architecture.md)
-- [developer_guide.md](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/docs/developer_guide.md)
+- [architecture.md](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/docs/architecture.md)
+- [developer_guide.md](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/docs/developer_guide.md)
 
 ## 2. 顶层目录速览
 
 ```
-yivid/
+evidverse/
 ├── ai_engine/               AI 引擎适配层（LLM / Seedance / Stable Diffusion）
 ├── backend/                 FastAPI 后端 + Alembic + Pytest
-├── cli/                     Python CLI（yivid 命令行）
+├── cli/                     Python CLI（evidverse 命令行）
 ├── docs/                    文档（架构、开发指南、设计说明）
 ├── frontend/                Next.js 前端（App Router + Tailwind + React Query + Zustand）
 ├── infrastructure/          云端部署资源（当前主要为 K8s YAML）
@@ -37,8 +37,8 @@ yivid/
 
 ### 3.1 入口与路由聚合
 
-- FastAPI 入口：[main.py](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/backend/app/main.py)
-- API 路由总入口：[router.py](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/backend/app/api/v1/router.py)
+- FastAPI 入口：[main.py](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/backend/app/main.py)
+- API 路由总入口：[router.py](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/backend/app/api/v1/router.py)
 - API 前缀：`/api/v1`
 
 `router.py` 会把各个业务域的 endpoint 挂载到统一路由上（auth/users/projects/files/generation/anchors/commits/branches/tasks/publish/vn/clips/merge_requests/health）。
@@ -54,7 +54,7 @@ yivid/
 
 ### 3.3 Worker（Celery）入口
 
-- Celery app 初始化：[celery_app.py](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/backend/app/core/celery_app.py)
+- Celery app 初始化：[celery_app.py](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/backend/app/core/celery_app.py)
 - 注册任务 include：`app.workers.*`（workflow/video/image/publish/vn 等）
 
 ## 4. Frontend（Next.js）结构与入口
@@ -76,11 +76,11 @@ yivid/
 
 推荐心智模型：**api（axios + typed domains）** → **queries（React Query）** → **components/pages**。
 
-- axios client + token 注入与错误归一化：[client.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/src/lib/api/client.ts)
-- 领域 API 聚合导出：[index.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/src/lib/api/index.ts)
+- axios client + token 注入与错误归一化：[client.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/frontend/src/lib/api/client.ts)
+- 领域 API 聚合导出：[index.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/frontend/src/lib/api/index.ts)
 - 领域 API 实现：`frontend/src/lib/api/domains/*`
-  - 示例（云端项目域）：[cloud_projects.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/src/lib/api/domains/cloud_projects.ts)
-  - 云端 client（可选启用）：[cloudClient.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/src/lib/api/cloudClient.ts)
+  - 示例（云端项目域）：[cloud_projects.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/frontend/src/lib/api/domains/cloud_projects.ts)
+  - 云端 client（可选启用）：[cloudClient.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/frontend/src/lib/api/cloudClient.ts)
 
 ### 4.3 编辑器状态（Client State）
 
@@ -94,40 +94,40 @@ AI Engine 更像「外部能力适配层」，被 backend service / worker 调�
 - LLM client：`ai_engine/llm/client.py`
 - Seedance client：`ai_engine/seedance/client.py`
 - Stable Diffusion client：`ai_engine/stable_diffusion/client.py`
-- 依赖清单：[ai_engine/requirements.txt](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/ai_engine/requirements.txt)
+- 依赖清单：[ai_engine/requirements.txt](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/ai_engine/requirements.txt)
 
 ## 6. CLI（cli）结构与入口
 
 CLI 用于把核心能力以命令行形式暴露给 power user / 自动化：
 
-- CLI 入口：`cli/yivid/main.py`
-- API 访问封装：`cli/yivid/api.py`
-- 配置与上下文：`cli/yivid/config.py`、`cli/yivid/context.py`
+- CLI 入口：`cli/evidverse/main.py`
+- API 访问封装：`cli/evidverse/api.py`
+- 配置与上下文：`cli/evidverse/config.py`、`cli/evidverse/context.py`
 - 测试：`cli/tests/test_cli.py`
 
 ## 7. Infra & 部署相关
 
 ### 7.1 本地 infra（推荐开发方式）
 
-- [docker-compose.yml](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/docker-compose.yml)：db/redis/rabbitmq/minio + createbuckets
+- [docker-compose.yml](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/docker-compose.yml)：db/redis/rabbitmq/minio + createbuckets
 - 数据库建议：本地与云端运行环境统一使用 PostgreSQL；本地用 `docker-compose.yml` 起 Postgres，云端用 `docker-compose.prod.yml` 或 K8s 接入 Postgres
 
 ### 7.2 prod-like 全栈（Nginx + 前后端 + worker）
 
 - `docker-compose.prod.yml`（根目录）
-- Nginx 反代配置：[default.conf](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/nginx/conf.d/default.conf)
+- Nginx 反代配置：[default.conf](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/nginx/conf.d/default.conf)
   - `/` → frontend
   - `/api/`、`/docs`、`/openapi.json` → backend
 
 ### 7.3 云端（K8s）
 
 - `infrastructure/cloud/k8s/*.yaml`：backend/frontend/worker/migrate-job/ingress 等
-- 说明：[infrastructure/cloud/README.md](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/infrastructure/cloud/README.md)
+- 说明：[infrastructure/cloud/README.md](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/infrastructure/cloud/README.md)
 
 ## 8. Plan & 文档（“单一真相源”）
 
 开发流程与当前阶段以此为准：
-- [current_stage&FAQ.md](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/plan/current_stage&FAQ.md)
+- [current_stage&FAQ.md](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/plan/current_stage&FAQ.md)
 
 Stage 计划：
 - `plan/stage_plan/`：MVP 20 stages
@@ -141,7 +141,7 @@ Stage 计划：
   - service：`backend/app/services/`
   - schema：`backend/app/schemas/`
   - model：`backend/app/models/`
-  - 别忘了在 [router.py](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/backend/app/api/v1/router.py) 注册路由
+  - 别忘了在 [router.py](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/backend/app/api/v1/router.py) 注册路由
 - 新增前端 API 调用：
   - domain：`frontend/src/lib/api/domains/*.ts`
   - 统一导出：`frontend/src/lib/api/index.ts`
@@ -157,10 +157,10 @@ Stage 计划：
 ## 10. 运行与测试入口
 
 快速启动与排障指南：
-- [README.md](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/README.md)
-- [developer_guide.md](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/docs/developer_guide.md)
+- [README.md](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/README.md)
+- [developer_guide.md](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/docs/developer_guide.md)
 
 测试脚本入口：
-- 后端：`./backend/tests/run_tests.sh`（见 [run_tests.sh](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/backend/tests/run_tests.sh)）
-- 前端：`./frontend/tests/run_tests.sh`（见 [run_tests.sh](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/tests/run_tests.sh)）
+- 后端：`./backend/tests/run_tests.sh`（见 [run_tests.sh](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/backend/tests/run_tests.sh)）
+- 前端：`./frontend/tests/run_tests.sh`（见 [run_tests.sh](file:///mnt/c/Users/dubdoo/Desktop/individual_project/evidverse/frontend/tests/run_tests.sh)）
 - 后端测试数据库：默认用内存 SQLite；如需用 PostgreSQL 跑集成测试，可设置 `TEST_DATABASE_URL=postgresql+asyncpg://...`
