@@ -65,9 +65,10 @@ jobs:
     - name: Build Backend
       uses: docker/build-push-action@v4
       with:
-        context: ./backend
+        context: .
+        file: backend/Dockerfile
         push: false
-        tags: yivid-backend:latest
+        tags: evidverse-backend:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
         
