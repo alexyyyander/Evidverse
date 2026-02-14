@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="vidgit",
+    name="evidverse",
     version="0.1.0",
     packages=find_packages(),
     install_requires=[
@@ -12,7 +12,8 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "vidgit=vidgit.main:app",
+            "evidverse=evidverse.main:app",
+            "ev=evidverse.main:app",
         ],
     },
 )

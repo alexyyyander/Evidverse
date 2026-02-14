@@ -1,6 +1,6 @@
-# Vidgit 任务分解与优先级规划
+# Yivid 任务分解与优先级规划
 
-基于 `plan/vidgit_development_roadmap.md` 和 `plan/vidgit_seedance_implementation.md` 的分析，我们将当前阶段（Phase 0: 技术验证）的开发任务分解为以下核心模块。
+基于 `plan/yivid_development_roadmap.md` 和 `plan/yivid_seedance_implementation.md` 的分析，我们将当前阶段（Phase 0: 技术验证）的开发任务分解为以下核心模块。
 
 ## 模块一：后端基础架构 (Backend Infrastructure)
 **目标**: 搭建能够支撑视频生成和版本管理的基础服务。
@@ -39,7 +39,7 @@
 
 | 任务ID | 任务名称 | 优先级 | 描述 |
 |:---:|:---|:---:|:---|
-| CLI-01 | **CLI 工具开发 (vidgit)** | **P1** | 开发命令行工具，支持 `init`, `generate`, `log`, `branch` 等操作。 |
+| CLI-01 | **CLI 工具开发 (yivid)** | **P1** | 开发命令行工具，支持 `init`, `generate`, `log`, `branch` 等操作。 |
 | FE-01 | **React Native 基础脚手架** | **P2** | 初始化移动端项目，配置路由和基础 UI 组件库。 |
 | FE-02 | **视频流与预览组件** | **P2** | 实现移动端的视频播放和分支可视化预览组件。 |
 
@@ -48,7 +48,7 @@
 
 | 任务ID | 任务名称 | 优先级 | 描述 |
 |:---:|:---|:---:|:---|
-| FE-03 | **Web 项目导入器** | **P1** | 支持通过 URL/ID 导入公开的 Vidgit 项目，解析元数据和版本树，实现“一键Fork别人项目”。 |
+| FE-03 | **Web 项目导入器** | **P1** | 支持通过 URL/ID 导入公开的 Yivid 项目，解析元数据和版本树，实现“一键Fork别人项目”。 |
 | FE-04 | **视频流可视化 (Git Graph)** | **P0** | 使用 React Flow/D3.js 实现提交历史的可视化图表，直观展示分支走向、合并记录和节点关系。 |
 | FE-05 | **基于图的交互编辑** | **P1** | 支持在可视化图上点击节点进行实时预览、Fork 分支、Checkout 切换版本、Cherry-pick 挑选镜头。 |
 | FE-06 | **Web 简易剪辑器** | **P1** | 实现基于时间轴的 Web 编辑器，支持多片段拼接、拖拽调整顺序、基础预览，对接后端合成 API。 |

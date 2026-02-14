@@ -1,4 +1,4 @@
-# Vidgit Backend
+# Evidverse Backend
 
 ## Tech Stack
 - FastAPI + Pydantic Settings

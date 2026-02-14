@@ -4,7 +4,7 @@
 实现"一键 Fork"和项目导入功能。
 
 ## 功能列表
-1. **导入 UI**: 输入 Git 仓库地址或 Vidgit 项目 ID。
+1. **导入 UI**: 输入 Git 仓库地址或 Yivid 项目 ID。
 2. **Fork 交互**: 在 Graph 上右键点击 -> Fork 分支。
 3. **后端对接**: 调用 Fork API。
 

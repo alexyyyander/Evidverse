@@ -27,7 +27,7 @@ def _download_to_temp(url: str, dir_path: str | None = None) -> tuple[str, bool]
     if os.path.isabs(url) and os.path.exists(url):
         return url, False
 
-    fd, path = tempfile.mkstemp(prefix="vidgit-upload-", suffix=".mp4", dir=dir_path)
+    fd, path = tempfile.mkstemp(prefix="evidverse-upload-", suffix=".mp4", dir=dir_path)
     os.close(fd)
     urllib.request.urlretrieve(url, path)
     return path, True
@@ -65,7 +65,7 @@ def _ffmpeg_concat(input_paths: list[str], output_path: str) -> tuple[bool, str]
     if not ffmpeg:
         return False, "ffmpeg not installed"
 
-    with tempfile.TemporaryDirectory(prefix="vidgit-concat-") as td:
+    with tempfile.TemporaryDirectory(prefix="evidverse-concat-") as td:
         list_path = os.path.join(td, "list.txt")
         _write_concat_list(input_paths, list_path)
 
@@ -115,10 +115,10 @@ async def _export_from_head_commit(db, project_internal_id: int, branch_id: int)
     urls = publish_service.collect_video_urls(commit.video_assets)
     if len(urls) == 0:
         raise Exception("No clip video URLs found to export")
-    out_fd, out_path = tempfile.mkstemp(prefix="vidgit-export-out-", suffix=".mp4")
+    out_fd, out_path = tempfile.mkstemp(prefix="evidverse-export-out-", suffix=".mp4")
     os.close(out_fd)
 
-    with tempfile.TemporaryDirectory(prefix="vidgit-export-") as td:
+    with tempfile.TemporaryDirectory(prefix="evidverse-export-") as td:
         if len(urls) == 1:
             src, _ = _download_to_temp(urls[0], td)
             shutil.copyfile(src, out_path)
@@ -163,10 +163,10 @@ async def _export_parts_from_head_commit(db, project_internal_id: int, branch_id
     local_paths: list[str] = []
     export_urls: list[str] = []
 
-    with tempfile.TemporaryDirectory(prefix="vidgit-export-") as td:
+    with tempfile.TemporaryDirectory(prefix="evidverse-export-") as td:
         for idx, u in enumerate(urls):
             src, _ = _download_to_temp(u, td)
-            out_fd, out_path = tempfile.mkstemp(prefix=f"vidgit-export-p{idx+1:02}-", suffix=".mp4")
+            out_fd, out_path = tempfile.mkstemp(prefix=f"evidverse-export-p{idx+1:02}-", suffix=".mp4")
             os.close(out_fd)
             shutil.copyfile(src, out_path)
             local_paths.append(out_path)

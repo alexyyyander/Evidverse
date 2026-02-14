@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { Lang } from "@/lib/i18n";
 import { t as translate } from "@/lib/i18n";
 
-type I18nContextValue = {
+export type I18nContextValue = {
   lang: Lang;
   setLang: (lang: Lang) => void;
   t: (key: string) => string;
@@ -15,7 +15,7 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 const STORAGE_KEY = "lang";
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("en");
+  const [lang, setLangState] = useState<Lang>("zh"); // Default to zh
 
   useEffect(() => {
     try {

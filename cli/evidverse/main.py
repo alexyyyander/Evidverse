@@ -7,17 +7,17 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 from typing import Optional, Dict, Any
-from vidgit.api import api_client, APIClient
-from vidgit.config import save_token, get_token, clear_token
-from vidgit.context import context
-from vidgit import __version__
+from evidverse.api import api_client, APIClient
+from evidverse.config import save_token, get_token, clear_token
+from evidverse.context import context
+from evidverse import __version__
 
-app = typer.Typer(help="Vidgit CLI - Git for AI Video Generation")
+app = typer.Typer(help="Evidverse CLI - Git for AI Video Generation")
 console = Console()
 
 def version_callback(value: bool):
     if value:
-        console.print(f"Vidgit CLI version: [bold cyan]{__version__}[/bold cyan]")
+        console.print(f"Evidverse CLI version: [bold cyan]{__version__}[/bold cyan]")
         raise typer.Exit()
 
 @app.callback()
@@ -31,7 +31,7 @@ def main(
 @app.command()
 def login(username: str = typer.Option(..., prompt=True), password: str = typer.Option(..., prompt=True, hide_input=True)):
     """
-    Login to Vidgit.
+    Login to Evidverse.
     """
     try:
         token = api_client.login(username, password)
@@ -45,7 +45,7 @@ def login(username: str = typer.Option(..., prompt=True), password: str = typer.
 @app.command()
 def logout():
     """
-    Logout from Vidgit.
+    Logout from Evidverse.
     """
     clear_token()
     console.print("[green]Logged out.[/green]")
@@ -53,11 +53,11 @@ def logout():
 @app.command()
 def init(name: str = typer.Option(None, prompt="Project Name"), description: str = typer.Option(None)):
     """
-    Initialize a new Vidgit project (create on remote).
+    Initialize a new Evidverse project (create on remote).
     """
     token = get_token()
     if not token:
-        console.print("[red]Not logged in. Please run `vidgit login` first.[/red]")
+        console.print("[red]Not logged in. Please run `evidverse login` first.[/red]")
         raise typer.Exit(code=1)
 
     # Re-initialize client to ensure token is picked up if login just happened
@@ -69,12 +69,13 @@ def init(name: str = typer.Option(None, prompt="Project Name"), description: str
         console.print(f"Project ID: {project['id']}")
         
         context.init(project['id'])
-        console.print(f"[blue]Initialized empty Vidgit repository in {Path.cwd() / '.vidgit'}[/blue]")
+        console.print(f"[blue]Initialized empty Evidverse repository in {Path.cwd() / '.evidverse'}[/blue]")
 
     except Exception as e:
         console.print(f"[red]Failed to create project: {e}[/red]")
 
-@app.command()
+@app.command(name="status")
+@app.command(name="st", hidden=True, help="Alias for status")
 def status():
     """
     Check current status (user info and projects).
@@ -90,7 +91,7 @@ def status():
         console.print(f"Logged in as: [bold]{user['email']}[/bold] (ID: {user['id']})")
         
         # Check if in a repo
-        if context.vidgit_path:
+        if context.evidverse_path:
             config = context.get_config()
             console.print(f"Current Repository: Project ID {config['project_id']}, Branch: {config.get('current_branch', 'main')}")
         
@@ -111,7 +112,8 @@ def status():
     except Exception as e:
         console.print(f"[red]Failed to fetch status: {e}[/red]")
 
-@app.command()
+@app.command(name="generate")
+@app.command(name="gen", hidden=True, help="Alias for generate")
 def generate(prompt: str = typer.Argument(..., help="Text prompt for video generation")):
     """
     Generate video from prompt.
@@ -120,7 +122,7 @@ def generate(prompt: str = typer.Argument(..., help="Text prompt for video gener
         config = context.get_config()
         project_id = config["project_id"]
     except Exception:
-         console.print("[red]Not a Vidgit repository. Run `vidgit init` first.[/red]")
+         console.print("[red]Not a Evidverse repository. Run `evidverse init` first.[/red]")
          raise typer.Exit(code=1)
     
     client = APIClient()
@@ -172,7 +174,8 @@ def generate(prompt: str = typer.Argument(..., help="Text prompt for video gener
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
-@app.command()
+@app.command(name="commit")
+@app.command(name="ci", hidden=True, help="Alias for commit")
 def commit(message: str = typer.Option(..., "-m", "--message", help="Commit message")):
     """
     Commit staged changes (generated assets).
@@ -182,7 +185,7 @@ def commit(message: str = typer.Option(..., "-m", "--message", help="Commit mess
         project_id = config["project_id"]
         branch_name = config.get("current_branch", "main")
     except Exception:
-         console.print("[red]Not a Vidgit repository.[/red]")
+         console.print("[red]Not a Evidverse repository.[/red]")
          raise typer.Exit(code=1)
 
     client = APIClient()
@@ -208,7 +211,8 @@ def commit(message: str = typer.Option(..., "-m", "--message", help="Commit mess
     except Exception as e:
          console.print(f"[red]Commit failed: {e}[/red]")
 
-@app.command()
+@app.command(name="branch")
+@app.command(name="br", hidden=True, help="Alias for branch")
 def branch(name: Optional[str] = typer.Argument(None)):
     """
     List branches or create a new one.
@@ -217,7 +221,7 @@ def branch(name: Optional[str] = typer.Argument(None)):
         config = context.get_config()
         project_id = config["project_id"]
     except Exception:
-         console.print("[red]Not a Vidgit repository.[/red]")
+         console.print("[red]Not a Evidverse repository.[/red]")
          raise typer.Exit(code=1)
          
     client = APIClient()
@@ -250,7 +254,8 @@ def branch(name: Optional[str] = typer.Argument(None)):
         except Exception as e:
             console.print(f"[red]Failed to list branches: {e}[/red]")
 
-@app.command()
+@app.command(name="checkout")
+@app.command(name="co", hidden=True, help="Alias for checkout")
 def checkout(name: str):
     """
     Switch branch.
@@ -259,7 +264,7 @@ def checkout(name: str):
         config = context.get_config()
         project_id = config["project_id"]
     except Exception:
-         console.print("[red]Not a Vidgit repository.[/red]")
+         console.print("[red]Not a Evidverse repository.[/red]")
          raise typer.Exit(code=1)
          
     client = APIClient()

@@ -10,7 +10,7 @@ export default function SectionHeader({
   right?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h1 className="text-3xl font-semibold text-white">{title}</h1>
         {subtitle ? <p className="mt-2 text-slate-400">{subtitle}</p> : null}

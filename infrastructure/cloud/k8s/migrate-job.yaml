@@ -1,8 +1,8 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: vidgit-migrate
-  namespace: vidgit
+  name: yivid-migrate
+  namespace: yivid
 spec:
   backoffLimit: 1
   template:
@@ -10,13 +10,13 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: ghcr.io/your-org/vidgit-backend:cloud_version
+          image: ghcr.io/your-org/yivid-backend:cloud_version
           imagePullPolicy: IfNotPresent
           command: ["alembic"]
           args: ["upgrade", "head"]
           envFrom:
             - configMapRef:
-                name: vidgit-config
+                name: yivid-config
             - secretRef:
-                name: vidgit-secret
+                name: yivid-secret
 

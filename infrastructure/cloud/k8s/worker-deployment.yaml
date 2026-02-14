@@ -1,27 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vidgit-worker
-  namespace: vidgit
+  name: yivid-worker
+  namespace: yivid
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: vidgit-worker
+      app: yivid-worker
   template:
     metadata:
       labels:
-        app: vidgit-worker
+        app: yivid-worker
     spec:
       containers:
         - name: worker
-          image: ghcr.io/your-org/vidgit-backend:cloud_version
+          image: ghcr.io/your-org/yivid-backend:cloud_version
           imagePullPolicy: IfNotPresent
           command: ["celery"]
           args: ["-A", "app.core.celery_app", "worker", "--loglevel=info"]
           envFrom:
             - configMapRef:
-                name: vidgit-config
+                name: yivid-config
             - secretRef:
-                name: vidgit-secret
+                name: yivid-secret
 

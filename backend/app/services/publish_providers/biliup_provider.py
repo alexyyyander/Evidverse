@@ -44,7 +44,7 @@ def _download_cover(cover_url: str, dir_path: str) -> tuple[str, bool]:
         if lowered.endswith(ext):
             suffix = ext
             break
-    fd, path = tempfile.mkstemp(prefix="vidgit-cover-", suffix=suffix, dir=dir_path)
+    fd, path = tempfile.mkstemp(prefix="evidverse-cover-", suffix=suffix, dir=dir_path)
     os.close(fd)
     urllib.request.urlretrieve(v, path)
     return path, True
@@ -65,7 +65,7 @@ def upload_with_biliup(video_paths: str | list[str], credential_json: str, meta:
         else:
             title = "upload"
 
-    with tempfile.TemporaryDirectory(prefix="vidgit-biliup-") as td:
+    with tempfile.TemporaryDirectory(prefix="evidverse-biliup-") as td:
         cookie_path = os.path.join(td, "cookies.json")
         with open(cookie_path, "w", encoding="utf-8") as f:
             f.write(credential_json)

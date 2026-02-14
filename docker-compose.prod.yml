@@ -3,25 +3,25 @@ services:
   
   db:
     image: postgres:15-alpine
-    container_name: vidgit-db-prod
+    container_name: evidverse-db-prod
     restart: always
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-vidgit}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-vidgit_password}
-      - POSTGRES_DB=${POSTGRES_DB:-vidgit_db}
+      - POSTGRES_USER=${POSTGRES_USER:-evidverse}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-evidverse_password}
+      - POSTGRES_DB=${POSTGRES_DB:-evidverse_db}
     volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
+      - evidverse_postgres_data_prod:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
-    container_name: vidgit-redis-prod
+    container_name: evidverse-redis-prod
     restart: always
     volumes:
-      - redis_data_prod:/data
+      - evidverse_redis_data_prod:/data
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    container_name: vidgit-queue-prod
+    container_name: evidverse-queue-prod
     restart: always
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-guest}
@@ -29,38 +29,39 @@ services:
 
   minio:
     image: minio/minio
-    container_name: vidgit-minio-prod
+    container_name: evidverse-minio-prod
     restart: always
     command: server --console-address ":9001" /data
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
     volumes:
-      - minio_data_prod:/data
+      - evidverse_minio_data_prod:/data
 
   # --- Application Services ---
 
   backend:
+    image: evidverse-backend:latest
     build: 
       context: .
       dockerfile: backend/Dockerfile
       args:
         PIP_INDEX_URL: ${PIP_INDEX_URL-}
         PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST-}
-    container_name: vidgit-backend-prod
+    container_name: evidverse-backend-prod
     restart: always
     environment:
       - POSTGRES_SERVER=db
       - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER:-vidgit}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-vidgit_password}
-      - POSTGRES_DB=${POSTGRES_DB:-vidgit_db}
+      - POSTGRES_USER=${POSTGRES_USER:-evidverse}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-evidverse_password}
+      - POSTGRES_DB=${POSTGRES_DB:-evidverse_db}
       - CELERY_BROKER_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672//
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - S3_ENDPOINT_URL=http://minio:9000
       - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
-      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-vidgit-bucket}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-evidverse-bucket}
       # Add other env vars here (OPENAI_API_KEY, etc.)
     depends_on:
       - db
@@ -69,27 +70,28 @@ services:
       - minio
 
   worker:
+    image: evidverse-worker:latest
     build: 
       context: .
       dockerfile: backend/Dockerfile
       args:
         PIP_INDEX_URL: ${PIP_INDEX_URL-}
         PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST-}
-    container_name: vidgit-worker-prod
+    container_name: evidverse-worker-prod
     restart: always
     command: celery -A app.core.celery_app worker --loglevel=info
     environment:
       - POSTGRES_SERVER=db
       - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER:-vidgit}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-vidgit_password}
-      - POSTGRES_DB=${POSTGRES_DB:-vidgit_db}
+      - POSTGRES_USER=${POSTGRES_USER:-evidverse}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-evidverse_password}
+      - POSTGRES_DB=${POSTGRES_DB:-evidverse_db}
       - CELERY_BROKER_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672//
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - S3_ENDPOINT_URL=http://minio:9000
       - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
-      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-vidgit-bucket}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-evidverse-bucket}
     depends_on:
       - db
       - redis
@@ -97,10 +99,11 @@ services:
       - minio
 
   frontend:
+    image: evidverse-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: vidgit-frontend-prod
+    container_name: evidverse-frontend-prod
     restart: always
     environment:
       - NEXT_PUBLIC_API_URL=/api/v1
@@ -109,7 +112,7 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: vidgit-nginx-prod
+    container_name: evidverse-nginx-prod
     restart: always
     ports:
       - "80:80"
@@ -120,6 +123,6 @@ services:
       - backend
 
 volumes:
-  postgres_data_prod:
-  redis_data_prod:
-  minio_data_prod:
+  evidverse_postgres_data_prod:
+  evidverse_redis_data_prod:
+  evidverse_minio_data_prod:

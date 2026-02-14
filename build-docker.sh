@@ -2,7 +2,7 @@
 set -euo pipefail
 
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
-PROJECT_NAME="${PROJECT_NAME:-vidgit}"
+PROJECT_NAME="${PROJECT_NAME:-evidverse}"
 
 USE_PIP_MIRROR="${USE_PIP_MIRROR:-1}"
 DEFAULT_PIP_INDEX_URL="https://pypi.tuna.tsinghua.edu.cn/simple"
@@ -66,7 +66,7 @@ Commands:
 
 Env:
   COMPOSE_FILE=docker-compose.prod.yml
-  PROJECT_NAME=vidgit
+  PROJECT_NAME=evidverse
   USE_PIP_MIRROR=1           (default: 1)
   PIP_INDEX_URL=...          (optional override)
   PIP_TRUSTED_HOST=...       (optional override)

@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vidgit-frontend
-  namespace: vidgit
+  name: yivid-frontend
+  namespace: yivid
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: vidgit-frontend
+      app: yivid-frontend
   template:
     metadata:
       labels:
-        app: vidgit-frontend
+        app: yivid-frontend
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/your-org/vidgit-frontend:cloud_version
+          image: ghcr.io/your-org/yivid-frontend:cloud_version
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
@@ -23,4 +23,4 @@ spec:
             - name: NEXT_PUBLIC_APP_MODE
               value: "cloud"
             - name: NEXT_PUBLIC_API_ORIGIN
-              value: "https://api.vidgit.example"
+              value: "https://api.yivid.example"

@@ -474,16 +474,17 @@ export default function ProjectsClient() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {localProjects.map((project) => (
                 <Link key={project.id} href={`/project/${project.id}`} className="block">
-                  <Card className="transition-colors hover:bg-card/70">
-                    <CardContent>
-                      <div className="flex items-start justify-between gap-3">
-                        <h5 className="mb-2 text-xl font-semibold tracking-tight text-card-foreground truncate" title={project.name}>
+                  <Card className="transition-all hover:bg-card/70 border-border/50 hover:border-primary/20">
+                    <CardContent className="p-6 pt-8">
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <h5 className="text-lg font-semibold tracking-tight text-card-foreground truncate flex-1 min-w-0" title={project.name}>
                           {project.name}
                         </h5>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 shrink-0">
                           <Button
                             size="sm"
                             variant="secondary"
+                            className="h-7 px-2 text-xs"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -495,17 +496,7 @@ export default function ProjectsClient() {
                             {project.is_public === true ? t("projects.public") : t("projects.private")}
                           </Button>
                           <IconButton
-                            aria-label="Delete project"
-                            title="Delete"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              openDelete(project.id);
-                            }}
-                          >
-                            <Trash2 size={16} />
-                          </IconButton>
-                          <IconButton
+                            className="h-7 w-7"
                             aria-label="Rename project"
                             title="Rename"
                             onClick={(e) => {
@@ -514,46 +505,40 @@ export default function ProjectsClient() {
                               openRename(project.id, project.name);
                             }}
                           >
-                            <Pencil size={16} />
+                            <Pencil size={14} />
                           </IconButton>
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2" title={project.description || ""}>
-                        {project.description || t("projects.desc.none")}
-                      </p>
-                      <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <span title={project.id}>#{project.id.slice(0, 8)}</span>
                           <IconButton
-                            aria-label="Copy project ID"
-                            title="Copy ID"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            aria-label="Delete project"
+                            title="Delete"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              copyText(String(project.id), "Project ID");
+                              openDelete(project.id);
                             }}
                           >
-                            <Copy size={14} />
+                            <Trash2 size={14} />
                           </IconButton>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2 h-10 mb-4" title={project.description || ""}>
+                        {project.description || t("projects.desc.none")}
+                      </p>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground/60">
+                        <div className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                             onClick={(e) => {
+                               e.preventDefault();
+                               e.stopPropagation();
+                               copyText(String(project.id), "Project ID");
+                             }}
+                             title="Click to copy ID"
+                             role="button"
+                        >
+                          <span className="font-mono">#{project.id.slice(0, 8)}</span>
+                          <Copy size={10} />
                         </div>
                         <span>{new Date(project.created_at).toLocaleDateString()}</span>
                       </div>
-                      {project.parent_project_id ? (
-                        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                          <span title={project.parent_project_id}>Parent #{project.parent_project_id.slice(0, 8)}</span>
-                          <IconButton
-                            aria-label="Copy parent project ID"
-                            title="Copy Parent ID"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              copyText(String(project.parent_project_id), "Parent Project ID");
-                            }}
-                          >
-                            <Copy size={14} />
-                          </IconButton>
-                        </div>
-                      ) : null}
                     </CardContent>
                   </Card>
                 </Link>

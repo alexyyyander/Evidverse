@@ -1,6 +1,6 @@
 import requests
 from typing import Any, Dict, Optional
-from vidgit.config import get_token
+from evidverse.config import get_token
 
 API_BASE_URL = "http://127.0.0.1:8000/api/v1"
 

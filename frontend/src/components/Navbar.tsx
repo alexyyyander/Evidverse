@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import PageContainer from "@/components/layout/PageContainer";
@@ -34,8 +35,9 @@ export default function Navbar() {
       <PageContainer>
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-primary">
-              Vidgit
+            <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary transition-colors hover:text-primary/90">
+              <span className="hidden sm:inline-block">Evidverse</span>
+              <span className="sm:hidden">EV</span>
             </Link>
             <div className="ml-10 flex items-baseline space-x-4">
               {navItems.map((item) => {

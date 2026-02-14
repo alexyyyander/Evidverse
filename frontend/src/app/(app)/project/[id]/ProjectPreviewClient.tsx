@@ -36,6 +36,7 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
   const [mrSourceBranch, setMrSourceBranch] = useState("");
   const [mrTitle, setMrTitle] = useState("");
   const [mrDescription, setMrDescription] = useState("");
+  const [activeTab, setActiveTab] = useState("graph");
   
   const canLoadAuthedData = typeof token === "string" && token.length > 0 && typeof projectId === "string" && projectId.length > 0;
 
@@ -116,6 +117,14 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
       toast({ title: t("mr.toast.createFailed.title"), description: message, variant: "destructive" });
     },
   });
+
+  const handleCreateMr = () => {
+    if (!mrSourceBranch.trim()) {
+      toast({ title: "Error", description: "Source branch is required", variant: "destructive" });
+      return;
+    }
+    createMrMutation.mutate();
+  };
 
   const mergeMrMutation = useMutation({
     mutationFn: (mrId: string) => mergeRequestsApi.merge(mrId),
@@ -220,6 +229,11 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
                   <span className="font-semibold">-</span>
                   <span className="text-xs text-muted-foreground">Forks</span>
                 </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-background">
+                  <GitBranch size={16} className="text-muted-foreground" />
+                  <span className="font-semibold">{branchOptions.length}</span>
+                  <span className="text-xs text-muted-foreground">Branches</span>
+                </div>
               </div>
 
               {/* Tags */}
@@ -234,16 +248,16 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
               )}
 
               {/* Actions */}
-              <div className="flex gap-3 mt-auto pt-4">
+              <div className="flex flex-wrap gap-3 mt-auto pt-4">
                 {isOwner ? (
-                  <LinkButton href={`/editor/${project.id}`} size="lg" className="flex-1">
+                  <LinkButton href={`/editor/${project.id}`} size="lg" className="flex-1 min-w-[140px]">
                     {t("project.openEditor")}
                   </LinkButton>
                 ) : (
                   <>
                     <Button 
                       size="lg" 
-                      className="flex-1"
+                      className="flex-1 min-w-[140px]"
                       loading={forkMutation.isPending} 
                       onClick={() => forkMutation.mutate()}
                       disabled={!token}
@@ -252,7 +266,7 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
                       {t("project.forkEdit")}
                     </Button>
                     {!token && (
-                      <LinkButton href={`/login?next=${encodeURIComponent(`/project/${project.id}`)}`} variant="secondary" size="lg">
+                      <LinkButton href={`/login?next=${encodeURIComponent(`/project/${project.id}`)}`} variant="secondary" size="lg" className="flex-1 min-w-[100px]">
                         {t("auth.login")}
                       </LinkButton>
                     )}
@@ -261,7 +275,7 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
                 <Button 
                   size="lg" 
                   variant="outline" 
-                  className={cn("px-4", project.is_liked && "border-pink-500/50 bg-pink-500/5 text-pink-500")}
+                  className={cn("px-4 shrink-0", project.is_liked && "border-pink-500/50 bg-pink-500/5 text-pink-500")}
                   onClick={() => likeMutation.mutate()}
                   disabled={!token}
                 >
@@ -275,7 +289,7 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
 
       {/* Content Tabs */}
       <PageContainer className="py-8">
-        <Tabs defaultValue="graph">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex items-center justify-between mb-6">
             <TabsList>
               <TabsTrigger value="graph" className="gap-2">
@@ -316,17 +330,17 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
                     <div>
                       <h4 className="text-sm font-medium text-muted-foreground mb-2">Project Info</h4>
                       <div className="space-y-2 text-sm">
-                        <div className="flex justify-between py-1 border-b border-border/50">
-                          <span className="text-muted-foreground">ID</span>
-                          <span className="font-mono">{project.id}</span>
+                        <div className="flex justify-between py-1 border-b border-border/50 gap-4">
+                          <span className="text-muted-foreground shrink-0">ID</span>
+                          <span className="font-mono truncate">{project.id}</span>
                         </div>
-                        <div className="flex justify-between py-1 border-b border-border/50">
-                          <span className="text-muted-foreground">Created</span>
-                          <span>{new Date(project.created_at).toLocaleString()}</span>
+                        <div className="flex justify-between py-1 border-b border-border/50 gap-4">
+                          <span className="text-muted-foreground shrink-0">Created</span>
+                          <span className="truncate">{new Date(project.created_at).toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between py-1 border-b border-border/50">
-                          <span className="text-muted-foreground">Visibility</span>
-                          <span>{project.is_public ? "Public" : "Private"}</span>
+                        <div className="flex justify-between py-1 border-b border-border/50 gap-4">
+                          <span className="text-muted-foreground shrink-0">Visibility</span>
+                          <span className="truncate">{project.is_public ? "Public" : "Private"}</span>
                         </div>
                       </div>
                     </div>
@@ -370,38 +384,89 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
                   ) : (
                     <div className="grid gap-3">
                       {branchOptions.map((b) => (
-                        <div key={b.id} className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-secondary/20 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <GitBranch size={18} className="text-muted-foreground" />
-                            <div>
-                              <div className="font-medium flex items-center gap-2">
-                                {b.name}
-                                {b.name === "main" && <Badge className="text-[10px] h-5">Default</Badge>}
+                        <div key={b.id} className="flex flex-col gap-0 rounded-lg border border-border bg-card overflow-hidden hover:bg-secondary/10 transition-colors">
+                          <div className="flex items-center justify-between p-4 pb-2">
+                            <div className="flex items-center gap-3">
+                              <GitBranch size={18} className="text-muted-foreground" />
+                              <div>
+                                <div className="font-medium flex items-center gap-2">
+                                  {b.name}
+                                  {b.name === "main" && <Badge className="text-[10px] h-5">Default</Badge>}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  {b.description || "No description"}
+                                </div>
+                                {/* Branch Tags & Stats */}
+                                <div className="flex flex-wrap gap-2 mt-1.5">
+                                  {(b.tags || []).map(tag => (
+                                    <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-primary/20 text-primary">
+                                      {tag}
+                                    </Badge>
+                                  ))}
+                                  <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1 bg-secondary/30 px-1.5 rounded">
+                                    <span>Coverage:</span>
+                                    <span className="font-bold text-foreground">{(b as any).project_percent}%</span>
+                                  </div>
+                                  <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1 bg-secondary/30 px-1.5 rounded">
+                                    <span>Commits:</span>
+                                    <span className="font-bold text-foreground">{(b as any).commit_count}</span>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="text-xs text-muted-foreground mt-0.5">
-                                {b.description || "No description"}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {canLoadAuthedData && b.name !== "main" && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setMrSourceBranch(b.name);
+                                    setMrTitle(`${t("mr.titlePrefix")} ${b.name} → main`);
+                                    setActiveTab("mrs");
+                                  }}
+                                >
+                                  {t("mr.create")}
+                                </Button>
+                              )}
+                              <div className="text-xs font-mono text-muted-foreground px-2 py-1 bg-secondary rounded">
+                                {b.head_commit_id ? b.head_commit_id.slice(0, 7) : "No commits"}
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {canLoadAuthedData && b.name !== "main" && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setMrSourceBranch(b.name);
-                                  setMrTitle(`${t("mr.titlePrefix")} ${b.name} → main`);
-                                  const tabTrigger = document.querySelector('[value="mrs"]') as HTMLButtonElement;
-                                  if(tabTrigger) tabTrigger.click();
-                                }}
-                              >
-                                Create MR
-                              </Button>
-                            )}
-                            <div className="text-xs font-mono text-muted-foreground px-2 py-1 bg-secondary rounded">
-                              {b.head_commit_id ? b.head_commit_id.slice(0, 7) : "No commits"}
+                          {/* Contributors Stats */}
+                          {(b as any).contributors && (b as any).contributors.length > 0 && (
+                            <div className="mt-1 px-4 pb-4">
+                              <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                                <span>Top Contributors</span>
+                                <div className="h-px flex-1 bg-border/50" />
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {(b as any).contributors.slice(0, 12).map((c: any) => (
+                                  <div key={c.name} className="flex items-center gap-2 text-xs group/contrib bg-secondary/10 p-2 rounded border border-border/30 hover:border-primary/20 transition-colors">
+                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0 border border-primary/20">
+                                      {c.name.slice(0, 1).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex justify-between items-center mb-0.5">
+                                        <span className="font-medium truncate mr-1" title={c.name}>{c.name}</span>
+                                        <span className="text-muted-foreground font-mono text-[10px]">{c.percent}%</span>
+                                      </div>
+                                      <div className="h-1.5 w-full bg-secondary/50 rounded-full overflow-hidden">
+                                        <div 
+                                          className="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full transition-all duration-500" 
+                                          style={{ width: `${c.percent}%` }} 
+                                        />
+                                      </div>
+                                      <div className="text-[10px] text-muted-foreground mt-1 flex justify-between">
+                                        <span>{c.count} commits</span>
+                                        <span>{Math.floor(c.score)} pts</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -500,7 +565,7 @@ export default function ProjectPreviewClient({ projectId }: { projectId: string 
                           className="w-full"
                           loading={createMrMutation.isPending}
                           disabled={!mrSourceBranch.trim()}
-                          onClick={() => createMrMutation.mutate()}
+                          onClick={handleCreateMr}
                         >
                           {t("mr.create")}
                         </Button>

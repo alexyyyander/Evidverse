@@ -49,7 +49,7 @@ export default function UserProfileClient({ userId }: { userId: string }) {
     <div className="min-h-[calc(100vh-64px)] py-8">
       <PageContainer>
         <div className="mb-8">
-          <SectionHeader title={user.full_name || user.email.split("@")[0]} subtitle="Vidgit Creator" />
+          <SectionHeader title={user.full_name || user.email.split("@")[0]} subtitle="Evidverse Creator" />
         </div>
 
         <Card className="mb-8">

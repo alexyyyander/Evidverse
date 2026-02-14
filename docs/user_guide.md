@@ -1,6 +1,6 @@
-# Vidgit User Guide
+# Yivid User Guide
 
-Welcome to Vidgit! Vidgit is an AI-powered video editor with Git-like version control capabilities.
+Welcome to Yivid! Yivid is an AI-powered video editor with Git-like version control capabilities.
 
 ## Getting Started
 
@@ -16,7 +16,7 @@ Welcome to Vidgit! Vidgit is an AI-powered video editor with Git-like version co
 - **Preview**: Real-time preview of your video sequence.
 
 ### 🌿 Version Control
-Vidgit brings Git concepts to video editing:
+Yivid brings Git concepts to video editing:
 - **Project Detail Page**: The central hub for your project. View description, author info, stats, and the full commit history graph.
 - **Commits**: Save snapshots of your project state. Every edit can be committed with a message.
 - **Branches**: Experiment with different editing styles by creating branches (e.g., `director-cut`, `short-version`).
@@ -30,13 +30,13 @@ Vidgit brings Git concepts to video editing:
 - **Profile**: Showcase your public portfolio on your user profile.
 
 ## CLI Tool
-Vidgit also provides a Command Line Interface (CLI) for power users.
+Yivid also provides a Command Line Interface (CLI) for power users.
 ```bash
-pip install vidgit-cli
-vidgit login
-vidgit clone <project_id>
-vidgit status
-vidgit commit -m "My update"
+pip install yivid-cli
+yivid login
+yivid clone <project_id>
+yivid status
+yivid commit -m "My update"
 ```
 
 ## Support

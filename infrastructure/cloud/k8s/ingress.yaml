@@ -1,28 +1,28 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: vidgit-ingress
-  namespace: vidgit
+  name: yivid-ingress
+  namespace: yivid
 spec:
   rules:
-    - host: app.vidgit.example
+    - host: app.yivid.example
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: vidgit-frontend
+                name: yivid-frontend
                 port:
                   number: 3000
-    - host: api.vidgit.example
+    - host: api.yivid.example
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: vidgit-backend
+                name: yivid-backend
                 port:
                   number: 8000
 

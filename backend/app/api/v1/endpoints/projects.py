@@ -67,8 +67,9 @@ async def read_projects(
 ) -> Any:
     """
     Retrieve current user's projects.
+    Includes both owned projects and projects where the user has created branches (forked).
     """
-    return await ProjectService.get_user_projects(db, current_user.internal_id, skip, limit)
+    return await ProjectService.get_involved_projects(db, current_user.internal_id, skip, limit)
 
 @router.get("/{project_id}", response_model=Project)
 async def read_project(

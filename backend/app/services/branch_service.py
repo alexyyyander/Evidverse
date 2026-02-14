@@ -8,6 +8,7 @@ from app.core.cache import cache
 from app.models.branch import Branch
 from app.models.commit import Commit
 from app.models.project import Project
+from app.models.user import User
 
 class BranchService:
     @staticmethod
@@ -70,6 +71,88 @@ class BranchService:
         commits_query = select(Commit).where(Commit.project_id == project_id).order_by(Commit.created_at.asc())
         commits_res = await db.execute(commits_query)
         commits = commits_res.scalars().all()
+        
+        # Build commits map for traversal
+        commits_map = {c.id: c for c in commits}
+        
+        # Fetch authors
+        author_ids = {c.author_id for c in commits if c.author_id}
+        if author_ids:
+            users_query = select(User).where(User.internal_id.in_(author_ids))
+            users_res = await db.execute(users_query)
+            users = {u.internal_id: u for u in users_res.scalars().all()}
+        else:
+            users = {}
+
+        # Calculate scores for all commits first
+        commit_scores = {}
+        for c in commits:
+            # Base score 1, bonus for assets
+            asset_score = len(c.video_assets.keys()) if c.video_assets else 0
+            commit_scores[c.id] = 1 + (asset_score * 0.5)
+            
+        total_project_score = sum(commit_scores.values()) or 1
+
+        # Calculate branch stats
+        branch_stats = {}
+        for b in branches:
+            stats = {"commit_count": 0, "contributors": {}, "total_score": 0}
+            current_hash = b.head_commit_id
+            visited = set()
+            
+            queue = [current_hash] if current_hash else []
+            
+            while queue:
+                h = queue.pop(0)
+                if not h or h in visited or h not in commits_map:
+                    continue
+                visited.add(h)
+                
+                c = commits_map[h]
+                stats["commit_count"] += 1
+                
+                # Add to branch total score
+                score = commit_scores.get(h, 0)
+                stats["total_score"] += score
+                
+                if c.author_id:
+                    uid = c.author_id
+                    if uid not in stats["contributors"]:
+                        u = users.get(uid)
+                        stats["contributors"][uid] = {
+                            "name": u.full_name if u else f"User {uid}",
+                            "count": 0,
+                            "score": 0
+                        }
+                    stats["contributors"][uid]["count"] += 1
+                    stats["contributors"][uid]["score"] += score
+
+                if c.parent_hash:
+                    queue.append(c.parent_hash)
+            
+            # Normalize contributors
+            branch_total_score = stats["total_score"] or 1
+            contributors_list = []
+            for uid, cdata in stats["contributors"].items():
+                percent = round((cdata["score"] / branch_total_score) * 100, 1)
+                contributors_list.append({
+                    "name": cdata["name"],
+                    "count": cdata["count"],
+                    "score": cdata["score"],
+                    "percent": percent
+                })
+            
+            # Sort by score desc
+            contributors_list.sort(key=lambda x: x["score"], reverse=True)
+            
+            # Calculate branch contribution to project
+            project_percent = round((stats["total_score"] / total_project_score) * 100, 1)
+            
+            branch_stats[b.public_id] = {
+                "contributors": contributors_list,
+                "project_percent": project_percent,
+                "commit_count": stats["commit_count"]
+            }
 
         data = {
             "branches": [
@@ -80,6 +163,9 @@ class BranchService:
                     "description": b.description,
                     "tags": b.tags,
                     "parent_branch_id": id_map.get(b.parent_branch_internal_id),
+                    "contributors": branch_stats.get(b.public_id, {}).get("contributors", []),
+                    "project_percent": branch_stats.get(b.public_id, {}).get("project_percent", 0),
+                    "commit_count": branch_stats.get(b.public_id, {}).get("commit_count", 0),
                 }
                 for b in branches
             ],

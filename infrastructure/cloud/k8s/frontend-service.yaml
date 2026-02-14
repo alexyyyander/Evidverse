@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: vidgit-frontend
-  namespace: vidgit
+  name: yivid-frontend
+  namespace: yivid
 spec:
   selector:
-    app: vidgit-frontend
+    app: yivid-frontend
   ports:
     - name: http
       port: 3000

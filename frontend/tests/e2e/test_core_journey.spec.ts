@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('visitor can navigate to discover page', async ({ page }) => {
   // 1. Go to Home
   await page.goto('/');
-  await expect(page).toHaveTitle(/Vidgit/);
+  await expect(page).toHaveTitle(/Yivid/);
 
   // 2. Navigate to Discover
   await page.click('text=Discover');

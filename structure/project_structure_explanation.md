@@ -1,14 +1,14 @@
-# Vidgit 项目目录结构说明
+# Yivid 项目目录结构说明
 
-为了支持 Vidgit 的多模块开发（后端 API、Web 可视化编辑器、AI 引擎、CLI 工具），我们采用了 Monorepo 风格的项目结构。
+为了支持 Yivid 的多模块开发（后端 API、Web 可视化编辑器、AI 引擎、CLI 工具），我们采用了 Monorepo 风格的项目结构。
 
 ## 根目录概览
 
 ```
-vidgit/
+yivid/
 ├── ai_engine/       # 🧠 AI 核心引擎 (视频生成、角色一致性算法)
 ├── backend/         # 🔙 后端 API 服务 (FastAPI, 数据库, 任务队列)
-├── cli/             # 💻 命令行工具 (开发者用的 vidgit 命令)
+├── cli/             # 💻 命令行工具 (开发者用的 yivid 命令)
 ├── frontend/        # 🌐 Web 前端 (可视化编辑器, React/Next.js)
 ├── infrastructure/  # 🏗️ 基础设施 (Docker, 部署配置)
 ├── plan/            # 📅 项目规划与路线图
@@ -50,7 +50,7 @@ vidgit/
 ### 4. CLI (`/cli`)
 开发者使用的 Python 命令行工具。
 
-*   `vidgit/`: CLI 源码。
+*   `yivid/`: CLI 源码。
 *   主要命令: `init`, `clone`, `pull`, `push`, `branch`。
 
 ### 5. Infrastructure (`/infrastructure`)

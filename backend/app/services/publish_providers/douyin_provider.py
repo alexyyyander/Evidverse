@@ -42,7 +42,7 @@ def upload_to_douyin(video_path: str, credential_json: str, meta: dict[str, Any]
     title = (meta.get("title") or "").strip()
     description = (meta.get("description") or "").strip()
 
-    with tempfile.TemporaryDirectory(prefix="vidgit-douyin-") as td:
+    with tempfile.TemporaryDirectory(prefix="evidverse-douyin-") as td:
         cred_path = os.path.join(td, "credential.json")
         with open(cred_path, "w", encoding="utf-8") as f:
             f.write(credential_json)

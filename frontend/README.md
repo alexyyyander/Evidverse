@@ -1,4 +1,4 @@
-# Vidgit Frontend
+# Yivid Frontend
 
 ## Tech Stack
 - Next.js (App Router) + React + TypeScript
@@ -27,7 +27,7 @@ Notes:
 ## Environment Variables
 - `NEXT_PUBLIC_API_URL`
   - Default: `http://localhost:8000/api/v1`
-  - Used as axios `baseURL` in [client.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/client.ts#L6-L11)
+  - Used as axios `baseURL` in [client.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/src/lib/api/client.ts#L6-L11)
 
 ## Project Structure
 - Routes: `src/app/` (App Router)
@@ -40,19 +40,19 @@ Notes:
 - Local editor state: `src/store/`
 
 ## API Layer
-- axios instance + interceptors: [client.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/client.ts)
+- axios instance + interceptors: [client.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/src/lib/api/client.ts)
   - Attaches `Authorization: Bearer <token>` from `localStorage`
   - Normalizes errors into `ApiError`
 - Domain APIs: `src/lib/api/domains/*`
-  - Auth: [auth.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/domains/auth.ts)
-  - Projects: [project.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/domains/project.ts)
-  - Users: [user.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/domains/user.ts)
-  - Tasks (Celery polling): [tasks.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/domains/tasks.ts)
-- Query keys: [queryKeys.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/queryKeys.ts)
+  - Auth: [auth.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/src/lib/api/domains/auth.ts)
+  - Projects: [project.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/src/lib/api/domains/project.ts)
+  - Users: [user.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/src/lib/api/domains/user.ts)
+  - Tasks (Celery polling): [tasks.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/src/lib/api/domains/tasks.ts)
+- Query keys: [queryKeys.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/src/lib/queryKeys.ts)
 
 ## Auth & Route Guard
-- Token storage: [auth.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/lib/api/auth.ts)
-- Guard component: [AuthGuard.tsx](file:///mnt/c/Users/dubdoo/Desktop/individual_project/vidgit/frontend/src/components/auth/AuthGuard.tsx)
+- Token storage: [auth.ts](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/src/lib/api/auth.ts)
+- Guard component: [AuthGuard.tsx](file:///mnt/c/Users/dubdoo/Desktop/individual_project/yivid/frontend/src/components/auth/AuthGuard.tsx)
   - Protects `/projects` and `/editor/*`
   - Redirects to `/login?next=...` and returns to `next` after login
 

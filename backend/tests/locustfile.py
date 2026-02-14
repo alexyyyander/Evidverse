@@ -1,6 +1,6 @@
 from locust import HttpUser, task, between
 
-class VidgitUser(HttpUser):
+class EvidverseUser(HttpUser):
     wait_time = between(1, 3)
 
     @task(3)

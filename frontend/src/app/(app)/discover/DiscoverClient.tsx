@@ -40,6 +40,14 @@ export default function DiscoverClient() {
   const userQuery = useUserSearch({ query: query.trim(), limit: 40 });
 
   useEffect(() => {
+    if (data) {
+      console.log("Feed data:", data);
+      // Temporary debug
+      // toast({ title: "Debug", description: `Loaded ${data.length} projects. Sort: ${sort}` });
+    }
+  }, [data, sort]);
+
+  useEffect(() => {
     if (mode === "projects") {
       if (!isError) return;
       const message = error instanceof Error ? error.message : "Failed to load feed";
@@ -146,18 +154,18 @@ export default function DiscoverClient() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {users.map((u) => (
-              <Card key={u.id}>
-                <CardContent className="pt-6">
+              <Card key={u.id} className="border-border/50 hover:border-primary/20 transition-all hover:bg-card/70">
+                <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-foreground truncate" title={u.full_name || u.email}>
+                      <div className="font-semibold text-foreground truncate text-base mb-1" title={u.full_name || u.email}>
                         {u.full_name || u.email.split("@")[0]}
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground truncate" title={u.email}>
+                      <div className="text-xs text-muted-foreground/70 truncate mb-2" title={u.email}>
                         {u.email}
                       </div>
                       <button 
-                        className="mt-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                        className="text-xs text-muted-foreground/60 hover:text-primary flex items-center gap-1.5 transition-colors group"
                         onClick={(e) => {
                           e.preventDefault();
                           navigator.clipboard.writeText(u.id);
@@ -165,15 +173,15 @@ export default function DiscoverClient() {
                         }}
                         title={`Copy User ID: ${u.id}`}
                       >
-                        <span>#{u.id.slice(0, 8)}</span>
-                        <Copy size={12} />
+                        <span className="font-mono bg-secondary/50 px-1.5 py-0.5 rounded group-hover:bg-primary/10">#{u.id.slice(0, 8)}</span>
+                        <Copy size={10} />
                       </button>
                     </div>
                     <Link
                       href={`/profile/${u.id}`}
                       className={cn(
-                        "inline-flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                        "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                        "inline-flex items-center rounded-full px-4 py-1.5 text-xs font-medium transition-colors border",
+                        "bg-transparent border-border hover:bg-secondary text-muted-foreground hover:text-foreground"
                       )}
                     >
                       {t("common.view")}

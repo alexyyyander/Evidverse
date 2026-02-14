@@ -1,4 +1,4 @@
-# CLAUDE.md - Vidgit Development Guidelines
+# CLAUDE.md - Yivid Development Guidelines
 
 ## 🌟 Golden Rule
 **ALWAYS check `plan/current_stage&FAQ.md` before starting any development task.**
@@ -40,7 +40,7 @@ You have to use git commit after each stage test is passed.
   - `docker-compose -f docker-compose.prod.yml up -d --build`
   - Ensure the worker container has `ffmpeg` in PATH.
   - Ensure the worker container can execute `biliup` (install or mount it and set `BILIUP_BIN`).
-  - Create `S3_BUCKET_NAME` (default `vidgit-bucket`) in MinIO.
+  - Create `S3_BUCKET_NAME` (default `yivid-bucket`) in MinIO.
 
 ## 🧩 Project Structure
 - `backend/`: FastAPI application

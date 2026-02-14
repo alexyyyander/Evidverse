@@ -99,7 +99,7 @@ export default function ProjectCard({ project: initialProject, viewerId }: Proje
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-6 pt-8">
         <div className="flex justify-between items-start mb-2">
           <Link href={primaryHref} className="hover:text-primary transition-colors min-w-0 flex-1" title={project.name}>
             <h3 className="font-semibold text-lg text-card-foreground truncate">{project.name}</h3>

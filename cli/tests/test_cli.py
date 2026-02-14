@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 from typer.testing import CliRunner
-from vidgit.main import app
-from vidgit.context import context
+from evidverse.main import app
+from evidverse.context import context
 import json
 from pathlib import Path
 import re
@@ -13,20 +13,20 @@ def strip_ansi(text):
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     return ansi_escape.sub('', text)
 
-class TestVidgitCLI(unittest.TestCase):
+class TestEvidverseCLI(unittest.TestCase):
 
     def setUp(self):
         # Mock API Client
-        self.api_patcher = patch('vidgit.main.APIClient')
+        self.api_patcher = patch('evidverse.main.APIClient')
         self.mock_api_class = self.api_patcher.start()
         self.mock_api = self.mock_api_class.return_value
         
         # Mock Context
-        self.context_patcher = patch('vidgit.main.context')
+        self.context_patcher = patch('evidverse.main.context')
         self.mock_context = self.context_patcher.start()
         
         # Mock Config (get_token)
-        self.token_patcher = patch('vidgit.main.get_token')
+        self.token_patcher = patch('evidverse.main.get_token')
         self.mock_get_token = self.token_patcher.start()
         self.mock_get_token.return_value = "mock-token"
 
@@ -38,7 +38,7 @@ class TestVidgitCLI(unittest.TestCase):
     def test_version(self):
         result = runner.invoke(app, ["--version"])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Vidgit CLI version:", strip_ansi(result.stdout))
+        self.assertIn("Evidverse CLI version:", strip_ansi(result.stdout))
 
     def test_status_not_logged_in(self):
         self.mock_get_token.return_value = None
@@ -51,7 +51,7 @@ class TestVidgitCLI(unittest.TestCase):
         self.mock_api.get_projects.return_value = [
             {"id": 101, "name": "Project A", "description": "Desc A"}
         ]
-        self.mock_context.vidgit_path = None # Not in repo
+        self.mock_context.evidverse_path = None # Not in repo
 
         result = runner.invoke(app, ["status"])
         
@@ -74,7 +74,7 @@ class TestVidgitCLI(unittest.TestCase):
     def test_branch_list(self):
         # Mock context config
         self.mock_context.get_config.return_value = {"project_id": 123, "current_branch": "main"}
-        self.mock_context.vidgit_path = Path("/tmp/.vidgit")
+        self.mock_context.evidverse_path = Path("/tmp/.evidverse")
         
         self.mock_api.get_branches.return_value = [
             {"name": "main"}, {"name": "dev"}
@@ -89,7 +89,7 @@ class TestVidgitCLI(unittest.TestCase):
 
     def test_checkout_existing(self):
         self.mock_context.get_config.return_value = {"project_id": 123, "current_branch": "main"}
-        self.mock_context.vidgit_path = Path("/tmp/.vidgit")
+        self.mock_context.evidverse_path = Path("/tmp/.evidverse")
         
         self.mock_api.get_branches.return_value = [{"name": "main"}, {"name": "dev"}]
         
@@ -102,7 +102,7 @@ class TestVidgitCLI(unittest.TestCase):
 
     def test_checkout_non_existing(self):
         self.mock_context.get_config.return_value = {"project_id": 123, "current_branch": "main"}
-        self.mock_context.vidgit_path = Path("/tmp/.vidgit")
+        self.mock_context.evidverse_path = Path("/tmp/.evidverse")
         
         self.mock_api.get_branches.return_value = [{"name": "main"}]
         

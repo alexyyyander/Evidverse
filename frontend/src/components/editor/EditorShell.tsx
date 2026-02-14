@@ -152,6 +152,7 @@ export default function EditorShell({ projectId }: { projectId: string }) {
           direction="horizontal"
           side="start"
           size={layout.leftPanelWidth}
+          minSize={240}
           onResize={(w) => updateLayout({ leftPanelWidth: w })}
           className="z-20 border-r border-border"
         >
@@ -209,6 +210,7 @@ export default function EditorShell({ projectId }: { projectId: string }) {
           direction="horizontal"
           side="end"
           size={layout.rightPanelWidth}
+          minSize={240}
           onResize={(w) => updateLayout({ rightPanelWidth: w })}
           className="z-20 border-l border-border"
         >

@@ -23,8 +23,8 @@ COPY backend/alembic.ini ./alembic.ini
 COPY backend/docker-entrypoint.sh ./docker-entrypoint.sh
 COPY ai_engine ./ai_engine
 
-RUN addgroup --system vidgit && adduser --system --group vidgit
-USER vidgit
+RUN addgroup --system evidverse && adduser --system --group evidverse
+USER evidverse
 
 EXPOSE 8000
 

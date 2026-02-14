@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, or_
 from sqlalchemy.orm import selectinload
 
 from app.models.project import Project
@@ -13,6 +13,31 @@ class ProjectService:
         query = select(Project).where(Project.public_id == public_id).options(selectinload(Project.owner), selectinload(Project.parent_project))
         result = await db.execute(query)
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_involved_projects(db: AsyncSession, user_id: int, skip: int = 0, limit: int = 100) -> List[Project]:
+        """
+        查询用户参与的项目：
+        1. 用户是项目的所有者
+        2. 用户在项目中创建了分支 (Fork-as-Branch)
+        """
+        query = (
+            select(Project)
+            .join(Branch, Branch.project_id == Project.internal_id) # 关联分支表
+            .where(
+                or_(
+                    Project.owner_internal_id == user_id,   # 条件1: 我是项目拥有者
+                    Branch.creator_internal_id == user_id   # 条件2: 我是某分支的创建者
+                )
+            )
+            .group_by(Project.internal_id) # 去重，防止因为有多个分支导致项目重复出现
+            .options(selectinload(Project.owner), selectinload(Project.parent_project))
+            .offset(skip)
+            .limit(limit)
+        )
+        
+        result = await db.execute(query)
+        return result.scalars().all()
 
     @staticmethod
     async def resolve_project(db: AsyncSession, project_id: str) -> Optional[Project]:

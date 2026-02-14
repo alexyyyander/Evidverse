@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
-CONFIG_DIR = Path.home() / ".vidgit"
+CONFIG_DIR = Path.home() / ".evidverse"
 CREDENTIALS_FILE = CONFIG_DIR / "credentials"
 
 def get_config_dir() -> Path:

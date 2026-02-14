@@ -1,7 +1,7 @@
 # Frontend Optimization Stage Plan v1
 
 ## 背景
-当前 Vidgit 前端已具备 MVP 功能闭环（登录/注册、Discover、My Projects、Editor、Git Graph 等）。接下来 v1 的重点不再铺开做“全站重构”，而是聚焦把“视频编辑页面”做得足够高级、足够复杂、足够好用：
+当前 Yivid 前端已具备 MVP 功能闭环（登录/注册、Discover、My Projects、Editor、Git Graph 等）。接下来 v1 的重点不再铺开做“全站重构”，而是聚焦把“视频编辑页面”做得足够高级、足够复杂、足够好用：
 - 用户从一个点子出发生成剧本（剧情段落/分镜/镜头）
 - 根据描述生成人物图像和视频片段
 - 在时间轴上对齐每段剧情对应的视频片段

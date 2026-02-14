@@ -273,19 +273,19 @@ export default function EditorHeaderBar({ projectId }: { projectId: string }) {
               </>
             ) : (
               <div className="flex items-center gap-2 group">
-                <span className="font-semibold text-sm truncate max-w-[400px]">{projectQuery.data?.name || "Untitled Project"}</span>
+                <span className="font-semibold text-lg truncate max-w-[400px]">{projectQuery.data?.name || "Untitled Project"}</span>
                 {isOwner && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground transition-colors"
                     onClick={() => {
                       setName(projectQuery.data?.name || "");
                       setIsEditingName(true);
                     }}
                     title={t("editor.rename.tooltip")}
                   >
-                    <Edit2 size={16} />
+                    <Edit2 size={18} />
                   </Button>
                 )}
               </div>

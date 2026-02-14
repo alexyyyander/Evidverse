@@ -1,8 +1,8 @@
-# Vidgit Developer Guide
+# Yivid Developer Guide
 
 ## Architecture
 
-Vidgit is a full-stack app with async AI workflows. At a high level:
+Yivid is a full-stack app with async AI workflows. At a high level:
 
 ```text
 Browser (Next.js)
@@ -145,7 +145,7 @@ Access:
 Production notes:
 - MinIO bucket:
   - `docker-compose.prod.yml` does not create buckets automatically.
-  - Create `S3_BUCKET_NAME` (default `vidgit-bucket`) and optionally set it public if you rely on direct asset URLs.
+  - Create `S3_BUCKET_NAME` (default `yivid-bucket`) and optionally set it public if you rely on direct asset URLs.
 - Dev v2 publish/export:
   - The worker container must have `ffmpeg` available in PATH (used for concat/export).
   - Bilibili upload uses `biliup` CLI; install it in the worker image or provide it in PATH and set `BILIUP_BIN` if needed.

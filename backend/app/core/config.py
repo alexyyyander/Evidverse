@@ -4,7 +4,7 @@ from pydantic import PostgresDsn, validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Vidgit"
+    PROJECT_NAME: str = "Evidverse"
     API_V1_STR: str = "/api/v1"
     
     # JWT
@@ -14,9 +14,9 @@ class Settings(BaseSettings):
     
     # Database
     POSTGRES_SERVER: str = "localhost"
-    POSTGRES_USER: str = "vidgit"
-    POSTGRES_PASSWORD: str = "vidgit_password"
-    POSTGRES_DB: str = "vidgit_db"
+    POSTGRES_USER: str = "evidverse"
+    POSTGRES_PASSWORD: str = "evidverse_password"
+    POSTGRES_DB: str = "evidverse_db"
     POSTGRES_PORT: str = "5432"
     DATABASE_URL: Optional[str] = None
     
@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     S3_ENDPOINT_URL: str = "http://localhost:9000"
     S3_ACCESS_KEY: str = "minioadmin"
     S3_SECRET_KEY: str = "minioadmin"
-    S3_BUCKET_NAME: str = "vidgit-bucket"
+    S3_BUCKET_NAME: str = "evidverse-bucket"
     S3_REGION_NAME: str = "us-east-1"
 
     # Seedance AI

@@ -1,29 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vidgit-backend
-  namespace: vidgit
+  name: yivid-backend
+  namespace: yivid
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: vidgit-backend
+      app: yivid-backend
   template:
     metadata:
       labels:
-        app: vidgit-backend
+        app: yivid-backend
     spec:
       containers:
         - name: backend
-          image: ghcr.io/your-org/vidgit-backend:cloud_version
+          image: ghcr.io/your-org/yivid-backend:cloud_version
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
           envFrom:
             - configMapRef:
-                name: vidgit-config
+                name: yivid-config
             - secretRef:
-                name: vidgit-secret
+                name: yivid-secret
           readinessProbe:
             httpGet:
               path: /api/v1/health

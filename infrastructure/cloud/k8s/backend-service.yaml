@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: vidgit-backend
-  namespace: vidgit
+  name: yivid-backend
+  namespace: yivid
 spec:
   selector:
-    app: vidgit-backend
+    app: yivid-backend
   ports:
     - name: http
       port: 8000
