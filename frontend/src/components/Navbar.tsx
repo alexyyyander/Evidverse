@@ -22,6 +22,11 @@ export default function Navbar() {
   const token = useAuthToken();
   const meQuery = useMe();
   const { lang, setLang, t } = useI18n();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const navItems = [
     { name: t("nav.home"), path: "/" },
@@ -61,7 +66,7 @@ export default function Navbar() {
           </div>
           <div className="flex items-center space-x-4">
             <DropdownMenu>
-              <DropdownMenuTrigger>
+              <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="sm">
                   {LANG_LABEL[lang]}
                 </Button>
@@ -74,7 +79,7 @@ export default function Navbar() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            {typeof token !== "string" || token.length === 0 ? (
+            {!mounted || typeof token !== "string" || token.length === 0 ? (
               <div className="flex items-center gap-2">
                 <Link href="/login">
                   <Button variant="secondary" size="sm">
@@ -90,11 +95,11 @@ export default function Navbar() {
             ) : meQuery.data ? (
               <DropdownMenu>
                 <div className="relative">
-                  <DropdownMenuTrigger>
+                  <DropdownMenuTrigger asChild>
                     <button
                       type="button"
                       className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold"
-                      aria-label="User menu"
+                      aria-label={t("nav.userMenu")}
                     >
                       {meQuery.data.email.slice(0, 1).toUpperCase()}
                     </button>
@@ -103,6 +108,9 @@ export default function Navbar() {
                     <div className="px-3 py-2 text-xs text-muted-foreground">{meQuery.data.email}</div>
                     <DropdownMenuItem onSelect={() => router.push(`/profile/${meQuery.data.id}`)}>
                       {t("menu.profile")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => router.push("/settings")}>
+                      {t("menu.settings")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onSelect={() => {

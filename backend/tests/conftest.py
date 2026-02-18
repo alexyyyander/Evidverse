@@ -8,8 +8,14 @@ if str(repo_root) not in sys.path:
 import pytest
 import uuid
 import os
+import asyncio
+import fnmatch
+import json
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite+aiosqlite:///:memory:").strip()
+os.environ["TEST_DATABASE_URL"] = TEST_DATABASE_URL
 
 from app.core.db import get_db
 from app.models.base import Base
@@ -18,11 +24,59 @@ from httpx import AsyncClient, ASGITransport
 from app.models.user import User
 from app.core.security import get_password_hash, create_access_token
 
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite+aiosqlite:///:memory:").strip()
-
 @pytest.fixture(scope="session")
 def anyio_backend():
     return "asyncio"
+
+@pytest.fixture(scope="function", autouse=True)
+async def event_loop_heartbeat():
+    stop = asyncio.Event()
+
+    async def _heartbeat():
+        while not stop.is_set():
+            await asyncio.sleep(0.01)
+
+    task = asyncio.create_task(_heartbeat())
+    try:
+        yield
+    finally:
+        stop.set()
+        await task
+
+@pytest.fixture(scope="function", autouse=True)
+async def close_cache_connections():
+    yield
+    try:
+        from app.core.cache import cache
+
+        await cache.redis.aclose(close_connection_pool=True)
+        await cache.redis.connection_pool.disconnect(inuse_connections=True)
+    except Exception:
+        pass
+
+@pytest.fixture(scope="function", autouse=True)
+def use_in_memory_cache(monkeypatch):
+    from app.core.cache import cache
+
+    async def _get(key: str):
+        value = cache._mem.get(key)
+        return json.loads(value) if value else None
+
+    async def _set(key: str, value, expire: int = 300):
+        cache._mem[key] = json.dumps(value)
+
+    async def _delete(key: str):
+        cache._mem.pop(key, None)
+
+    async def _delete_pattern(pattern: str):
+        for k in list(cache._mem.keys()):
+            if fnmatch.fnmatch(k, pattern):
+                cache._mem.pop(k, None)
+
+    monkeypatch.setattr(cache, "get", _get)
+    monkeypatch.setattr(cache, "set", _set)
+    monkeypatch.setattr(cache, "delete", _delete)
+    monkeypatch.setattr(cache, "delete_pattern", _delete_pattern)
 
 @pytest.fixture(scope="session", autouse=True)
 def disable_vn_parse_job_celery_delay():
@@ -40,8 +94,8 @@ def disable_vn_parse_job_celery_delay():
     yield
     vn_parse_job_task.delay = original_delay
 
-@pytest.fixture(scope="session")
-async def db_engine():
+@pytest.fixture(scope="function")
+async def db_engine(event_loop_heartbeat):
     connect_args = {"check_same_thread": False} if TEST_DATABASE_URL.startswith("sqlite") else {}
     engine = create_async_engine(TEST_DATABASE_URL, connect_args=connect_args)
     

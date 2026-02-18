@@ -6,14 +6,16 @@ import { Settings, ListVideo } from "lucide-react";
 import IconButton from "@/components/ui/icon-button";
 import InspectorPanel from "@/components/editor/InspectorPanel";
 import GenerationQueuePanel from "@/components/editor/GenerationQueuePanel";
+import { useI18n } from "@/lib/i18nContext";
 
 export default function RightSidebar() {
+  const { t } = useI18n();
   const activeTab = useEditorStore((state) => state.layout.activeRightTab);
   const updateLayout = useEditorStore((state) => state.updateLayout);
 
   const tabs = [
-    { id: "inspector", icon: Settings, label: "Inspector" },
-    { id: "queue", icon: ListVideo, label: "Queue" },
+    { id: "inspector", icon: Settings, label: t("editor.right.inspector") },
+    { id: "queue", icon: ListVideo, label: t("editor.right.queue") },
   ] as const;
 
   return (

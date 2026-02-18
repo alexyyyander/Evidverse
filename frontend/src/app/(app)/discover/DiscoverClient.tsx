@@ -12,11 +12,14 @@ import Input from "@/components/ui/input";
 import Button from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
+import FractalTree from "@/components/ui/fractal-tree";
 import { useFeed } from "@/lib/queries/useFeed";
 import { useUserSearch } from "@/lib/queries/useUserSearch";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18nContext";
 import { useMe } from "@/lib/queries/useMe";
+import { useQuery } from "@tanstack/react-query";
+import { projectApi } from "@/lib/api";
 
 export default function DiscoverClient() {
   const [mode, setMode] = useState<"projects" | "users">("projects");
@@ -25,6 +28,11 @@ export default function DiscoverClient() {
   const [sort, setSort] = useState<"new" | "hot">("new");
   const { t } = useI18n();
   const meQuery = useMe();
+  const branchParticipationsQuery = useQuery({
+    queryKey: ["branchParticipations"],
+    queryFn: () => projectApi.getBranchParticipations(),
+    enabled: typeof meQuery.data?.id === "string" && meQuery.data.id.length > 0,
+  });
 
   const feedParams = useMemo(() => {
     if (mode !== "projects") return undefined;
@@ -40,24 +48,16 @@ export default function DiscoverClient() {
   const userQuery = useUserSearch({ query: query.trim(), limit: 40 });
 
   useEffect(() => {
-    if (data) {
-      console.log("Feed data:", data);
-      // Temporary debug
-      // toast({ title: "Debug", description: `Loaded ${data.length} projects. Sort: ${sort}` });
-    }
-  }, [data, sort]);
-
-  useEffect(() => {
     if (mode === "projects") {
       if (!isError) return;
-      const message = error instanceof Error ? error.message : "Failed to load feed";
-      toast({ title: "Failed to load discover", description: message, variant: "destructive" });
+      const message = error instanceof Error ? error.message : t("discover.toast.loadFailed.title");
+      toast({ title: t("discover.toast.loadFailed.title"), description: message, variant: "destructive" });
       return;
     }
     if (!userQuery.isError) return;
-    const message = userQuery.error instanceof Error ? userQuery.error.message : "Failed to search users";
-    toast({ title: "Failed to search users", description: message, variant: "destructive" });
-  }, [error, isError, mode, userQuery.error, userQuery.isError]);
+    const message = userQuery.error instanceof Error ? userQuery.error.message : t("discover.toast.searchUsersFailed.title");
+    toast({ title: t("discover.toast.searchUsersFailed.title"), description: message, variant: "destructive" });
+  }, [error, isError, mode, t, userQuery.error, userQuery.isError]);
 
   const tags = useMemo(
     () => [
@@ -70,6 +70,17 @@ export default function DiscoverClient() {
     []
   );
 
+  const participatedBranchMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    (branchParticipationsQuery.data || []).forEach((item) => {
+      const names = (item.participated_branch_names || []).filter((name) => typeof name === "string" && name.length > 0);
+      if (names.length > 0) {
+        map.set(item.id, names);
+      }
+    });
+    return map;
+  }, [branchParticipationsQuery.data]);
+
   if (mode === "projects" && isLoading) {
     return <LoadingState label={t("discover.loading")} />;
   }
@@ -78,7 +89,17 @@ export default function DiscoverClient() {
   const users = mode === "users" ? userQuery.data || [] : [];
 
   return (
-    <div className="min-h-[calc(100vh-64px)] py-8">
+    <div className="min-h-[calc(100vh-64px)] py-8 relative">
+      <div className="pointer-events-none absolute inset-0 -z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_14%,rgba(153,255,234,0.08),transparent_36%),radial-gradient(circle_at_82%_84%,rgba(137,196,255,0.07),transparent_34%)]" />
+        <FractalTree className="absolute -right-16 -top-12 opacity-60" />
+        <FractalTree
+          className="absolute -bottom-20 -left-20 opacity-40 [animation-duration:22s] -scale-x-100"
+          stroke="rgba(191, 231, 255, 0.32)"
+          glow="rgba(191, 231, 255, 0.08)"
+          depth={7}
+        />
+      </div>
       <PageContainer>
         <div className="mb-8">
           <SectionHeader title={t("discover.title")} subtitle={t("discover.subtitle")} />
@@ -141,7 +162,12 @@ export default function DiscoverClient() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {projects.map((project) => (
-                <ProjectCard key={project.id} project={project} viewerId={meQuery.data?.id || null} />
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  viewerId={meQuery.data?.id || null}
+                  participatedBranchNames={participatedBranchMap.get(project.id) || null}
+                />
               ))}
             </div>
           )
@@ -169,9 +195,9 @@ export default function DiscoverClient() {
                         onClick={(e) => {
                           e.preventDefault();
                           navigator.clipboard.writeText(u.id);
-                          toast({ title: "Copied", description: "User ID copied.", variant: "success" });
+                          toast({ title: t("toast.copied"), description: t("discover.toast.userIdCopied.desc"), variant: "success" });
                         }}
-                        title={`Copy User ID: ${u.id}`}
+                        title={`${t("discover.user.copyId")}: ${u.id}`}
                       >
                         <span className="font-mono bg-secondary/50 px-1.5 py-0.5 rounded group-hover:bg-primary/10">#{u.id.slice(0, 8)}</span>
                         <Copy size={10} />

@@ -10,6 +10,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { publishApi } from "@/lib/api";
 import { toast } from "@/components/ui/toast";
 import { useI18n } from "@/lib/i18nContext";
+import FractalTree from "@/components/ui/fractal-tree";
 
 export default function PublishPage() {
   const { t } = useI18n();
@@ -38,7 +39,7 @@ export default function PublishPage() {
   const validateAccountMutation = useMutation({
     mutationFn: () => publishApi.validateAccount(accountId.trim()),
     onSuccess: () => {
-      toast({ title: "OK", description: t("publish.toast.validated"), variant: "success" });
+      toast({ title: t("common.ok"), description: t("publish.toast.validated"), variant: "success" });
       accountsQuery.refetch();
     },
     onError: (e) => {
@@ -50,7 +51,7 @@ export default function PublishPage() {
   const disableAccountMutation = useMutation({
     mutationFn: () => publishApi.disableAccount(accountId.trim()),
     onSuccess: () => {
-      toast({ title: "OK", description: t("publish.toast.disabled"), variant: "success" });
+      toast({ title: t("common.ok"), description: t("publish.toast.disabled"), variant: "success" });
       accountsQuery.refetch();
     },
     onError: (e) => {
@@ -67,7 +68,7 @@ export default function PublishPage() {
         credential_json: credentialJson,
       }),
     onSuccess: () => {
-      toast({ title: "OK", description: t("publish.toast.saved"), variant: "success" });
+      toast({ title: t("common.ok"), description: t("publish.toast.saved"), variant: "success" });
       accountsQuery.refetch();
       setShowAccountModal(false);
       setLabel("");
@@ -139,7 +140,17 @@ export default function PublishPage() {
   );
 
   return (
-    <div className="min-h-[calc(100vh-64px)] py-8">
+    <div className="min-h-[calc(100vh-64px)] py-8 relative">
+      <div className="pointer-events-none absolute inset-0 -z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_14%,rgba(153,255,234,0.08),transparent_36%),radial-gradient(circle_at_82%_84%,rgba(137,196,255,0.07),transparent_34%)]" />
+        <FractalTree className="absolute -right-16 -top-12 opacity-60" />
+        <FractalTree
+          className="absolute -bottom-20 -left-20 opacity-40 [animation-duration:22s] -scale-x-100"
+          stroke="rgba(191, 231, 255, 0.32)"
+          glow="rgba(191, 231, 255, 0.08)"
+          depth={7}
+        />
+      </div>
       <PageContainer>
         <div className="mb-8">
           <SectionHeader
@@ -198,14 +209,14 @@ export default function PublishPage() {
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium text-foreground">{t("publish.label")}</div>
-              <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. main" />
+              <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={t("publish.placeholder.main")} />
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium text-foreground">{t("publish.credential")}</div>
               <Input
                 value={credentialJson}
                 onChange={(e) => setCredentialJson(e.target.value)}
-                placeholder='e.g. {"SESSDATA":"..."}'
+                placeholder={t("publish.placeholder.credential")}
               />
             </div>
           </div>
@@ -238,7 +249,7 @@ export default function PublishPage() {
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium text-foreground">{t("publish.videoUrl")}</div>
-              <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="file:///... or http(s)://..." />
+              <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder={t("publish.placeholder.videoUrl")} />
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium text-foreground">{t("publish.mode")}</div>
@@ -256,7 +267,7 @@ export default function PublishPage() {
               <Input
                 value={bilibiliTid}
                 onChange={(e) => setBilibiliTid(e.target.value)}
-                placeholder="e.g. 171"
+                placeholder={t("publish.placeholder.bilibiliTid")}
                 inputMode="numeric"
               />
             </div>
@@ -266,19 +277,19 @@ export default function PublishPage() {
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium text-foreground">{t("publish.branch")}</div>
-              <Input value={branchName} onChange={(e) => setBranchName(e.target.value)} placeholder="main" />
+              <Input value={branchName} onChange={(e) => setBranchName(e.target.value)} placeholder={t("publish.placeholder.main")} />
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium text-foreground">{t("publish.titleField")}</div>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Optional" />
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("publish.placeholder.optional")} />
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium text-foreground">{t("publish.descField")}</div>
-              <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
+              <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("publish.placeholder.optional")} />
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium text-foreground">{t("publish.coverUrl")}</div>
-              <Input value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="http(s)://... or file:///..." />
+              <Input value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder={t("publish.placeholder.coverUrl")} />
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium text-foreground">{t("publish.schedule")}</div>
@@ -290,7 +301,7 @@ export default function PublishPage() {
             </div>
             <div className="space-y-2 md:col-span-2">
               <div className="text-sm font-medium text-foreground">{t("publish.tags")}</div>
-              <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="tag1, tag2" />
+              <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder={t("publish.placeholder.tags")} />
             </div>
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
@@ -328,7 +339,7 @@ export default function PublishPage() {
             {jobQuery.data.status === "failed" ? (
               <div className="mt-4 flex items-center justify-end">
                 <Button loading={retryJobMutation.isPending} variant="secondary" onClick={() => retryJobMutation.mutate()}>
-                  Retry
+                  {t("common.retry")}
                 </Button>
               </div>
             ) : null}

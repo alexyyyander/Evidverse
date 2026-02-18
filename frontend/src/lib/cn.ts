@@ -1,4 +1,9 @@
-export function cn(...classes: Array<string | undefined | null | false>) {
-  return classes.filter(Boolean).join(" ");
+import clsx, { type ClassValue } from "clsx";
+
+function twMerge(classes: string) {
+  return classes;
 }
 
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}

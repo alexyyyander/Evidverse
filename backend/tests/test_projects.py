@@ -1,6 +1,36 @@
 import pytest
 from httpx import AsyncClient
 
+
+def _workspace_with_boundary(boundary: int, locked_summary: str = "locked"):
+    return {
+        "editorData": {"rows": []},
+        "effects": {},
+        "editorState": {
+            "beats": {"beat_locked": {"id": "beat_locked", "narration": "locked"}},
+            "storyWorkflow": {
+                "branchPolicy": {
+                    "branchName": "main",
+                    "lockBoundaryOrder": boundary,
+                    "boundaryConfigured": True,
+                },
+                "nodes": [
+                    {
+                        "id": "node_locked",
+                        "order": 0,
+                        "locked": True,
+                        "beatIds": ["beat_locked"],
+                        "step2": {"summary": locked_summary},
+                        "step3": {"status": "done"},
+                        "step4": {"status": "done", "confirmed": True},
+                    }
+                ],
+            },
+        },
+        "editorUi": {"layout": {}, "selection": {}},
+    }
+
+
 @pytest.mark.asyncio
 async def test_create_project(client: AsyncClient, db_session):
     # 1. Register & Login
@@ -88,3 +118,33 @@ async def test_update_delete_project(client: AsyncClient, db_session):
     # Get should fail
     get_res = await client.get(f"/api/v1/projects/{project_id}", headers=headers)
     assert get_res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_workspace_boundary_lock_rejects_backward_and_locked_rewrite(client: AsyncClient, db_session):
+    email = "workspace_lock_user@example.com"
+    await client.post("/api/v1/auth/register", json={"email": email, "password": "password"})
+    login_res = await client.post("/api/v1/auth/login", data={"username": email, "password": "password"})
+    token = login_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create_res = await client.post("/api/v1/projects/", json={"name": "Workspace Lock"}, headers=headers)
+    project_id = create_res.json()["id"]
+
+    initial = _workspace_with_boundary(boundary=1, locked_summary="locked")
+    put_initial = await client.put(f"/api/v1/projects/{project_id}/workspace", json=initial, headers=headers)
+    assert put_initial.status_code == 200
+
+    backward = _workspace_with_boundary(boundary=0, locked_summary="locked")
+    put_backward = await client.put(f"/api/v1/projects/{project_id}/workspace", json=backward, headers=headers)
+    assert put_backward.status_code == 400
+    assert "cannot move backward" in put_backward.json()["detail"]
+
+    rewrite_locked = _workspace_with_boundary(boundary=1, locked_summary="rewritten")
+    put_rewrite = await client.put(f"/api/v1/projects/{project_id}/workspace", json=rewrite_locked, headers=headers)
+    assert put_rewrite.status_code == 400
+    assert "immutable" in put_rewrite.json()["detail"]
+
+    # Ensure failed validations do not poison subsequent writes.
+    put_retry = await client.put(f"/api/v1/projects/{project_id}/workspace", json=initial, headers=headers)
+    assert put_retry.status_code == 200

@@ -1,17 +1,27 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-
 import "./globals.css";
+import type { Metadata } from "next";
+import { Space_Grotesk, IBM_Plex_Sans } from "next/font/google";
+import { Toaster } from "@/components/ui/toast";
+import Providers from "@/app/providers";
+import { cn } from "@/lib/cn";
 
-const inter = Inter({ subsets: ["latin"] });
+const spaceGrotesk = Space_Grotesk({ 
+  subsets: ["latin"], 
+  variable: "--font-space",
+  display: "swap",
+});
+
+const ibmPlexSans = IBM_Plex_Sans({ 
+  subsets: ["latin"], 
+  weight: ["300", "400", "500", "600"],
+  variable: "--font-ibm",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Evidverse",
   description: "AI Video Generation with Git-like Version Control",
 };
-
-import { Toaster } from "@/components/ui/toast";
-import Providers from "@/app/providers";
 
 export default function RootLayout({
   children,
@@ -20,7 +30,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.className} min-h-screen bg-background text-foreground antialiased flex flex-col`}>
+      <body className={cn(
+        "min-h-screen bg-background text-foreground antialiased flex flex-col font-sans",
+        spaceGrotesk.variable,
+        ibmPlexSans.variable
+      )}>
         <Providers>
           <a
             href="#main-content"

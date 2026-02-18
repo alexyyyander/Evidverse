@@ -47,9 +47,9 @@ export default function CharactersPanel() {
       applyCharacterTaskResult({ taskId: activeTask.taskId, characterId: activeTask.characterId as any, result: task.result });
     }
     if (String(task.status) === "FAILURE") {
-      updateGenerationTask(activeTask.taskId, { error: (task.result as any)?.error || "Task failed" });
+      updateGenerationTask(activeTask.taskId, { error: (task.result as any)?.error || t("queue.taskFailed") });
     }
-  }, [activeTask, task, updateGenerationTask, applyCharacterTaskResult]);
+  }, [activeTask, task, updateGenerationTask, applyCharacterTaskResult, t]);
 
   const ordered = useMemo(() => {
     const baseList = (() => {
@@ -80,10 +80,10 @@ export default function CharactersPanel() {
         refIds: { characterId },
       });
       setActiveTask({ taskId: task_id, characterId });
-      toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
+      toast({ title: t("prompt.toast.taskStarted.title"), description: `Task: ${task_id}`, variant: "success" });
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Generation failed";
-      toast({ title: "Generation failed", description: message, variant: "destructive" });
+      const message = e instanceof Error ? e.message : t("prompt.toast.generateFailed.title");
+      toast({ title: t("prompt.toast.generateFailed.title"), description: message, variant: "destructive" });
     }
   };
 
@@ -170,7 +170,7 @@ export default function CharactersPanel() {
             <div key={c.id} className={cn("rounded-lg border border-border p-3", selected ? "ring-2 ring-ring" : "")}>
               <button type="button" className="w-full text-left" onClick={() => selectCharacter(c.id, "script")}>
                 <div className="flex items-center justify-between gap-3">
-                  <div className="font-semibold">{c.name || "Unnamed"}</div>
+                  <div className="font-semibold">{c.name || t("characters.unnamed")}</div>
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="secondary" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleGenerateRef(c.id); }}>
                       {t("characters.genRef")}

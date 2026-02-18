@@ -57,7 +57,7 @@ export default function LoginPage() {
         <div className="mx-auto max-w-md">
           <div className="mb-3 flex items-center justify-end">
             <DropdownMenu>
-              <DropdownMenuTrigger>
+              <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="sm">
                   {LANG_LABEL[lang]}
                 </Button>

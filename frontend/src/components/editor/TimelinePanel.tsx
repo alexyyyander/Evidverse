@@ -8,7 +8,7 @@ const TimelineEditor = dynamic(() => import("@/components/TimelineEditor"), { ss
 export default function TimelinePanel() {
   const { t } = useI18n();
   return (
-    <div className="h-full w-full bg-zinc-900 border-t border-border flex flex-col relative z-0">
+    <div className="h-full w-full bg-background border-t border-border flex flex-col relative z-0">
       <TimelineEditor />
     </div>
   );

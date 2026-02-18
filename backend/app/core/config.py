@@ -69,6 +69,26 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: str = "sk-test-openai-api-key"
 
+    # Local AI Models (New)
+    USE_LOCAL_MODELS: bool = False  # Set to True to use local models
+    FALLBACK_TO_CLOUD: bool = True  # Fallback to cloud if local fails
+
+    # Ollama (LLM)
+    OLLAMA_HOST: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen3:8b"
+
+    # ComfyUI (Image Generation)
+    COMFYUI_HOST: str = "http://localhost:8188"
+    IMAGE_MODEL: str = "flux2-klein-4b"
+    COMFYUI_UPLOAD_ALLOWED_HOSTS: List[str] = []
+    COMFYUI_UPLOAD_ALLOW_PRIVATE_HOSTS: bool = False
+    COMFYUI_UPLOAD_FETCH_TIMEOUT_SECONDS: int = 20
+    COMFYUI_UPLOAD_MAX_BYTES: int = 8 * 1024 * 1024
+
+    # LTX-Video
+    LTX_MODEL_PATH: str = "~/ai_models/LTX-Video"
+    LTX_MODEL_VARIANT: str = "ltx-2-19b-distilled"
+
     BACKEND_CORS_ORIGINS: List[str] = []
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)
@@ -89,6 +109,26 @@ class Settings(BaseSettings):
                 except Exception:
                     return []
             return [item.strip().rstrip("/") for item in raw.split(",") if item.strip()]
+        return []
+
+    @validator("COMFYUI_UPLOAD_ALLOWED_HOSTS", pre=True)
+    def assemble_comfyui_allowed_hosts(cls, v: Any) -> List[str]:
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return [str(i).strip().lower() for i in v if str(i).strip()]
+        if isinstance(v, str):
+            raw = v.strip()
+            if not raw:
+                return []
+            if raw.startswith("["):
+                try:
+                    items = json.loads(raw)
+                    if isinstance(items, list):
+                        return [str(i).strip().lower() for i in items if str(i).strip()]
+                except Exception:
+                    return []
+            return [item.strip().lower() for item in raw.split(",") if item.strip()]
         return []
 
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env", extra="ignore")

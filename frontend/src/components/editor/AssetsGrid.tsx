@@ -32,7 +32,7 @@ export default function AssetsGrid({
           <button
             key={clip.id}
             type="button"
-            aria-label={`Select clip ${index + 1}`}
+            aria-label={t("assets.selectClip").replace("{index}", String(index + 1))}
             className={cn(
               "relative aspect-video rounded-md overflow-hidden border border-border bg-secondary hover:border-ring transition-colors",
               selected ? "ring-2 ring-ring" : ""
@@ -42,13 +42,13 @@ export default function AssetsGrid({
             {clip.thumbnailUrl ? (
               <Image
                 src={clip.thumbnailUrl}
-                alt={`Clip ${index + 1} thumbnail`}
+                alt={t("assets.clipThumbnailAlt").replace("{index}", String(index + 1))}
                 fill
                 sizes="(max-width: 768px) 50vw, 220px"
                 className="object-cover"
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-xs">Clip</div>
+              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-xs">{t("assets.clip")}</div>
             )}
           </button>
         );

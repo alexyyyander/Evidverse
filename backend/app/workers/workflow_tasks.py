@@ -57,7 +57,7 @@ def generate_clip_workflow(topic: str, user_id: int) -> dict:
         
         # 2b. Generate Video
         # Using .apply()
-        vid_task_res = generate_video_from_image.apply(args=[image_url, visual_desc]).result
+        vid_task_res = generate_video_from_image.apply(args=[image_url, visual_desc, user_id]).result
         
         if vid_task_res.get("status") != "succeeded":
              final_clips.append({"scene": scene, "error": "Video generation failed", "image_url": image_url})
@@ -93,7 +93,7 @@ def generate_segment_workflow(narration: str, visual_description: str, user_id: 
         final_image_url = img_task_res.get("image_url")
 
     try:
-        vid_task_res = generate_video_from_image.apply(args=[final_image_url, visual_desc]).result
+        vid_task_res = generate_video_from_image.apply(args=[final_image_url, visual_desc, user_id]).result
     except Exception as e:
         return {"status": "failed", "error": str(e), "image_url": final_image_url}
 

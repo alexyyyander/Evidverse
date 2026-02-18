@@ -98,13 +98,131 @@ export interface IdeaVersion {
 
 export interface GenerationTask {
   id: string;
-  type: "clip" | "character" | "beat_image" | "segment";
+  type: "clip" | "character" | "beat_image" | "segment" | "comfyui_image" | "comfyui_video";
   status: TaskStatus;
   createdAt: string;
   input: Record<string, any>;
   refIds?: Record<string, string>;
   error?: string;
   result?: Record<string, any>;
+}
+
+export type StoryStepKey = "step1" | "step2" | "step3" | "step4";
+export type StoryNodeStepState = "todo" | "in_progress" | "done" | "blocked";
+
+export type StoryLLMProvider = "auto" | "ollama" | "vllm" | "sglang" | "openai_compatible";
+export type StoryMode = "generate" | "create" | "edit";
+export type StoryStyle = "record" | "science" | "series" | "short_drama" | "animation";
+export type StoryTone = "humorous" | "serious" | "warm" | "cold";
+export type StoryScriptMode = "strict_screenplay" | "stage_play" | "dance_drama" | "narrative";
+export type StorySegmentLength = "long" | "medium" | "short";
+
+export interface StoryCharacterSeed {
+  id: string;
+  name: string;
+  identity: string;
+  personality: string;
+  appearance: string;
+  fateKeywords: string[];
+  referenceImageUrl?: string;
+  referenceAssetId?: AssetId;
+  linkedCharacterId?: CharacterId;
+}
+
+export interface StoryNodeStep2Data {
+  status: StoryNodeStepState;
+  scriptMode: StoryScriptMode;
+  segmentLength: StorySegmentLength;
+  summary: string;
+  background: string;
+  characterChanges: string;
+  encounters: string;
+}
+
+export interface StoryNodeStep3Data {
+  status: StoryNodeStepState;
+  provider: "comfyui" | "placeholder";
+  comfyuiTemplateId?: string;
+  stylePrompt: string;
+  characterAssetMap: Record<CharacterId, AssetId | null>;
+}
+
+export interface StoryNodeStep4Data {
+  status: StoryNodeStepState;
+  confirmed: boolean;
+  provider: "segment" | "comfyui";
+  comfyuiTemplateId?: string;
+  comfyuiParamsJson?: string;
+  videoTaskId?: string;
+  videoAssetId?: AssetId;
+  assetBindings: {
+    backgroundAssetId?: AssetId;
+    startImageAssetId?: AssetId;
+    endImageAssetId?: AssetId;
+    characterAssetIds: Record<CharacterId, AssetId | null>;
+  };
+}
+
+export interface StoryNode {
+  id: string;
+  order: number;
+  title: string;
+  sceneId?: SceneId;
+  beatIds: BeatId[];
+  locked: boolean;
+  step2: StoryNodeStep2Data;
+  step3: StoryNodeStep3Data;
+  step4: StoryNodeStep4Data;
+}
+
+export interface StoryBranchPolicy {
+  branchName: string;
+  lockBoundaryOrder: number | null;
+  boundaryConfigured: boolean;
+}
+
+export interface StoryWorkflowGlobal {
+  storyMode: StoryMode;
+  storyStyle: StoryStyle;
+  tone: StoryTone;
+  llmProvider: StoryLLMProvider;
+  scriptMode: StoryScriptMode;
+  segmentLength: StorySegmentLength;
+  characterSeeds: StoryCharacterSeed[];
+}
+
+export interface StoryWorkflowMeta {
+  requestedProvider?: StoryLLMProvider;
+  resolvedProvider?: StoryLLMProvider | "cloud";
+  fallbackUsed?: boolean;
+  warnings?: string[];
+}
+
+export type StoryAssetsImageFilter = "all" | "node" | "character";
+export type StoryWorkflowFocusTarget =
+  | "step3_mapping"
+  | "step4_image_binding"
+  | "step4_video_confirm"
+  | "step4_params";
+
+export interface StoryWorkflowUi {
+  step4AutoFillEnabled?: boolean;
+  assetsImageFilter?: StoryAssetsImageFilter;
+  focusTarget?: StoryWorkflowFocusTarget | null;
+  previewPreferCard?: boolean;
+  eventFlowPulseNodeId?: string | null;
+  eventFlowPulseAt?: number | null;
+}
+
+export interface StoryWorkflowState {
+  version: number;
+  activeStep: StoryStepKey;
+  selectedNodeId: string | null;
+  nodes: StoryNode[];
+  global: StoryWorkflowGlobal;
+  branchPolicy: StoryBranchPolicy;
+  meta?: StoryWorkflowMeta;
+  ui?: StoryWorkflowUi;
 }
 
 export interface EditorStateData {
@@ -118,4 +236,5 @@ export interface EditorStateData {
   ideaVersions?: IdeaVersion[];
   generationTasks?: GenerationTask[];
   activeIdeaVersionId?: IdeaVersionId;
+  storyWorkflow?: StoryWorkflowState;
 }

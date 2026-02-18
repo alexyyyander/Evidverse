@@ -14,6 +14,16 @@ function normalizeApiBase(input?: string) {
   return "/api/v1";
 }
 
+function getRuntimeApiBase() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = String(localStorage.getItem("evidverse_api_base_url") || "").trim();
+    return raw ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
 export const apiClient = axios.create({
   baseURL: normalizeApiBase(process.env.NEXT_PUBLIC_API_URL),
   headers: {
@@ -22,6 +32,10 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
+  const runtimeBase = getRuntimeApiBase();
+  if (runtimeBase) {
+    config.baseURL = normalizeApiBase(runtimeBase);
+  }
   const token = getToken();
   if (token) {
     const headersAny: any = config.headers || {};

@@ -13,6 +13,16 @@ function normalizeApiBase(input?: string) {
   return null;
 }
 
+function getRuntimeCloudApiBase() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = String(localStorage.getItem("evidverse_cloud_api_base_url") || "").trim();
+    return raw ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
 const cloudBaseURL = normalizeApiBase(process.env.NEXT_PUBLIC_CLOUD_API_URL || process.env.NEXT_PUBLIC_CLOUD_API_ORIGIN);
 
 export const cloudApiClient = axios.create({
@@ -23,6 +33,10 @@ export const cloudApiClient = axios.create({
 });
 
 cloudApiClient.interceptors.request.use((config) => {
+  const runtimeBase = getRuntimeCloudApiBase();
+  if (runtimeBase) {
+    config.baseURL = normalizeApiBase(runtimeBase) || undefined;
+  }
   const token = getCloudToken();
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/button";
 import { useTask } from "@/lib/queries/useTask";
-import { generationApi } from "@/lib/api";
+import { comfyuiApi, generationApi } from "@/lib/api";
 import { toast } from "@/components/ui/toast";
 import { useEditorStore } from "@/store/editorStore";
 import type { TaskResponse } from "@/lib/api";
@@ -18,6 +18,7 @@ export default function GenerationQueuePanel() {
   const applyCharacterTaskResult = useEditorStore((s) => s.applyCharacterTaskResult);
   const applyBeatImageTaskResult = useEditorStore((s) => s.applyBeatImageTaskResult);
   const applySegmentTaskResult = useEditorStore((s) => s.applySegmentTaskResult);
+  const applyComfyuiTaskResult = useEditorStore((s) => s.applyComfyuiTaskResult);
 
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const activeTask = useMemo(() => tasks.find((t) => t.id === activeTaskId) || null, [tasks, activeTaskId]);
@@ -48,12 +49,17 @@ export default function GenerationQueuePanel() {
         const beatId = currentTask.refIds?.beatId;
         if (beatId) applySegmentTaskResult({ taskId: activeTaskId, beatId: beatId as any, result: taskResp.result as any });
       }
+      if (currentTask.type === "comfyui_image" || currentTask.type === "comfyui_video") {
+        const beatId = currentTask.refIds?.beatId ? (currentTask.refIds.beatId as any) : null;
+        const characterId = currentTask.refIds?.characterId ? (currentTask.refIds.characterId as any) : null;
+        applyComfyuiTaskResult({ taskId: activeTaskId, result: taskResp.result as any, beatId, characterId });
+      }
     }
 
     if (status === "FAILURE") {
-      updateGenerationTask(activeTaskId, { error: (taskResp.result as any)?.error || "Task failed" });
+      updateGenerationTask(activeTaskId, { error: (taskResp.result as any)?.error || t("queue.taskFailed") });
     }
-  }, [activeTaskId, taskResp, updateGenerationTask, applyClipTaskResult, applyCharacterTaskResult, applyBeatImageTaskResult, applySegmentTaskResult]);
+  }, [activeTaskId, taskResp, updateGenerationTask, applyClipTaskResult, applyCharacterTaskResult, applyBeatImageTaskResult, applySegmentTaskResult, applyComfyuiTaskResult, t]);
 
   const retry = async (taskId: string) => {
     const targetTask = tasks.find((x) => x.id === taskId);
@@ -70,7 +76,7 @@ export default function GenerationQueuePanel() {
           createdAt: new Date().toISOString(),
         });
         setActiveTaskId(task_id);
-        toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
+        toast({ title: t("prompt.toast.taskStarted.title"), description: `Task: ${task_id}`, variant: "success" });
         return;
       }
       if (targetTask.type === "character") {
@@ -83,7 +89,10 @@ export default function GenerationQueuePanel() {
           id: task_id,
           status: "PENDING",
           createdAt: new Date().toISOString(),
-          refIds: { characterId },
+          refIds: {
+            ...(targetTask.refIds || {}),
+            characterId,
+          },
         });
         setActiveTaskId(task_id);
         toast({ title: t("workflow.toast.refStarted.title"), description: `Task: ${task_id}`, variant: "success" });
@@ -99,7 +108,10 @@ export default function GenerationQueuePanel() {
           id: task_id,
           status: "PENDING",
           createdAt: new Date().toISOString(),
-          refIds: { beatId },
+          refIds: {
+            ...(targetTask.refIds || {}),
+            beatId,
+          },
         });
         setActiveTaskId(task_id);
         toast({ title: t("workflow.toast.refStarted.title"), description: `Task: ${task_id}`, variant: "success" });
@@ -117,10 +129,58 @@ export default function GenerationQueuePanel() {
           id: task_id,
           status: "PENDING",
           createdAt: new Date().toISOString(),
-          refIds: { beatId },
+          refIds: {
+            ...(targetTask.refIds || {}),
+            beatId,
+          },
         });
         setActiveTaskId(task_id);
         toast({ title: t("workflow.toast.refStarted.title"), description: `Task: ${task_id}`, variant: "success" });
+        return;
+      }
+      if (targetTask.type === "comfyui_image" || targetTask.type === "comfyui_video") {
+        const templateId = String(targetTask.input?.templateId || "");
+        const params =
+          targetTask.input?.params && typeof targetTask.input.params === "object"
+            ? targetTask.input.params
+            : {};
+        if (templateId) {
+          const { task_id } = await comfyuiApi.renderTemplate(templateId, params);
+          useEditorStore.getState().addGenerationTask({
+            ...targetTask,
+            id: task_id,
+            status: "PENDING",
+            createdAt: new Date().toISOString(),
+            input: {
+              ...targetTask.input,
+              templateId,
+              params,
+            },
+            refIds: targetTask.refIds ? { ...targetTask.refIds } : undefined,
+          });
+          setActiveTaskId(task_id);
+          toast({ title: t("prompt.toast.taskStarted.title"), description: `Task: ${task_id}`, variant: "success" });
+          return;
+        }
+
+        const workflow = targetTask.input?.workflow;
+        if (!workflow) return;
+        const { task_id } = await generationApi.generateComfyUI({
+          workflow,
+          bindings: targetTask.input?.bindings ?? null,
+          params: targetTask.input?.params ?? null,
+          uploads: targetTask.input?.uploads ?? null,
+          output: targetTask.type === "comfyui_video" ? "video" : "image",
+        });
+        useEditorStore.getState().addGenerationTask({
+          ...targetTask,
+          id: task_id,
+          status: "PENDING",
+          createdAt: new Date().toISOString(),
+          refIds: targetTask.refIds ? { ...targetTask.refIds } : undefined,
+        });
+        setActiveTaskId(task_id);
+        toast({ title: t("prompt.toast.taskStarted.title"), description: `Task: ${task_id}`, variant: "success" });
         return;
       }
     } catch (e) {
@@ -148,7 +208,11 @@ export default function GenerationQueuePanel() {
                       ? t("queue.type.char")
                       : task.type === "beat_image"
                         ? t("queue.type.beat")
-                        : t("queue.type.segment")}
+                        : task.type === "segment"
+                          ? t("queue.type.segment")
+                          : task.type === "comfyui_image"
+                            ? t("queue.type.comfyuiImage")
+                            : t("queue.type.comfyuiVideo")}
 
                 </div>
                 <div className="text-xs text-muted-foreground">{task.status}</div>

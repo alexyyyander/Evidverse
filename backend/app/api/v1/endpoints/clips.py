@@ -21,6 +21,7 @@ def _is_terminal(status: str) -> bool:
     return s in {"succeeded", "failed", "success", "failure", "revoked"}
 
 
+@router.get("", response_model=list[ClipSegmentSchema])
 @router.get("/", response_model=list[ClipSegmentSchema])
 async def list_clips(
     project_id: Optional[str] = None,

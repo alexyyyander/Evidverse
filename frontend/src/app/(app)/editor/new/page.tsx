@@ -42,14 +42,14 @@ export default function NewProjectPage() {
       });
       const projectId = res.id;
       if (typeof projectId !== "string" || projectId.length === 0) {
-        throw new Error("Invalid project response");
+        throw new Error(t("createProject.error.invalidResponse"));
       }
       router.push(`/editor/${projectId}`);
     } catch (e: any) {
       const message =
         e?.response?.data?.detail ||
         e?.message ||
-        "Failed to create project. Please check API availability and authentication.";
+        t("createProject.error.failed");
       setError(String(message));
     } finally {
       setSubmitting(false);
@@ -70,7 +70,7 @@ export default function NewProjectPage() {
                 <div>
                   <label className="block text-sm font-medium text-foreground">{t("createProject.name")}</label>
                   <div className="mt-2">
-                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Cat Adventure" />
+                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("createProject.placeholder.name")} />
                   </div>
                 </div>
 
@@ -80,7 +80,7 @@ export default function NewProjectPage() {
                     <Textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="A short one-liner about this project..."
+                      placeholder={t("createProject.placeholder.desc")}
                       className="min-h-[120px]"
                     />
                   </div>
@@ -92,7 +92,7 @@ export default function NewProjectPage() {
                     <Input
                       value={tags}
                       onChange={(e) => setTags(e.target.value)}
-                      placeholder="e.g. 动画, 番剧, 电影"
+                      placeholder={t("createProject.placeholder.tags")}
                     />
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">{t("createProject.tagsHint")}</div>
@@ -123,7 +123,7 @@ export default function NewProjectPage() {
 
                 <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                   <div className="text-xs text-muted-foreground">
-                    If you see an auth error, obtain a token and set it in localStorage key{" "}
+                    {t("createProject.authHint")}{" "}
                     <span className="text-foreground">token</span>.
                   </div>
                   <div className="flex items-center gap-3">

@@ -2,17 +2,18 @@
 
 import ErrorState from "@/components/ui/error-state";
 import Button from "@/components/ui/button";
+import { useI18n } from "@/lib/i18nContext";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const { t } = useI18n();
   return (
     <div className="h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-lg">
-        <ErrorState title="Editor crashed" description={error.message} />
+        <ErrorState title={t("appError.editorCrashed")} description={error.message} />
         <div className="mt-4 flex justify-end">
-          <Button onClick={() => reset()}>Try again</Button>
+          <Button onClick={() => reset()}>{t("appError.tryAgain")}</Button>
         </div>
       </div>
     </div>
   );
 }
-

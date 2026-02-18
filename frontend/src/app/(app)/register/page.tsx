@@ -50,12 +50,16 @@ export default function RegisterPage() {
       const token = await authApi.login({ email: email.trim(), password });
       setToken(token.access_token);
       await queryClient.invalidateQueries({ queryKey: ["me"] });
-      toast({ title: "Account created", description: "You are now logged in.", variant: "success" });
+      toast({
+        title: t("auth.register.toast.created.title"),
+        description: t("auth.register.toast.created.desc"),
+        variant: "success"
+      });
       router.replace(next);
     } catch (e) {
-      const message = isApiError(e) ? e.message : "Registration failed";
+      const message = isApiError(e) ? e.message : t("auth.register.toast.failed.title");
       setError(message);
-      toast({ title: "Registration failed", description: message, variant: "destructive" });
+      toast({ title: t("auth.register.toast.failed.title"), description: message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -109,9 +113,9 @@ export default function RegisterPage() {
               </form>
 
               <div className="text-sm text-muted-foreground">
-                Have an account?{" "}
+                {t("auth.haveAccount")}{" "}
                 <Link className="text-primary hover:underline" href={`/login?next=${encodeURIComponent(next)}`}>
-                  Log in
+                  {t("auth.login")}
                 </Link>
               </div>
             </CardContent>

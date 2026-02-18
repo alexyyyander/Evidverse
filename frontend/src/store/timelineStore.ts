@@ -2,6 +2,20 @@ import { create } from 'zustand';
 import type { TimelineRow, TimelineEffect } from '@xzdarcy/timeline-engine';
 import { projectApi, type TimelineWorkspace } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
+import { t as translate } from "@/lib/i18n";
+
+function getRuntimeLang() {
+  if (typeof window === "undefined") return "zh" as const;
+  try {
+    const raw = window.localStorage.getItem("lang");
+    if (raw === "en" || raw === "zh" || raw === "ja") return raw;
+  } catch {}
+  return "zh" as const;
+}
+
+function i18nText(key: string) {
+  return translate(getRuntimeLang(), key);
+}
 
 export interface TimelineState {
   editorData: TimelineRow[];
@@ -76,11 +90,15 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
         const workspace: TimelineWorkspace = { ...(existing || {}), editorData, effects };
         await projectApi.updateWorkspace(projectId, workspace);
         if (!options?.silent) {
-          toast({ title: "Saved", description: "Timeline saved.", variant: "success" });
+          toast({
+            title: i18nText("timeline.toast.saved.title"),
+            description: i18nText("timeline.toast.saved.desc"),
+            variant: "success"
+          });
         }
     } catch (e) {
-        const message = e instanceof Error ? e.message : "Failed to save timeline";
-        toast({ title: "Save failed", description: message, variant: "destructive" });
+        const message = e instanceof Error ? e.message : i18nText("timeline.toast.saveFailed.title");
+        toast({ title: i18nText("timeline.toast.saveFailed.title"), description: message, variant: "destructive" });
     }
   },
 
@@ -93,8 +111,8 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
              set({ editorData: data.editorData, effects: data.effects || {} });
          }
     } catch (e) {
-        const message = e instanceof Error ? e.message : "Failed to load timeline";
-        toast({ title: "Load failed", description: message, variant: "destructive" });
+        const message = e instanceof Error ? e.message : i18nText("timeline.toast.loadFailed.title");
+        toast({ title: i18nText("timeline.toast.loadFailed.title"), description: message, variant: "destructive" });
     }
   }
 }));

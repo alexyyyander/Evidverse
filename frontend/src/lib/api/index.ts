@@ -15,3 +15,4 @@ export { clipsApi } from "@/lib/api/domains/clips";
 export { mergeRequestsApi } from "@/lib/api/domains/merge_requests";
 export { cloudProjectsApi } from "@/lib/api/domains/cloud_projects";
 export { cloudAuthApi } from "@/lib/api/domains/cloud_auth";
+export { comfyuiApi } from "@/lib/api/domains/comfyui";

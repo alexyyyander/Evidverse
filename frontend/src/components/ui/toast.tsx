@@ -1,84 +1,124 @@
 "use client";
 
+import * as React from "react";
 import { create } from "zustand";
 import { cn } from "@/lib/cn";
-import { X } from "lucide-react";
+import { X, CheckCircle2, AlertCircle, Info } from "lucide-react";
 
 type ToastVariant = "default" | "success" | "destructive";
 
 type ToastItem = {
   id: string;
-  title: string;
-  description?: string;
-  variant: ToastVariant;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
+  variant?: ToastVariant;
+  duration?: number;
 };
 
 type ToastStore = {
   toasts: ToastItem[];
-  toast: (t: Omit<ToastItem, "id">) => void;
-  dismiss: (id: string) => void;
-  clear: () => void;
+  addToast: (toast: Omit<ToastItem, "id">) => void;
+  dismissToast: (id: string) => void;
+  removeToast: (id: string) => void;
+  clearToasts: () => void;
 };
 
-const useToastStore = create<ToastStore>((set, get) => ({
+const useToastStore = create<ToastStore>((set) => ({
   toasts: [],
-  toast: (t) => {
-    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const next: ToastItem = { id, ...t };
-    set((s) => ({ toasts: [next, ...s.toasts].slice(0, 5) }));
-    window.setTimeout(() => get().dismiss(id), 4000);
+  addToast: (toast) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    set((state) => ({
+      toasts: [
+        { ...toast, id, variant: toast.variant || "default" },
+        ...state.toasts,
+      ].slice(0, 5),
+    }));
+    
+    if (toast.duration !== Infinity) {
+        setTimeout(() => {
+            set((state) => ({
+                toasts: state.toasts.filter((t) => t.id !== id),
+            }));
+        }, toast.duration || 5000);
+    }
   },
-  dismiss: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
-  clear: () => set({ toasts: [] }),
+  dismissToast: (id) =>
+    set((state) => ({
+      toasts: state.toasts.filter((t) => t.id !== id),
+    })),
+  removeToast: (id) =>
+    set((state) => ({
+      toasts: state.toasts.filter((t) => t.id !== id),
+    })),
+  clearToasts: () => set({ toasts: [] }),
 }));
 
-export function toast(t: Omit<ToastItem, "id">) {
-  useToastStore.getState().toast(t);
-}
-
-export function dismissToast(id: string) {
-  useToastStore.getState().dismiss(id);
-}
-
-export function clearToasts() {
-  useToastStore.getState().clear();
-}
-
+// Hooks
 export function useToast() {
-  return useToastStore((s) => ({ toast: s.toast, dismiss: s.dismiss, clear: s.clear }));
+  const { addToast, dismissToast, clearToasts, toasts } = useToastStore();
+  return {
+    toast: addToast,
+    dismiss: dismissToast,
+    clear: clearToasts,
+    toasts,
+  };
 }
 
-const variantClasses: Record<ToastVariant, string> = {
-  default: "border-border bg-popover text-popover-foreground",
-  success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-50",
-  destructive: "border-destructive/30 bg-destructive/15 text-destructive-foreground",
+// Standalone functions for compatibility
+export const toast = (props: Omit<ToastItem, "id">) => {
+  useToastStore.getState().addToast(props);
+};
+
+export const dismissToast = (id: string) => {
+  useToastStore.getState().dismissToast(id);
+};
+
+export const clearToasts = () => {
+  useToastStore.getState().clearToasts();
+};
+
+const variantStyles: Record<ToastVariant, string> = {
+  default: "border-border bg-background text-foreground",
+  destructive:
+    "destructive group border-destructive bg-destructive text-destructive-foreground",
+  success: "border-green-500/50 bg-green-500/10 text-green-600 dark:text-green-400",
 };
 
 export function Toaster() {
-  const { toasts, dismiss } = useToastStore((s) => ({ toasts: s.toasts, dismiss: s.dismiss }));
-
-  if (toasts.length === 0) return null;
+  const { toasts, dismissToast } = useToastStore();
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] w-[360px] max-w-[calc(100vw-2rem)] space-y-2">
-      {toasts.map((t) => (
-        <div key={t.id} className={cn("rounded-lg border shadow-soft px-4 py-3", variantClasses[t.variant])}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold">{t.title}</div>
-              {t.description ? <div className="mt-1 text-xs opacity-80">{t.description}</div> : null}
+    <div className="fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]">
+      {toasts.map(function ({ id, title, description, action, variant, ...props }) {
+        return (
+          <div
+            key={id}
+            className={cn(
+              "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full mt-4",
+              variantStyles[variant || "default"]
+            )}
+            {...props}
+          >
+            <div className="grid gap-1">
+              {title && <div className="text-sm font-semibold">{title}</div>}
+              {description && (
+                <div className="text-sm opacity-90">{description}</div>
+              )}
             </div>
+            {action}
             <button
-              type="button"
-              aria-label="Dismiss"
-              className="rounded-md p-1 opacity-80 hover:opacity-100 hover:bg-white/10"
-              onClick={() => dismiss(t.id)}
+              onClick={() => dismissToast(id)}
+              className={cn(
+                "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100",
+                variant === "destructive" && "text-red-300 hover:text-red-50 focus:ring-red-400 focus:ring-offset-red-600"
+              )}
             >
-              <X size={16} />
+              <X className="h-4 w-4" />
             </button>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

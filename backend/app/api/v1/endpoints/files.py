@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from pydantic import BaseModel
 
 from app.api import deps
+from app.core.config import settings
 from app.models.user import User
 from app.services.storage_service import storage_service
 from app.workers.tasks import test_celery
@@ -12,6 +13,7 @@ router = APIRouter()
 class PresignedUrlResponse(BaseModel):
     url: str
     object_name: str
+    storage_url: str
 
 class Msg(BaseModel):
     msg: str
@@ -46,8 +48,8 @@ async def generate_presigned_url(
     
     if not url:
         raise HTTPException(status_code=500, detail="Failed to generate URL")
-        
-    return {"url": url, "object_name": object_name}
+    storage_url = f"{str(settings.S3_ENDPOINT_URL).rstrip('/')}/{settings.S3_BUCKET_NAME}/{object_name}"
+    return {"url": url, "object_name": object_name, "storage_url": storage_url}
 
 @router.post("/test-celery", response_model=Msg)
 async def test_celery_task(

@@ -8,12 +8,14 @@ import { toast } from "@/components/ui/toast";
 import { generationApi } from "@/lib/api";
 import { useTask } from "@/lib/queries/useTask";
 import { useEditorStore } from "@/store/editorStore";
+import { useSettingsStore } from "@/store/settingsStore";
 import type { GenerateClipResult, TaskResponse } from "@/lib/api";
 import type { IdeaParameters } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
 import { createId } from "@/lib/editor/id";
 import Dialog from "@/components/ui/dialog";
 import { validateGenerateClipResult } from "@/lib/editor/validators";
+import { useI18n } from "@/lib/i18nContext";
 
 const DEFAULT_PARAMS: IdeaParameters = {
   style: "default",
@@ -26,6 +28,14 @@ const DEFAULT_PARAMS: IdeaParameters = {
 };
 
 export default function ScriptPanel() {
+  const { t } = useI18n();
+  const settings = useSettingsStore((s) => ({
+    defaultStyle: s.defaultStyle,
+    defaultAspectRatio: s.defaultAspectRatio,
+    defaultResolution: s.defaultResolution,
+    defaultShotCount: s.defaultShotCount,
+    defaultPace: s.defaultPace,
+  }));
   const [ideaText, setIdeaText] = useState("");
   const [params, setParams] = useState<IdeaParameters>(DEFAULT_PARAMS);
   const [taskId, setTaskId] = useState<string | null>(null);
@@ -70,7 +80,25 @@ export default function ScriptPanel() {
     if (!activeIdea) return;
     setIdeaText(activeIdea.text);
     setParams(activeIdea.params);
-  }, [activeIdea?.id]);
+  }, [activeIdea]);
+
+  useEffect(() => {
+    if (activeIdea) return;
+    setParams((p) => ({
+      ...p,
+      style: settings.defaultStyle,
+      aspectRatio: settings.defaultAspectRatio,
+      resolution: settings.defaultResolution,
+      shotCount: settings.defaultShotCount,
+      pace: settings.defaultPace,
+    }));
+  }, [activeIdea,
+    settings.defaultStyle,
+    settings.defaultAspectRatio,
+    settings.defaultResolution,
+    settings.defaultShotCount,
+    settings.defaultPace,
+  ]);
 
   const taskQuery = useTask<GenerateClipResult>(taskId);
   const task = (taskQuery.data || null) as TaskResponse<GenerateClipResult> | null;
@@ -88,11 +116,11 @@ export default function ScriptPanel() {
       const validation = validateGenerateClipResult(task.result);
       if (!validation.ok) {
         updateGenerationTask(taskId, { error: validation.error });
-        toast({ title: "Generation failed", description: validation.error, variant: "destructive" });
+        toast({ title: t("prompt.toast.generateFailed.title"), description: validation.error, variant: "destructive" });
         return;
       }
       if (validation.issues.length > 0) {
-        toast({ title: "Partial result", description: validation.issues[0], variant: "default" });
+        toast({ title: t("script.toast.partial.title"), description: validation.issues[0], variant: "default" });
       }
       const hasExisting = Object.keys(data.timelineItems).length > 0;
       if (hasExisting) {
@@ -102,10 +130,10 @@ export default function ScriptPanel() {
       }
     }
     if (String(task.status) === "FAILURE") {
-      const err = (task.result as any)?.error || "Task failed";
+      const err = (task.result as any)?.error || t("queue.taskFailed");
       updateGenerationTask(taskId, { error: err });
     }
-  }, [taskId, task, updateGenerationTask, applyClipTaskResult, data.timelineItems]);
+  }, [taskId, task, updateGenerationTask, applyClipTaskResult, data.timelineItems, t]);
 
   useEffect(() => {
     if (!beatRegenJob) return;
@@ -118,11 +146,11 @@ export default function ScriptPanel() {
       const validation = validateGenerateClipResult(beatTask.result);
       if (!validation.ok) {
         updateGenerationTask(beatRegenJob.taskId, { error: validation.error });
-        toast({ title: "Generation failed", description: validation.error, variant: "destructive" });
+        toast({ title: t("prompt.toast.generateFailed.title"), description: validation.error, variant: "destructive" });
         return;
       }
       if (validation.issues.length > 0) {
-        toast({ title: "Partial result", description: validation.issues[0], variant: "default" });
+        toast({ title: t("script.toast.partial.title"), description: validation.issues[0], variant: "default" });
       }
       applyBeatClipResult({
         taskId: beatRegenJob.taskId,
@@ -133,12 +161,12 @@ export default function ScriptPanel() {
       setBeatRegenJob(null);
     }
     if (String(beatTask.status) === "FAILURE") {
-      const err = (beatTask.result as any)?.error || "Task failed";
+      const err = (beatTask.result as any)?.error || t("queue.taskFailed");
       updateGenerationTask(beatRegenJob.taskId, { error: err });
-      toast({ title: "Generation failed", description: err, variant: "destructive" });
+      toast({ title: t("prompt.toast.generateFailed.title"), description: err, variant: "destructive" });
       setBeatRegenJob(null);
     }
-  }, [beatRegenJob, beatTask, updateGenerationTask, applyBeatClipResult]);
+  }, [beatRegenJob, beatTask, updateGenerationTask, applyBeatClipResult, t]);
 
   const canSubmit = ideaText.trim().length > 0 && !submitting && !(task && (String(task.status) === "PENDING" || String(task.status) === "STARTED"));
 
@@ -158,10 +186,10 @@ export default function ScriptPanel() {
         refIds: { ideaVersionId: idea.id },
       });
       setTaskId(task_id);
-      toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
+      toast({ title: t("prompt.toast.taskStarted.title"), description: `Task: ${task_id}`, variant: "success" });
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Generation failed";
-      toast({ title: "Generation failed", description: message, variant: "destructive" });
+      const message = e instanceof Error ? e.message : t("prompt.toast.generateFailed.title");
+      toast({ title: t("prompt.toast.generateFailed.title"), description: message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -193,7 +221,11 @@ export default function ScriptPanel() {
     if (!beat) return;
     const topic = `${beat.narration || ""}\n${beat.cameraDescription || ""}`.trim();
     if (!topic) {
-      toast({ title: "Missing prompt", description: "Beat 没有可用于生成的文案。", variant: "destructive" });
+      toast({
+        title: t("script.toast.missingPrompt.title"),
+        description: t("script.toast.missingPrompt.desc"),
+        variant: "destructive"
+      });
       return;
     }
     try {
@@ -207,10 +239,10 @@ export default function ScriptPanel() {
         refIds: { beatId },
       });
       setBeatRegenJob({ taskId: task_id, beatId, mode });
-      toast({ title: "Task started", description: `Task: ${task_id}`, variant: "success" });
+      toast({ title: t("prompt.toast.taskStarted.title"), description: `Task: ${task_id}`, variant: "success" });
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Generation failed";
-      toast({ title: "Generation failed", description: message, variant: "destructive" });
+      const message = e instanceof Error ? e.message : t("prompt.toast.generateFailed.title");
+      toast({ title: t("prompt.toast.generateFailed.title"), description: message, variant: "destructive" });
     }
   };
 
@@ -219,15 +251,15 @@ export default function ScriptPanel() {
       <Dialog
         open={applyModeDialog.open}
         onOpenChange={(open) => setApplyModeDialog((s) => ({ ...s, open }))}
-        title="生成结果如何写入？"
-        description="当前项目已有编辑内容，选择替换或并存。"
+        title={t("script.applyMode.title")}
+        description={t("script.applyMode.desc")}
         footer={
           <div className="flex justify-end gap-2">
             <Button
               variant="secondary"
               onClick={() => setApplyModeDialog({ open: false, taskId: null, result: null })}
             >
-              取消
+              {t("common.cancel")}
             </Button>
             <Button
               variant="secondary"
@@ -238,7 +270,7 @@ export default function ScriptPanel() {
                 setApplyModeDialog({ open: false, taskId: null, result: null });
               }}
             >
-              并存
+              {t("script.applyMode.append")}
             </Button>
             <Button
               onClick={() => {
@@ -248,23 +280,23 @@ export default function ScriptPanel() {
                 setApplyModeDialog({ open: false, taskId: null, result: null });
               }}
             >
-              替换
+              {t("script.applyMode.replace")}
             </Button>
           </div>
         }
       >
-        <div className="text-sm text-muted-foreground">替换会清空现有时间轴与剧本结构，但保留点子版本与任务记录。</div>
+        <div className="text-sm text-muted-foreground">{t("script.applyMode.warning")}</div>
       </Dialog>
 
       <Dialog
         open={beatRegenDialog.open}
         onOpenChange={(open) => setBeatRegenDialog((s) => ({ ...s, open }))}
-        title="重生成此 Beat"
-        description="选择替换当前 Beat 的片段，或并存新增一个片段。"
+        title={t("script.regenBeat.title")}
+        description={t("script.regenBeat.desc")}
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setBeatRegenDialog({ open: false, beatId: null })}>
-              取消
+              {t("common.cancel")}
             </Button>
             <Button
               variant="secondary"
@@ -273,7 +305,7 @@ export default function ScriptPanel() {
                 setBeatRegenDialog({ open: false, beatId: null });
               }}
             >
-              并存
+              {t("script.applyMode.append")}
             </Button>
             <Button
               onClick={() => {
@@ -281,16 +313,16 @@ export default function ScriptPanel() {
                 setBeatRegenDialog({ open: false, beatId: null });
               }}
             >
-              替换
+              {t("script.applyMode.replace")}
             </Button>
           </div>
         }
       >
-        <div className="text-sm text-muted-foreground">重生成会创建新的生成任务，并在成功后回填到该 Beat。</div>
+        <div className="text-sm text-muted-foreground">{t("script.regenBeat.warning")}</div>
       </Dialog>
 
       <div className="p-4 border-b border-border">
-        <div className="text-sm font-medium text-foreground">点子</div>
+        <div className="text-sm font-medium text-foreground">{t("script.idea.title")}</div>
         {(data.ideaVersions || []).length > 0 ? (
           <div className="mt-2 flex gap-2 overflow-x-auto">
             {(data.ideaVersions || []).map((v, idx) => {
@@ -312,60 +344,60 @@ export default function ScriptPanel() {
           </div>
         ) : null}
         <div className="mt-2">
-          <Textarea value={ideaText} onChange={(e) => setIdeaText(e.target.value)} placeholder="一句话点子..." className="min-h-[120px]" />
+          <Textarea value={ideaText} onChange={(e) => setIdeaText(e.target.value)} placeholder={t("script.idea.placeholder")} className="min-h-[120px]" />
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
           <Input
             value={params.style}
             onChange={(e) => setParams((p) => ({ ...p, style: e.target.value }))}
-            placeholder="风格"
+            placeholder={t("workflow.placeholder.style")}
           />
           <Input
             value={params.aspectRatio}
             onChange={(e) => setParams((p) => ({ ...p, aspectRatio: e.target.value }))}
-            placeholder="比例 (16:9)"
+            placeholder={t("workflow.placeholder.aspect")}
           />
           <Input
             value={String(params.duration)}
             onChange={(e) => setParams((p) => ({ ...p, duration: Number(e.target.value) || 0 }))}
-            placeholder="总时长(秒)"
+            placeholder={t("workflow.placeholder.duration")}
           />
           <Input
             value={String(params.shotCount)}
             onChange={(e) => setParams((p) => ({ ...p, shotCount: Number(e.target.value) || 1 }))}
-            placeholder="镜头数"
+            placeholder={t("workflow.placeholder.count")}
           />
           <Input
             value={params.pace}
             onChange={(e) => setParams((p) => ({ ...p, pace: e.target.value }))}
-            placeholder="节奏"
+            placeholder={t("script.placeholder.pace")}
           />
           <Input
             value={params.language}
             onChange={(e) => setParams((p) => ({ ...p, language: e.target.value }))}
-            placeholder="语言"
+            placeholder={t("script.placeholder.language")}
           />
           <Input
             value={params.resolution}
             onChange={(e) => setParams((p) => ({ ...p, resolution: e.target.value }))}
-            placeholder="分辨率"
+            placeholder={t("workflow.placeholder.resolution")}
           />
         </div>
 
         <div className="mt-4 flex gap-2">
           <Button onClick={handleGenerate} disabled={!canSubmit} loading={submitting} className="flex-1">
-            生成剧本+视频
+            {t("script.generateClipVideo")}
           </Button>
           <Button variant="secondary" onClick={() => extractCharacters()}>
-            提取人物
+            {t("workflow.extract")}
           </Button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
         {orderedBeats.length === 0 ? (
-          <div className="text-sm text-muted-foreground">还没有剧本内容。先生成一次。</div>
+          <div className="text-sm text-muted-foreground">{t("workflow.empty.noScript")}</div>
         ) : (
           <div className="space-y-3">
             {orderedBeats.map((beat) => {
@@ -379,8 +411,8 @@ export default function ScriptPanel() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-sm font-semibold text-foreground">{data.scenes[beat.sceneId]?.title || "Scene"}</div>
-                        <div className="mt-1 text-xs text-muted-foreground">Beat {beat.order + 1}</div>
+                        <div className="text-sm font-semibold text-foreground">{data.scenes[beat.sceneId]?.title || t("script.sceneFallback")}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">{t("script.beatLabel")} {beat.order + 1}</div>
                       </div>
                       <Button
                         size="sm"
@@ -391,7 +423,7 @@ export default function ScriptPanel() {
                           setBeatRegenDialog({ open: true, beatId: beat.id });
                         }}
                       >
-                        重生成
+                        {t("script.regenerate")}
                       </Button>
                     </div>
                   </button>
@@ -402,7 +434,7 @@ export default function ScriptPanel() {
                       onChange={(e) => updateBeat(beat.id, { narration: e.target.value })}
                       onFocus={() => beginHistoryGroup()}
                       onBlur={() => endHistoryGroup()}
-                      placeholder="旁白"
+                      placeholder={t("script.placeholder.narration")}
                       className="min-h-[80px]"
                     />
                     <Textarea
@@ -410,7 +442,7 @@ export default function ScriptPanel() {
                       onChange={(e) => updateBeat(beat.id, { cameraDescription: e.target.value })}
                       onFocus={() => beginHistoryGroup()}
                       onBlur={() => endHistoryGroup()}
-                      placeholder="镜头描述"
+                      placeholder={t("script.placeholder.cameraDescription")}
                       className="min-h-[60px]"
                     />
                     <Input
@@ -418,7 +450,7 @@ export default function ScriptPanel() {
                       onChange={(e) => updateBeat(beat.id, { suggestedDuration: Number(e.target.value) || 0 })}
                       onFocus={() => beginHistoryGroup()}
                       onBlur={() => endHistoryGroup()}
-                      placeholder="建议时长"
+                      placeholder={t("script.placeholder.suggestedDuration")}
                     />
 
                     <div className="flex gap-2">
@@ -439,7 +471,7 @@ export default function ScriptPanel() {
                           updateBeat(beat.id, { shots });
                         }}
                       >
-                        拆分镜头
+                        {t("script.splitShots")}
                       </Button>
                     </div>
 
@@ -450,7 +482,7 @@ export default function ScriptPanel() {
                           .sort((a, b) => a.order - b.order)
                           .map((shot, idx) => (
                             <div key={shot.id} className="rounded-md border border-border p-2">
-                              <div className="text-xs text-muted-foreground">Shot {idx + 1}</div>
+                              <div className="text-xs text-muted-foreground">{t("script.shotLabel")} {idx + 1}</div>
                               <Textarea
                                 value={shot.narration || ""}
                                 onChange={(e) => {
@@ -461,7 +493,7 @@ export default function ScriptPanel() {
                                 }}
                                 onFocus={() => beginHistoryGroup()}
                                 onBlur={() => endHistoryGroup()}
-                                placeholder="镜头旁白"
+                                placeholder={t("script.placeholder.shotNarration")}
                                 className="min-h-[60px] mt-2"
                               />
                               <Textarea
@@ -474,7 +506,7 @@ export default function ScriptPanel() {
                                 }}
                                 onFocus={() => beginHistoryGroup()}
                                 onBlur={() => endHistoryGroup()}
-                                placeholder="镜头描述"
+                                placeholder={t("script.placeholder.shotCameraDescription")}
                                 className="min-h-[60px] mt-2"
                               />
                               <Input
@@ -487,7 +519,7 @@ export default function ScriptPanel() {
                                 }}
                                 onFocus={() => beginHistoryGroup()}
                                 onBlur={() => endHistoryGroup()}
-                                placeholder="镜头时长"
+                                placeholder={t("script.placeholder.shotDuration")}
                                 className="mt-2"
                               />
                             </div>

@@ -1,43 +1,29 @@
 import asyncio
+import uuid
 from app.core.celery_app import celery_app
 from app.core.config import settings
-from ai_engine.seedance.client import SeedanceClient
-
-# Helper to run async code in sync celery task
-def run_async(coro):
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(coro)
+from app.services.generation_service import generation_service
+from app.services.storage_service import storage_service
+from app.utils.url import read_bytes_from_url
 
 @celery_app.task
-def generate_video_from_image(image_url: str, prompt: str) -> dict:
+def generate_video_from_image(image_url: str, prompt: str, user_id: int | None = None) -> dict:
     """
-    Celery task to call Seedance API for video generation.
+    Celery task to generate a video from an image and upload to S3.
     """
-    client = SeedanceClient(api_key=settings.SEEDANCE_API_KEY, base_url=settings.SEEDANCE_API_URL)
-    
-    # Trigger generation
     async def _process():
-        # 1. Start generation
         try:
-            task_resp = await client.generate_video(image_url=image_url, prompt=prompt)
-            task_id = task_resp.get("id")
-            if not task_id:
-                return {"status": "failed", "error": "No task ID returned"}
-            
-            # 2. Poll for completion
-            max_retries = 60 # 60 * 2s = 2 mins timeout
-            for _ in range(max_retries):
-                await asyncio.sleep(2)
-                status_resp = await client.get_task_status(task_id)
-                status = status_resp.get("status")
-                
-                if status == "succeeded":
-                    return {"status": "succeeded", "video_url": status_resp.get("output", {}).get("url")}
-                elif status == "failed":
-                    return {"status": "failed", "error": status_resp.get("error")}
-            
-            return {"status": "timeout", "error": "Generation timed out"}
-            
+            image_bytes = read_bytes_from_url(image_url)
+            video_bytes = await generation_service.generate_video(prompt=prompt, input_image=image_bytes)
+
+            prefix = f"generated/{user_id}" if isinstance(user_id, int) else "generated"
+            filename = f"{prefix}/{uuid.uuid4()}.mp4"
+            success = storage_service.upload_file(video_bytes, filename)
+            if not success:
+                return {"status": "failed", "error": "Failed to upload to storage"}
+
+            url = f"{settings.S3_ENDPOINT_URL}/{settings.S3_BUCKET_NAME}/{filename}"
+            return {"status": "succeeded", "video_url": url, "object_name": filename}
         except Exception as e:
             return {"status": "error", "error": str(e)}
 

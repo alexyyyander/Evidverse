@@ -2,9 +2,11 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import event
 import datetime
+import os
 from app.core.config import settings
 
-engine = create_async_engine(str(settings.SQLALCHEMY_DATABASE_URI), echo=True)
+database_url = os.getenv("TEST_DATABASE_URL") or str(settings.SQLALCHEMY_DATABASE_URI)
+engine = create_async_engine(database_url, echo=True)
 
 if engine.url.get_backend_name() == "sqlite":
     @event.listens_for(engine.sync_engine, "connect")

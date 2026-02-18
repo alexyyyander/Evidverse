@@ -34,6 +34,13 @@ async def test_fork_branch_and_branch_workspace_permissions(client: AsyncClient)
     assert isinstance(fork_branch["name"], str) and len(fork_branch["name"]) > 0
     assert fork_branch["project_id"] == project_id
 
+    participations_res = await client.get("/api/v1/projects/branch-participations", headers=other_headers)
+    assert participations_res.status_code == 200
+    participated = participations_res.json()
+    project_entry = next((item for item in participated if item["id"] == project_id), None)
+    assert project_entry is not None
+    assert fork_branch["name"] in (project_entry.get("participated_branch_names") or [])
+
     payload = {"editorData": {"rows": []}, "effects": {}, "editorState": {"scenes": {}}, "editorUi": {"layout": {}, "selection": {}}}
     put_ws = await client.put(
         f"/api/v1/projects/{project_id}/workspace",
@@ -58,4 +65,3 @@ async def test_fork_branch_and_branch_workspace_permissions(client: AsyncClient)
         headers=other_headers,
     )
     assert deny_main.status_code == 403
-

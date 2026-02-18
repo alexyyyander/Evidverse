@@ -1,8 +1,9 @@
 from datetime import timedelta
 from typing import Any
+from urllib.parse import parse_qs
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -14,6 +15,33 @@ from app.schemas.user import UserCreate, User as UserSchema
 from app.schemas.token import Token
 
 router = APIRouter()
+
+
+class LoginCredentials(BaseModel):
+    username: str
+    password: str
+
+
+async def get_login_credentials(request: Request) -> LoginCredentials:
+    content_type = (request.headers.get("content-type") or "").lower()
+    username = ""
+    password = ""
+
+    if "application/json" in content_type:
+        payload = await request.json()
+        if isinstance(payload, dict):
+            username = str(payload.get("username") or payload.get("email") or "")
+            password = str(payload.get("password") or "")
+    else:
+        body = await request.body()
+        parsed = parse_qs(body.decode("utf-8"))
+        username = (parsed.get("username") or parsed.get("email") or [""])[0]
+        password = (parsed.get("password") or [""])[0]
+
+    if not username or not password:
+        raise HTTPException(status_code=422, detail="username and password are required")
+
+    return LoginCredentials(username=username, password=password)
 
 @router.post("/register", response_model=UserSchema)
 async def register(
@@ -44,15 +72,15 @@ async def register(
 @router.post("/login", response_model=Token)
 async def login(
     db: AsyncSession = Depends(deps.get_db),
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    credentials: LoginCredentials = Depends(get_login_credentials),
 ) -> Any:
     """
     OAuth2 compatible token login, get an access token for future requests.
     """
-    result = await db.execute(select(User).where(User.email == form_data.username))
+    result = await db.execute(select(User).where(User.email == credentials.username))
     user = result.scalar_one_or_none()
     
-    if not user or not security.verify_password(form_data.password, user.hashed_password):
+    if not user or not security.verify_password(credentials.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     
     if not user.is_active:

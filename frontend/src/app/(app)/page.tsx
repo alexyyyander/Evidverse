@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18nContext";
-import { Sparkles, GitGraph, Globe, Play, Zap, ArrowRight } from "lucide-react";
+import { Sparkles, GitGraph, Globe, Play, Zap, ArrowRight, Layers, Workflow, Film } from "lucide-react";
+import { GlassGrid } from "@/components/ui/glass-grid";
+import FractalTree from "@/components/ui/fractal-tree";
 
 export default function Home() {
   const { t, lang } = useI18n();
@@ -41,6 +43,12 @@ export default function Home() {
                 return target[index];
               }
               
+              // Reduce flicker frequency: only change 30% of the time
+              if (Math.random() > 0.3) {
+                // Keep previous char if available, or just space
+                return prev[index] || " ";
+              }
+
               // Language specific random characters
               if (lang === "zh") {
                  const isChinese = /[\u4e00-\u9fa5]/.test(target[index]);
@@ -77,21 +85,33 @@ export default function Home() {
 
   return (
     <div className="relative overflow-hidden min-h-[calc(100vh-64px)] bg-[#05050A]">
-      {/* 迷幻背景层 */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        <div className="absolute top-[-20%] left-[20%] w-[600px] h-[600px] bg-purple-600 rounded-full mix-blend-screen filter blur-[128px] opacity-40 animate-blob" />
-        <div className="absolute top-[20%] right-[10%] w-[500px] h-[500px] bg-blue-600 rounded-full mix-blend-screen filter blur-[128px] opacity-40 animate-blob animation-delay-2000" />
-        <div className="absolute bottom-[-10%] left-[30%] w-[600px] h-[600px] bg-indigo-600 rounded-full mix-blend-screen filter blur-[128px] opacity-40 animate-blob animation-delay-4000" />
-        {/* 网格纹理 */}
-        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+      <GlassGrid />
+      <div className="pointer-events-none absolute inset-0 -z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_14%,rgba(153,255,234,0.08),transparent_36%),radial-gradient(circle_at_82%_84%,rgba(137,196,255,0.07),transparent_34%)]" />
+        <FractalTree className="absolute -right-16 -top-12 opacity-60" />
+        <FractalTree
+          className="absolute -bottom-20 -left-20 opacity-40 [animation-duration:22s] -scale-x-100"
+          stroke="rgba(191, 231, 255, 0.32)"
+          glow="rgba(191, 231, 255, 0.08)"
+          depth={7}
+        />
+        <FractalTree
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[55%] w-[800px] h-[800px] opacity-35"
+          depth={14}
+          thickness={2.5}
+          showVines={true}
+          vineCount={20}
+          stroke="rgba(168, 255, 244, 0.3)"
+          glow="rgba(168, 255, 244, 0.08)"
+        />
       </div>
 
       <main className="relative z-10 flex flex-col items-center justify-center pt-24 pb-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {/* 徽章 */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-sm text-indigo-300 mb-8 backdrop-blur-md shadow-glow animate-float">
+          <div className="inline-flex items-center gap-2 rounded-none border border-white/10 bg-white/5 px-4 py-1.5 text-sm text-indigo-300 mb-8 backdrop-blur-md shadow-[0_0_15px_rgba(255,255,255,0.05)] animate-float">
             <Sparkles size={14} className="text-indigo-400" />
-            <span className="font-medium tracking-wide">{t("home.badge")}</span>
+            <span className="font-light tracking-widest uppercase text-xs">{t("home.badge")}</span>
           </div>
 
           {/* 主标题 */}
@@ -115,17 +135,24 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-5 justify-center items-center">
             <Link
               href="/editor/new"
-              className="group relative inline-flex h-14 items-center justify-center overflow-hidden rounded-full bg-white px-8 font-bold text-slate-900 transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(255,255,255,0.5)] focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+              className="group relative inline-flex h-14 items-center justify-center overflow-hidden rounded-none border border-white/20 bg-white/5 backdrop-blur-md px-10 font-bold text-white transition-all duration-500 hover:bg-white/10 hover:border-white/40 hover:shadow-[0_0_30px_rgba(255,255,255,0.1)] focus:outline-none focus:ring-1 focus:ring-white"
             >
-              <span className="mr-2">{t("home.cta.create")}</span>
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              {/* 磨砂玻璃质感增强：内部高光与阴影 */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+              <span className="mr-3 tracking-widest uppercase text-sm relative z-10 text-shadow-sm">{t("home.cta.create")}</span>
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 relative z-10" />
             </Link>
             <Link
               href="/discover"
-              className="group inline-flex h-14 items-center justify-center rounded-full border border-slate-700 bg-slate-900/50 px-8 font-medium text-slate-200 transition-all hover:bg-slate-800 hover:border-slate-500 backdrop-blur-sm"
+              className="group relative inline-flex h-14 items-center justify-center overflow-hidden rounded-none border border-white/5 bg-black/20 backdrop-blur-sm px-10 font-medium text-slate-400 transition-all duration-300 hover:text-white hover:bg-black/40 hover:border-white/10"
             >
-              <Globe className="mr-2 h-5 w-5 text-slate-400 group-hover:text-white transition-colors" />
-              {t("home.cta.discover")}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-30 pointer-events-none" />
+              <Globe className="mr-3 h-4 w-4 group-hover:text-white transition-colors relative z-10" />
+              <span className="tracking-widest uppercase text-sm relative z-10">
+                {t("home.cta.discover")}
+                <span className="absolute left-0 -bottom-1 w-0 h-[1px] bg-white transition-all duration-300 group-hover:w-full"></span>
+              </span>
             </Link>
           </div>
 
@@ -135,29 +162,34 @@ export default function Home() {
               { 
                 title: t("home.feature1.title"), 
                 desc: t("home.feature1.desc"), 
-                icon: <Play className="w-8 h-8 text-indigo-400" />,
-                gradient: "from-indigo-500/20 to-purple-500/20"
+                icon: <Film className="w-5 h-5 text-white/90" />,
               },
               { 
                 title: t("home.feature2.title"), 
                 desc: t("home.feature2.desc"), 
-                icon: <GitGraph className="w-8 h-8 text-cyan-400" />,
-                gradient: "from-cyan-500/20 to-blue-500/20"
+                icon: <Workflow className="w-5 h-5 text-white/90" />,
               },
               { 
                 title: t("home.feature3.title"), 
                 desc: t("home.feature3.desc"), 
-                icon: <Zap className="w-8 h-8 text-purple-400" />,
-                gradient: "from-purple-500/20 to-pink-500/20"
+                icon: <Layers className="w-5 h-5 text-white/90" />,
               },
             ].map((feature, i) => (
-              <div key={i} className={`group relative rounded-3xl border border-white/5 bg-gradient-to-br ${feature.gradient} p-8 backdrop-blur-xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/20 hover:border-white/10`}>
-                <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950/50 border border-white/10 shadow-inner group-hover:scale-110 transition-transform duration-300">
+              <div key={i} className={`group relative flex flex-col items-start gap-4 rounded-none border border-white/5 bg-zinc-900/20 backdrop-blur-sm p-8 transition-all duration-500 hover:-translate-y-1 hover:bg-zinc-900/40 hover:border-white/10 hover:shadow-2xl`}>
+                {/* 极简角标 */}
+                <div className="absolute top-0 right-0 h-[1px] w-4 bg-white/10 group-hover:w-8 group-hover:bg-white/30 transition-all duration-500" />
+                <div className="absolute top-0 right-0 w-[1px] h-4 bg-white/10 group-hover:h-8 group-hover:bg-white/30 transition-all duration-500" />
+                
+                {/* 图标容器：无框悬浮感 */}
+                <div className="mb-2 inline-flex items-center justify-center rounded-sm bg-white/5 p-3 text-white ring-1 ring-white/10 transition-all duration-300 group-hover:bg-white/10 group-hover:ring-white/20 group-hover:scale-105">
                   {feature.icon}
                 </div>
-                <div className="text-xl font-bold text-white mb-3 group-hover:text-indigo-200 transition-colors">{feature.title}</div>
-                <div className="text-sm text-slate-300 leading-relaxed font-light opacity-80 group-hover:opacity-100">
-                  {feature.desc}
+                
+                <div className="space-y-2">
+                  <div className="text-lg font-medium text-white tracking-wide group-hover:text-white transition-colors">{feature.title}</div>
+                  <div className="text-sm text-zinc-500 leading-relaxed font-light group-hover:text-zinc-400 transition-colors">
+                    {feature.desc}
+                  </div>
                 </div>
               </div>
             ))}

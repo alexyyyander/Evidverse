@@ -40,6 +40,31 @@ class ProjectService:
         return result.scalars().all()
 
     @staticmethod
+    async def get_branch_participated_projects(
+        db: AsyncSession,
+        user_id: int,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> List[Project]:
+        """
+        Projects where user participated by creating branch, but is not the owner.
+        """
+        query = (
+            select(Project)
+            .join(Branch, Branch.project_id == Project.internal_id)
+            .where(
+                Branch.creator_internal_id == user_id,
+                Project.owner_internal_id != user_id,
+            )
+            .group_by(Project.internal_id)
+            .options(selectinload(Project.owner), selectinload(Project.parent_project))
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await db.execute(query)
+        return result.scalars().all()
+
+    @staticmethod
     async def resolve_project(db: AsyncSession, project_id: str) -> Optional[Project]:
         text = (project_id or "").strip()
         if not text:

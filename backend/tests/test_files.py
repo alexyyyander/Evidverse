@@ -64,4 +64,6 @@ async def test_presigned_url(client: AsyncClient, db_session):
         data = response.json()
         assert data["url"] == "http://mock-s3/url"
         assert "video.mp4" in data["object_name"]
+        assert "storage_url" in data
+        assert data["object_name"] in data["storage_url"]
         mock_gen.assert_called_once()

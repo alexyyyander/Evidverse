@@ -15,6 +15,7 @@ export function toEditorStateFromStoryboard(params: { storyboard: StoryboardScen
     ideaVersions: [],
     generationTasks: [],
     activeIdeaVersionId: undefined,
+    storyWorkflow: undefined,
   };
 
   const total = Math.max(1, storyboard.length);
@@ -61,4 +62,3 @@ export function toEditorStateFromStoryboard(params: { storyboard: StoryboardScen
 
   return next;
 }
-

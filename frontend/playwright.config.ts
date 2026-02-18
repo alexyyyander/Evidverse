@@ -8,13 +8,13 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: [['list'], ['html', { open: 'never' }]],
   webServer: {
-    command: 'npm run dev -- -p 3000',
-    url: 'http://localhost:3000',
+    command: 'npm run dev -- -H 127.0.0.1 -p 3000',
+    url: 'http://127.0.0.1:3000/api/healthz',
     reuseExistingServer: true,
     timeout: 120_000,
   },
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://127.0.0.1:3000',
     trace: 'on-first-retry',
   },
   projects: [

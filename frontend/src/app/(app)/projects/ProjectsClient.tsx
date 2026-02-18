@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cloudAuthApi, cloudProjectsApi, projectApi } from "@/lib/api";
@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import EmptyState from "@/components/ui/empty-state";
 import ErrorState from "@/components/ui/error-state";
 import { toast } from "@/components/ui/toast";
+import FractalTree from "@/components/ui/fractal-tree";
 import { useProjects } from "@/lib/queries/useProjects";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
@@ -24,8 +25,11 @@ import { useMe } from "@/lib/queries/useMe";
 import { getAppMode } from "@/lib/appMode";
 import { clearCloudToken, setCloudToken } from "@/lib/api/cloudAuth";
 import { useCloudAuthToken } from "@/lib/auth/useCloudAuthToken";
+import { useAuthToken } from "@/lib/auth/useAuthToken";
 import { useQuery } from "@tanstack/react-query";
 import type { ProjectSummary } from "@/lib/api/types";
+import { sanitizeParticipatedBranchNames } from "@/lib/projectBranchSelection";
+import ParticipatedBranchControl from "@/components/ParticipatedBranchControl";
 
 export default function ProjectsClient() {
   const router = useRouter();
@@ -33,6 +37,7 @@ export default function ProjectsClient() {
   const appMode = getAppMode();
   const cloudEnabled = appMode === "local" && cloudProjectsApi.enabled();
   const cloudToken = useCloudAuthToken();
+  const token = useAuthToken();
   const [source, setSource] = useState<"local" | "cloud">("local");
   const [showImportModal, setShowImportModal] = useState(false);
   const [importSourceId, setImportSourceId] = useState("");
@@ -46,11 +51,19 @@ export default function ProjectsClient() {
   const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null);
   const [deleteConfirmProjectId, setDeleteConfirmProjectId] = useState("");
   const [deleteConfirmNickname, setDeleteConfirmNickname] = useState("");
+  const [selectedParticipatedBranchByProject, setSelectedParticipatedBranchByProject] = useState<Record<string, string>>({});
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error } = useProjects();
   const meQuery = useMe();
   const expectedNickname = (meQuery.data?.full_name || meQuery.data?.email?.split("@")[0] || "").trim();
+  const viewerId = meQuery.data?.id || null;
 
   const cloudProjectsQuery = useQuery({
     queryKey: ["cloudProjects"],
@@ -59,18 +72,28 @@ export default function ProjectsClient() {
   });
 
   const localProjects = useMemo(() => data || [], [data]);
+  const branchParticipationsQuery = useQuery({
+    queryKey: ["branchParticipations"],
+    queryFn: () => projectApi.getBranchParticipations(),
+  });
+  const branchParticipatedProjects = useMemo(() => branchParticipationsQuery.data || [], [branchParticipationsQuery.data]);
+  const branchParticipationIds = useMemo(() => new Set(branchParticipatedProjects.map((p) => p.id)), [branchParticipatedProjects]);
+  const ownedProjects = useMemo(() => {
+    if (viewerId) {
+      return localProjects.filter((p) => p.owner_id === viewerId);
+    }
+    return localProjects.filter((p) => !branchParticipationIds.has(p.id));
+  }, [viewerId, localProjects, branchParticipationIds]);
   const cloudProjects = useMemo(() => (cloudProjectsQuery.data || []) as ProjectSummary[], [cloudProjectsQuery.data]);
 
-  const forkMutation = useMutation({
-    mutationFn: async (projectId: string) => projectApi.fork(projectId),
-    onSuccess: (newProject) => {
-      toast({ title: "Forked", description: "Opening editor...", variant: "success" });
-      queryClient.invalidateQueries({ queryKey: queryKeys.projects() });
-      router.push(`/editor/${newProject.id}`);
+  const forkRequestMutation = useMutation({
+    mutationFn: async (projectId: string) => projectApi.requestFork(projectId),
+    onSuccess: () => {
+      toast({ title: t("toast.forkRequested"), description: t("toast.forkRequested.desc"), variant: "success" });
     },
     onError: (e) => {
-      const message = e instanceof Error ? e.message : "Failed to fork project";
-      toast({ title: "Fork failed", description: message, variant: "destructive" });
+      const message = e instanceof Error ? e.message : t("toast.forkFailed");
+      toast({ title: t("toast.forkFailed"), description: message, variant: "destructive" });
     },
   });
 
@@ -82,7 +105,7 @@ export default function ProjectsClient() {
       queryClient.invalidateQueries({ queryKey: queryKeys.projects() });
     },
     onError: (e) => {
-      const message = e instanceof Error ? e.message : "Failed to update visibility";
+      const message = e instanceof Error ? e.message : t("projects.toast.updateVisibilityFailed");
       toast({ title: t("common.error"), description: message, variant: "destructive" });
     },
   });
@@ -118,7 +141,7 @@ export default function ProjectsClient() {
       setDeleteConfirmNickname("");
     },
     onError: (e) => {
-      const message = e instanceof Error ? e.message : "Failed to delete project";
+      const message = e instanceof Error ? e.message : t("projects.toast.deleteFailed");
       toast({ title: t("common.error"), description: message, variant: "destructive" });
     },
   });
@@ -128,13 +151,17 @@ export default function ProjectsClient() {
       await navigator.clipboard.writeText(text);
       toast({ title: t("toast.copied"), description: `${label} ${t("toast.copied.desc")}`, variant: "success" });
     } catch {
-      window.prompt(`Copy ${label}:`, text);
+      window.prompt(t("common.copyPrompt").replace("{label}", label), text);
     }
   };
 
   const handleImport = async () => {
     if (!importSourceId) return;
-    forkMutation.mutate(importSourceId.trim());
+    if (typeof token !== "string" || token.length === 0) {
+      router.push(`/login?next=${encodeURIComponent("/projects")}`);
+      return;
+    }
+    forkRequestMutation.mutate(importSourceId.trim());
     setShowImportModal(false);
   };
 
@@ -208,7 +235,17 @@ export default function ProjectsClient() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] py-8">
+    <div className="min-h-[calc(100vh-64px)] py-8 relative">
+      <div className="pointer-events-none absolute inset-0 -z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_14%,rgba(153,255,234,0.08),transparent_36%),radial-gradient(circle_at_82%_84%,rgba(137,196,255,0.07),transparent_34%)]" />
+        <FractalTree className="absolute -right-16 -top-12 opacity-60" />
+        <FractalTree
+          className="absolute -bottom-20 -left-20 opacity-40 [animation-duration:22s] -scale-x-100"
+          stroke="rgba(191, 231, 255, 0.32)"
+          glow="rgba(191, 231, 255, 0.08)"
+          depth={7}
+        />
+      </div>
       <PageContainer className="h-full flex flex-col">
         <div className="mb-8">
           <SectionHeader
@@ -287,7 +324,7 @@ export default function ProjectsClient() {
               <Button variant="ghost" onClick={() => setShowImportModal(false)}>
                 {t("common.cancel")}
               </Button>
-              <Button loading={forkMutation.isPending} onClick={handleImport}>
+              <Button loading={forkRequestMutation.isPending} onClick={handleImport}>
                 {t("projects.import.fork")}
               </Button>
             </div>
@@ -295,8 +332,8 @@ export default function ProjectsClient() {
         >
           <div className="space-y-2">
             <div className="text-sm font-medium text-foreground">{t("projects.import.sourceId")}</div>
-            <Input
-              placeholder="e.g. 9f4d2c7a-...."
+              <Input
+              placeholder={t("projects.import.placeholder")}
               value={importSourceId}
               onChange={(e) => setImportSourceId(e.target.value)}
             />
@@ -326,11 +363,11 @@ export default function ProjectsClient() {
         >
           <div className="space-y-3">
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">{t("login.email")}</div>
+              <div className="text-sm font-medium text-foreground">{t("auth.email")}</div>
               <Input value={cloudEmail} onChange={(e) => setCloudEmail(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">{t("login.password")}</div>
+              <div className="text-sm font-medium text-foreground">{t("auth.password")}</div>
               <Input type="password" value={cloudPassword} onChange={(e) => setCloudPassword(e.target.value)} />
             </div>
           </div>
@@ -361,7 +398,7 @@ export default function ProjectsClient() {
           <div className="space-y-2">
             <div className="text-sm font-medium text-foreground">{t("createProject.name")}</div>
             <Input
-              placeholder="Enter a new name"
+              placeholder={t("projects.rename.placeholder")}
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
             />
@@ -393,7 +430,7 @@ export default function ProjectsClient() {
         >
           <div className="space-y-4">
             <div className="rounded-md border border-border p-3 text-xs text-muted-foreground">
-              Project ID: <span className="text-foreground">{deleteProjectId || "-"}</span>
+              {t("project.id")}: <span className="text-foreground">{deleteProjectId || "-"}</span>
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium text-foreground">{t("projects.delete.projectId")}</div>
@@ -458,11 +495,18 @@ export default function ProjectsClient() {
                 <EmptyState title={t("projects.cloudNotConnected")} description={t("projects.loginToView")} action={<Button onClick={() => setShowCloudLogin(true)}>{t("projects.cloudLogin")}</Button>} />
               </div>
             )
-          ) : isLoading ? (
+          ) : isLoading || branchParticipationsQuery.isLoading ? (
             <div className="min-h-[calc(100vh-64px-8rem)] flex items-center justify-center text-muted-foreground">
               {t("projects.loading")}
             </div>
-          ) : localProjects.length === 0 ? (
+          ) : branchParticipationsQuery.isError ? (
+            <div className="mb-6">
+              <ErrorState
+                title={t("projects.loadFailed")}
+                description={branchParticipationsQuery.error instanceof Error ? branchParticipationsQuery.error.message : t("common.error")}
+              />
+            </div>
+          ) : ownedProjects.length === 0 && branchParticipatedProjects.length === 0 ? (
             <div className="min-h-[calc(100vh-64px-8rem)] flex items-center justify-center">
               <EmptyState
                 title={t("projects.empty.title")}
@@ -471,78 +515,190 @@ export default function ProjectsClient() {
               />
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {localProjects.map((project) => (
-                <Link key={project.id} href={`/project/${project.id}`} className="block">
-                  <Card className="transition-all hover:bg-card/70 border-border/50 hover:border-primary/20">
-                    <CardContent className="p-6 pt-8">
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <h5 className="text-lg font-semibold tracking-tight text-card-foreground truncate flex-1 min-w-0" title={project.name}>
-                          {project.name}
-                        </h5>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-7 px-2 text-xs"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              const next = !(project.is_public === true);
-                              visibilityMutation.mutate({ projectId: project.id, is_public: next });
-                            }}
-                            loading={visibilityMutation.isPending}
-                          >
-                            {project.is_public === true ? t("projects.public") : t("projects.private")}
-                          </Button>
-                          <IconButton
-                            className="h-7 w-7"
-                            aria-label="Rename project"
-                            title="Rename"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              openRename(project.id, project.name);
-                            }}
-                          >
-                            <Pencil size={14} />
-                          </IconButton>
-                          <IconButton
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                            aria-label="Delete project"
-                            title="Delete"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              openDelete(project.id);
-                            }}
-                          >
-                            <Trash2 size={14} />
-                          </IconButton>
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2 h-10 mb-4" title={project.description || ""}>
-                        {project.description || t("projects.desc.none")}
-                      </p>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground/60">
-                        <div className="flex items-center gap-1.5 hover:text-foreground transition-colors"
-                             onClick={(e) => {
-                               e.preventDefault();
-                               e.stopPropagation();
-                               copyText(String(project.id), "Project ID");
-                             }}
-                             title="Click to copy ID"
-                             role="button"
-                        >
-                          <span className="font-mono">#{project.id.slice(0, 8)}</span>
-                          <Copy size={10} />
-                        </div>
-                        <span>{new Date(project.created_at).toLocaleDateString()}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+            <div className="space-y-8">
+              <section className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-foreground">{t("projects.section.owned")}</h3>
+                  <span className="text-xs text-muted-foreground">{ownedProjects.length}</span>
+                </div>
+                {ownedProjects.length === 0 ? (
+                  <EmptyState title={t("projects.section.ownedEmpty.title")} description={t("projects.section.ownedEmpty.desc")} />
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {ownedProjects.map((project) => (
+                      <Link key={project.id} href={`/project/${project.id}`} className="block">
+                        <Card className="transition-all hover:bg-card/70 border-border/50 hover:border-primary/20">
+                          <CardContent className="p-6 pt-8">
+                            <div className="flex items-start justify-between gap-3 mb-3">
+                              <h5 className="text-lg font-semibold tracking-tight text-card-foreground truncate flex-1 min-w-0" title={project.name}>
+                                {project.name}
+                              </h5>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const next = !(project.is_public === true);
+                                    visibilityMutation.mutate({ projectId: project.id, is_public: next });
+                                  }}
+                                  loading={visibilityMutation.isPending}
+                                >
+                                  {project.is_public === true ? t("projects.public") : t("projects.private")}
+                                </Button>
+                                <IconButton
+                                  className="h-7 w-7"
+                                  aria-label={t("projects.rename.title")}
+                                  title={t("editor.rename")}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    openRename(project.id, project.name);
+                                  }}
+                                >
+                                  <Pencil size={14} />
+                                </IconButton>
+                                <IconButton
+                                  className="h-7 w-7 text-destructive hover:text-destructive"
+                                  aria-label={t("projects.delete.title")}
+                                  title={t("common.delete")}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    openDelete(project.id);
+                                  }}
+                                >
+                                  <Trash2 size={14} />
+                                </IconButton>
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground line-clamp-2 h-10 mb-4" title={project.description || ""}>
+                              {project.description || t("projects.desc.none")}
+                            </p>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground/60">
+                              <div
+                                className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  copyText(String(project.id), t("project.id"));
+                                }}
+                                title={t("projects.copyIdHint")}
+                                role="button"
+                              >
+                                <span className="font-mono">#{project.id.slice(0, 8)}</span>
+                                <Copy size={10} />
+                              </div>
+                              <span>{mounted ? new Date(project.created_at).toLocaleDateString() : ""}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-foreground">{t("projects.section.participatedBranches")}</h3>
+                  <span className="text-xs text-muted-foreground">{branchParticipatedProjects.length}</span>
+                </div>
+                {branchParticipatedProjects.length === 0 ? (
+                  <EmptyState title={t("projects.section.participatedEmpty.title")} description={t("projects.section.participatedEmpty.desc")} />
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {branchParticipatedProjects.map((project) => {
+                      const branchNames = sanitizeParticipatedBranchNames(project.participated_branch_names);
+                      const selectedBranch = selectedParticipatedBranchByProject[project.id] || "";
+                      return (
+                        <Link key={project.id} href={`/project/${project.id}`} className="block">
+                          <Card className="transition-all hover:bg-card/70 border-border/50 hover:border-primary/20">
+                            <CardContent className="p-6 pt-8">
+                              <div className="flex items-start justify-between gap-3 mb-3">
+                                <h5 className="text-lg font-semibold tracking-tight text-card-foreground truncate flex-1 min-w-0" title={project.name}>
+                                  {project.name}
+                                </h5>
+                                <Button size="sm" variant="secondary" className="h-7 px-2 text-xs" disabled>
+                                  {t("projects.role.participant")}
+                                </Button>
+                              </div>
+                              <p className="text-sm text-muted-foreground line-clamp-2 h-10 mb-4" title={project.description || ""}>
+                                {project.description || t("projects.desc.none")}
+                              </p>
+                              <div className="mb-3 space-y-2">
+                                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("projects.participation.myBranches")}</div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {branchNames.length > 0 ? (
+                                    branchNames.slice(0, 3).map((branchName) => (
+                                      <span
+                                        key={branchName}
+                                        className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground"
+                                      >
+                                        {branchName}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">-</span>
+                                  )}
+                                </div>
+                                {branchNames.length > 0 ? (
+                                  <ParticipatedBranchControl
+                                    branchNames={branchNames}
+                                    selectedBranch={selectedBranch}
+                                    selectAriaLabel={`${t("projects.participation.branch")} ${project.name}`}
+                                    onSelectedBranchChange={(value) =>
+                                      setSelectedParticipatedBranchByProject((prev) => ({ ...prev, [project.id]: value }))
+                                    }
+                                    onSelectClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                    }}
+                                    containerClassName="flex items-center gap-2"
+                                    selectClassName="h-7 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                    renderOpenControl={(effectiveBranch) => (
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        className="h-7 px-2 text-xs"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          router.push(`/editor/${project.id}?branch=${encodeURIComponent(effectiveBranch)}`);
+                                        }}
+                                      >
+                                        {t("projects.participation.openBranch")}
+                                      </Button>
+                                    )}
+                                  />
+                                ) : null}
+                              </div>
+                              <div className="flex items-center justify-between text-xs text-muted-foreground/60">
+                                <div
+                                  className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    copyText(String(project.id), t("project.id"));
+                                  }}
+                                  title={t("projects.copyIdHint")}
+                                  role="button"
+                                >
+                                  <span className="font-mono">#{project.id.slice(0, 8)}</span>
+                                  <Copy size={10} />
+                                </div>
+                                <span>{mounted ? new Date(project.created_at).toLocaleDateString() : ""}</span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
             </div>
           )}
         </div>

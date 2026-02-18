@@ -48,6 +48,7 @@ services:
       args:
         PIP_INDEX_URL: ${PIP_INDEX_URL-}
         PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST-}
+        PIP_TIMEOUT: ${PIP_TIMEOUT-}
     container_name: evidverse-backend-prod
     restart: always
     environment:
@@ -77,6 +78,7 @@ services:
       args:
         PIP_INDEX_URL: ${PIP_INDEX_URL-}
         PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST-}
+        PIP_TIMEOUT: ${PIP_TIMEOUT-}
     container_name: evidverse-worker-prod
     restart: always
     command: celery -A app.core.celery_app worker --loglevel=info
@@ -103,6 +105,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NPM_CONFIG_REGISTRY: ${NPM_CONFIG_REGISTRY-}
     container_name: evidverse-frontend-prod
     restart: always
     environment:

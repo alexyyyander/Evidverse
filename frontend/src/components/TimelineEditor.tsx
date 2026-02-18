@@ -6,12 +6,24 @@ import { useTimelineStore } from '@/store/timelineStore';
 import { useEditorStore } from '@/store/editorStore';
 import { Save, Play, Pause, Undo2, Redo2, Plus, Magnet, Layers, ChevronDown, ChevronRight, AlignLeft, Lock, Unlock } from 'lucide-react';
 import { useI18n } from "@/lib/i18nContext";
+import { resolveComfyuiParamsFillState, summarizeComfyuiParams } from "@/lib/editor/comfyuiParams";
+import {
+  resolveStep4BlockBadgeClass,
+  resolveNodeRecommendedAction,
+  resolveStep4BlockNavigationByRawReason,
+  summarizeNodeStep4ConfirmReadiness,
+  summarizeNodeStep3Mapping,
+} from "@/lib/editor/storyProgress";
+import StoryActionBadge from "@/components/editor/story/StoryActionBadge";
 
 export default function TimelineEditor() {
   const { t } = useI18n();
   const { editorData, effects, setEditorData, setCurrentTime, projectId } = useTimelineStore();
   const {
     selectTimelineItem,
+    selectStoryNode,
+    setActiveStep,
+    updateStoryUi,
     selection,
     layout,
     updateLayout,
@@ -25,6 +37,9 @@ export default function TimelineEditor() {
     canRedo,
   } = useEditorStore(state => ({
     selectTimelineItem: state.selectTimelineItem,
+    selectStoryNode: state.selectStoryNode,
+    setActiveStep: state.setActiveStep,
+    updateStoryUi: state.updateStoryUi,
     selection: state.selection,
     layout: state.layout,
     updateLayout: state.updateLayout,
@@ -83,6 +98,74 @@ export default function TimelineEditor() {
       .filter(Boolean) as Array<{ id: string; time: number; title: string }>;
   }, [editorModel.timelineItems, editorModel.beats, editorModel.scenes]);
 
+  const timelineItemByBeatId = useMemo(() => {
+    const map = new Map<string, { id: string; startTime: number }>();
+    for (const item of Object.values(editorModel.timelineItems)) {
+      if (!item.linkedBeatId) continue;
+      const existing = map.get(item.linkedBeatId);
+      if (!existing || item.startTime < existing.startTime) {
+        map.set(item.linkedBeatId, { id: item.id, startTime: item.startTime });
+      }
+    }
+    return map;
+  }, [editorModel.timelineItems]);
+
+  const storyEvents = useMemo(() => {
+    const nodes = editorModel.storyWorkflow?.nodes || [];
+    const beatsSnapshot = { beats: editorModel.beats };
+    const step4Snapshot = {
+      beats: editorModel.beats,
+      characters: editorModel.characters,
+      assets: editorModel.assets,
+    };
+    return nodes.map((node) => {
+      const beatId = node.beatIds[0];
+      const timelineItem = beatId ? timelineItemByBeatId.get(beatId) : undefined;
+      const time = timelineItem ? timelineItem.startTime : node.order * 5;
+      const step3Mapping = summarizeNodeStep3Mapping(node, beatsSnapshot);
+      const step4Readiness = summarizeNodeStep4ConfirmReadiness(node, step4Snapshot);
+      const recommendation = resolveNodeRecommendedAction(node, beatsSnapshot);
+      const step4ParamsText = String(node.step4.comfyuiParamsJson || "").trim();
+      const step4ParamsSummary = summarizeComfyuiParams(step4ParamsText);
+      const step4ParamsFillState = resolveComfyuiParamsFillState(step4ParamsSummary);
+      return {
+        id: node.id,
+        time,
+        title: node.title || `Node ${node.order + 1}`,
+        step2: node.step2.status,
+        step2ScriptMode: node.step2.scriptMode,
+        step2SegmentLength: node.step2.segmentLength,
+        step3: node.step3.status,
+        step3Mapped: step3Mapping.mapped,
+        step3Total: step3Mapping.total,
+        step4: node.step4.status,
+        step4Provider: node.step4.provider || "segment",
+        step4TemplateId: node.step4.comfyuiTemplateId || null,
+        step4HasParamsOverride: step4ParamsSummary.valid
+          ? step4ParamsSummary.total > 0
+          : step4ParamsText.length > 0 && step4ParamsText !== "{}",
+        step4ParamsValid: step4ParamsSummary.valid,
+        step4ParamsFilled: step4ParamsSummary.filled,
+        step4ParamsTotal: step4ParamsSummary.total,
+        step4ParamsFillState,
+        step4Blockers: step4Readiness.blockReasons,
+        step4MissingCharacterNames: step4Readiness.missingCharacterNames,
+        step4VideoReady: step4Readiness.videoReady,
+        targetStep: recommendation.targetStep,
+        recommendedAction: recommendation.action,
+        locked: node.locked,
+        beatId,
+        timelineItemId: timelineItem?.id || null,
+      };
+    });
+  }, [
+    editorModel.storyWorkflow,
+    editorModel.beats,
+    editorModel.characters,
+    editorModel.assets,
+    timelineItemByBeatId,
+  ]);
+
   const markerActions = useMemo(() => {
     if (!markersEnabled) return [];
     return markers.map((m) => ({
@@ -138,6 +221,14 @@ export default function TimelineEditor() {
     return markers.filter((m) => m.time >= leftTime - 1 && m.time <= rightTime + 1);
   }, [markersEnabled, markers, scrollState.left, scrollState.viewportWidth, startLeft, scaleWidth, scale]);
 
+  const visibleStoryEvents = useMemo(() => {
+    const leftTime = (Math.max(0, scrollState.left - startLeft) / scaleWidth) * scale;
+    const rightTime = ((Math.max(0, scrollState.left - startLeft) + scrollState.viewportWidth) / scaleWidth) * scale;
+    return storyEvents.filter((item) => item.time >= leftTime - 2 && item.time <= rightTime + 2);
+  }, [storyEvents, scrollState.left, scrollState.viewportWidth, startLeft, scaleWidth, scale]);
+  const pulseNodeId = editorModel.storyWorkflow?.ui?.eventFlowPulseNodeId || null;
+  const pulseAt = editorModel.storyWorkflow?.ui?.eventFlowPulseAt || null;
+
   useEffect(() => {
     if (selection.source === 'timeline') return;
     if (!selection.selectedTimelineItemId) return;
@@ -155,6 +246,28 @@ export default function TimelineEditor() {
       }
     }
   }, [selection.selectedTimelineItemId, selection.source, editorData, setCurrentTime, scale, scaleWidth]);
+
+  useEffect(() => {
+    if (selection.source !== "story") return;
+    if (!selection.selectedStoryNodeId) return;
+    if (!timelineRef.current) return;
+    const selectedEvent = storyEvents.find((event) => event.id === selection.selectedStoryNodeId);
+    if (!selectedEvent) return;
+    timelineRef.current.setTime(selectedEvent.time);
+    const scrollLeft = Math.max(0, (selectedEvent.time / scale) * scaleWidth - 240);
+    timelineRef.current.setScrollLeft(scrollLeft);
+  }, [selection.source, selection.selectedStoryNodeId, storyEvents, scale, scaleWidth]);
+
+  useEffect(() => {
+    if (!pulseNodeId) return;
+    const timer = window.setTimeout(() => {
+      updateStoryUi({
+        eventFlowPulseNodeId: null,
+        eventFlowPulseAt: null,
+      });
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [pulseAt, pulseNodeId, updateStoryUi]);
   
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -267,7 +380,7 @@ export default function TimelineEditor() {
     endHistoryGroup();
   };
 
-  if (!mounted) return <div className="w-full h-full bg-gray-100 dark:bg-zinc-900 animate-pulse flex items-center justify-center text-gray-500">Loading Timeline...</div>;
+  if (!mounted) return <div className="w-full h-full bg-gray-100 dark:bg-zinc-900 animate-pulse flex items-center justify-center text-gray-500">{t("common.loading")}</div>;
 
   return (
     <div
@@ -424,7 +537,7 @@ export default function TimelineEditor() {
 
       {tracksOpen ? (
         <div className="absolute top-[68px] left-2 z-30 w-64 rounded-lg border border-zinc-700 bg-zinc-900 shadow-lg p-2">
-          <div className="text-xs text-zinc-300 px-1 py-1">Tracks</div>
+          <div className="text-xs text-zinc-300 px-1 py-1">{t("timeline.tracks")}</div>
           <div className="mt-1 max-h-56 overflow-auto">
             {editorData.map((row) => {
               const collapsed = collapsedRowSet.has(row.id);
@@ -442,9 +555,9 @@ export default function TimelineEditor() {
                     });
                   }}
                 >
-                  <span className="truncate">Track {row.id}</span>
+                  <span className="truncate">{t("timeline.track")} {row.id}</span>
                   <span className={`text-xs ${collapsed ? "text-zinc-400" : "text-zinc-200"}`}>
-                    {collapsed ? "Collapsed" : "Visible"}
+                    {collapsed ? t("timeline.collapsed") : t("timeline.visible")}
                   </span>
                 </button>
               );
@@ -557,6 +670,140 @@ export default function TimelineEditor() {
                 {m.title}
               </button>
             ))}
+          </div>
+        </>
+      ) : null}
+
+      {storyEvents.length > 0 ? (
+        <>
+          <div className="pointer-events-none absolute top-[68px] left-0 right-0 bottom-0 z-[9]">
+            {visibleStoryEvents.map((event) => {
+              const left = startLeft + (event.time / scale) * scaleWidth - scrollState.left;
+              if (left < 0 || left > scrollState.viewportWidth) return null;
+              return (
+                <div key={`story-line-${event.id}`} className="absolute top-0 bottom-0 w-px bg-cyan-300/35" style={{ left }} />
+              );
+            })}
+          </div>
+          <div className="absolute bottom-10 left-2 right-2 z-20 flex gap-2 overflow-x-auto">
+            {storyEvents.map((event) => {
+              const step3MappingBadgeClass =
+                event.step3Total > 0 && event.step3Mapped === event.step3Total
+                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                  : event.step3Mapped > 0
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                    : "bg-zinc-500/20 text-zinc-300 border-zinc-500/40";
+              const selected = selection.selectedStoryNodeId === event.id;
+              const pulseActive =
+                !!pulseNodeId &&
+                pulseNodeId === event.id &&
+                typeof pulseAt === "number" &&
+                Number.isFinite(pulseAt) &&
+                Date.now() - pulseAt < 1800;
+              const fillBadgeClass =
+                event.step4ParamsFillState === "full"
+                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                  : event.step4ParamsFillState === "partial"
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                    : event.step4ParamsFillState === "empty"
+                      ? "bg-zinc-500/20 text-zinc-300 border-zinc-500/40"
+                      : "bg-rose-500/20 text-rose-300 border-rose-500/40";
+              return (
+                <button
+                  key={event.id}
+                  type="button"
+                  className={`rounded-md border px-2 py-1 text-[11px] whitespace-nowrap transition-all ${
+                    selected ? "border-cyan-400 bg-cyan-950/40 text-cyan-100" : "border-zinc-600 bg-zinc-900/80 text-zinc-200 hover:bg-zinc-800"
+                  } ${pulseActive ? "border-emerald-400 bg-emerald-950/35 text-emerald-100 ring-2 ring-emerald-300/60 animate-pulse" : ""}`}
+                  data-story-event={event.id}
+                  data-story-event-active={selected ? "true" : "false"}
+                  data-story-event-pulse={pulseActive ? "true" : "false"}
+                  title={
+                    pulseActive
+                      ? `${t("story.step4.toast.confirmed.title")} · ${event.title}`
+                      : event.title
+                  }
+                  onClick={(evt) => {
+                    const reasonElement = (evt.target as HTMLElement).closest("[data-story-block-reason]");
+                    const reason = reasonElement?.getAttribute("data-story-block-reason");
+                    const blockTarget = resolveStep4BlockNavigationByRawReason(reason, event.step4Blockers);
+                    selectStoryNode(event.id, "event_flow");
+                    if (blockTarget) {
+                      updateStoryUi({ focusTarget: blockTarget.focusTarget });
+                      setActiveStep(blockTarget.targetStep);
+                    } else {
+                      setActiveStep(event.targetStep);
+                    }
+                    if (event.beatId) {
+                      useEditorStore.getState().selectBeat(event.beatId as any, "event_flow");
+                    }
+                    if (event.timelineItemId) {
+                      selectTimelineItem(event.timelineItemId, "event_flow");
+                    }
+                    if (timelineRef.current) {
+                      timelineRef.current.setTime(event.time);
+                      const scrollLeft = Math.max(0, (event.time / scale) * scaleWidth - 240);
+                      timelineRef.current.setScrollLeft(scrollLeft);
+                    }
+                  }}
+                >
+                  {event.title}
+                  <StoryActionBadge action={event.recommendedAction} className="ml-2" />
+                  {" · "}
+                  {t("story.step2.title")}:{t(`story.status.${event.step2}`)}
+                  {" · "}
+                  {t("story.step2.scriptMode.label")}:{t(`story.step2.scriptMode.${event.step2ScriptMode}`)}
+                  {" · "}
+                  {t("story.step2.segmentLength.label")}:{t(`story.step2.segmentLength.${event.step2SegmentLength}`)}
+                  {" · "}
+                  {t("story.step3.title")}:{t(`story.status.${event.step3}`)}
+                  {event.step3Total > 0 ? (
+                    <span className={`ml-2 inline-flex items-center rounded border px-1 py-0.5 text-[10px] ${step3MappingBadgeClass}`}>
+                      {t("story.step3.mappingRatio")
+                        .replace("{mapped}", String(event.step3Mapped))
+                        .replace("{total}", String(event.step3Total))}
+                    </span>
+                  ) : null}
+                  {" · "}
+                  {t("story.step4.title")}:{t(`story.status.${event.step4}`)}
+                  {" · "}
+                  {t("story.step4.renderProvider.label")}:{t(`story.step4.renderProvider.${event.step4Provider || "segment"}`)}
+                  {event.step4Provider === "comfyui"
+                    ? ` (${event.step4TemplateId || t("story.step4.template.none")})`
+                    : ""}
+                  {event.step4Provider === "comfyui" && event.step4HasParamsOverride
+                    ? ` · ${t("story.step4.params.overridden")}`
+                    : ""}
+                  {event.step4Provider === "comfyui" ? (
+                    <span className={`ml-2 inline-flex items-center rounded border px-1 py-0.5 text-[10px] ${fillBadgeClass}`}>
+                      {event.step4ParamsValid
+                        ? t("story.step4.params.fillRatio")
+                            .replace("{filled}", String(event.step4ParamsFilled))
+                            .replace("{total}", String(event.step4ParamsTotal))
+                        : t("story.step4.params.invalid")}
+                    </span>
+                  ) : null}
+                  {event.step4Blockers.length > 0 ? (
+                    <span className="ml-1 inline-flex items-center gap-1">
+                      {event.step4Blockers.map((reason) => (
+                        <span
+                          key={`${event.id}-block-${reason}`}
+                          data-story-block-reason={reason}
+                          title={`${t(`story.step4.block.${reason}`)} · ${t("story.step4.block.fixHint")}`}
+                          className={`inline-flex cursor-pointer items-center rounded border px-1 py-0.5 text-[10px] transition-opacity hover:opacity-90 ${resolveStep4BlockBadgeClass(reason)}`}
+                        >
+                          {t(`story.step4.block.${reason}`)}
+                          {reason === "mapping" && event.step4MissingCharacterNames.length > 0
+                            ? ` (${event.step4MissingCharacterNames.length})`
+                            : ""}
+                        </span>
+                      ))}
+                    </span>
+                  ) : null}
+                  {event.locked ? ` · ${t("story.common.locked")}` : ""}
+                </button>
+              );
+            })}
           </div>
         </>
       ) : null}

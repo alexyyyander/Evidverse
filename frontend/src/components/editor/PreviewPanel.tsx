@@ -5,11 +5,25 @@ import IconButton from "@/components/ui/icon-button";
 import { Repeat, StepBack, StepForward } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18nContext";
+import StoryNodeCard from "@/components/editor/story/StoryNodeCard";
+import { useEditorStore } from "@/store/editorStore";
+import Button from "@/components/ui/button";
 
-export default function PreviewPanel({ videoUrl, label }: { videoUrl: string | null; label?: string | null }) {
+export default function PreviewPanel({
+  videoUrl,
+  label,
+  storyNodeId,
+}: {
+  videoUrl: string | null;
+  label?: string | null;
+  storyNodeId?: string | null;
+}) {
   const { t } = useI18n();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [loop, setLoop] = useState(false);
+  const [cardTransitioning, setCardTransitioning] = useState(false);
+  const workflow = useEditorStore((s) => s.data.storyWorkflow);
+  const updateStoryUi = useEditorStore((s) => s.updateStoryUi);
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -17,10 +31,24 @@ export default function PreviewPanel({ videoUrl, label }: { videoUrl: string | n
   }, [loop]);
 
   const safeLabel = useMemo(() => (typeof label === "string" && label.trim().length > 0 ? label.trim() : null), [label]);
+  const selectedNode = useMemo(() => {
+    if (!workflow || !storyNodeId) return null;
+    return workflow.nodes.find((n) => n.id === storyNodeId) || null;
+  }, [workflow, storyNodeId]);
+  const preferCard = !!workflow?.ui?.previewPreferCard;
+
+  useEffect(() => {
+    if (!storyNodeId) return;
+    setCardTransitioning(true);
+    const timer = window.setTimeout(() => setCardTransitioning(false), 220);
+    return () => window.clearTimeout(timer);
+  }, [storyNodeId]);
+
+  const shouldPreferCard = !videoUrl || !selectedNode?.step4.confirmed || preferCard;
 
   return (
     <div className="flex-1 bg-black flex items-center justify-center relative">
-      {videoUrl ? (
+      {!shouldPreferCard && videoUrl ? (
         <>
           <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -29,8 +57,13 @@ export default function PreviewPanel({ videoUrl, label }: { videoUrl: string | n
               ) : null}
             </div>
             <div className="flex items-center gap-2">
+              {selectedNode ? (
+                <Button size="sm" variant="secondary" onClick={() => updateStoryUi({ previewPreferCard: true })}>
+                  {t("story.preview.card")}
+                </Button>
+              ) : null}
               <IconButton
-                aria-label="Toggle loop"
+                aria-label={t("story.preview.toggleLoop")}
                 variant="secondary"
                 className={cn(loop ? "ring-2 ring-ring" : "")}
                 onClick={() => setLoop((v) => !v)}
@@ -38,7 +71,7 @@ export default function PreviewPanel({ videoUrl, label }: { videoUrl: string | n
                 <Repeat size={16} />
               </IconButton>
               <IconButton
-                aria-label="Step back"
+                aria-label={t("story.preview.stepBack")}
                 variant="secondary"
                 onClick={() => {
                   const el = videoRef.current;
@@ -49,7 +82,7 @@ export default function PreviewPanel({ videoUrl, label }: { videoUrl: string | n
                 <StepBack size={16} />
               </IconButton>
               <IconButton
-                aria-label="Step forward"
+                aria-label={t("story.preview.stepForward")}
                 variant="secondary"
                 onClick={() => {
                   const el = videoRef.current;
@@ -64,7 +97,28 @@ export default function PreviewPanel({ videoUrl, label }: { videoUrl: string | n
           <video ref={videoRef} src={videoUrl} controls className="max-h-full max-w-full" autoPlay />
         </>
       ) : (
-        <div className="text-muted-foreground">{t("preview.placeholder")}</div>
+        <div className="h-full w-full overflow-auto p-6">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="text-xs text-muted-foreground">
+              {selectedNode
+                ? t("story.preview.nodeLabel").replace("{order}", String(selectedNode.order + 1))
+                : t("preview.placeholder")}
+            </div>
+            {videoUrl && selectedNode?.step4.confirmed ? (
+              <Button size="sm" variant="secondary" onClick={() => updateStoryUi({ previewPreferCard: false })}>
+                {t("story.preview.video")}
+              </Button>
+            ) : null}
+          </div>
+          <div
+            className={cn(
+              "flex w-full justify-center transition-all duration-300",
+              cardTransitioning ? "translate-y-1 opacity-70" : "translate-y-0 opacity-100",
+            )}
+          >
+            <StoryNodeCard nodeId={storyNodeId || workflow?.selectedNodeId || null} />
+          </div>
+        </div>
       )}
     </div>
   );

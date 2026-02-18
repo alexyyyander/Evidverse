@@ -2,8 +2,13 @@
 
 # Stage 1: Dependencies
 FROM node:20-alpine AS deps
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
+
+# Optional: Set NPM mirror
+ARG NPM_CONFIG_REGISTRY
+RUN if [ -n "${NPM_CONFIG_REGISTRY}" ]; then npm config set registry ${NPM_CONFIG_REGISTRY}; fi
 
 COPY package.json package-lock.json* ./
 RUN npm ci --no-audit --no-fund

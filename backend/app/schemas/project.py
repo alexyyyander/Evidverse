@@ -30,6 +30,7 @@ class Project(ProjectBase):
     id: str
     owner_id: str
     parent_project_id: Optional[str] = None
+    participated_branch_names: Optional[List[str]] = None
     created_at: datetime
     workspace_data: Optional[dict] = None
     likes_count: int = 0

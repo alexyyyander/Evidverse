@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, projects, files, generation, anchors, commits, branches, tasks, publish, vn, clips, merge_requests, health
+from app.api.v1.endpoints import auth, users, projects, files, generation, anchors, commits, branches, tasks, publish, vn, clips, merge_requests, health, comfyui_templates
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
@@ -16,3 +16,4 @@ api_router.include_router(publish.router, prefix="/publish", tags=["publish"])
 api_router.include_router(vn.router, prefix="/vn", tags=["vn"])
 api_router.include_router(clips.router, prefix="/clips", tags=["clips"])
 api_router.include_router(merge_requests.router, tags=["merge_requests"])
+api_router.include_router(comfyui_templates.router, prefix="/comfyui", tags=["comfyui"])
