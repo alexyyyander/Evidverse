@@ -58,4 +58,9 @@ storage/
 # Plans (Keep stage_plan, ignore high-level docs)
 plan/*.md
 !plan/current_stage&FAQ.md
+!plan/product_vision.md
+!plan/architecture_map.md
+!plan/optimization_rubric.md
+!plan/loop_log.md
+!plan/optimization_loop.md
 !plan/stage_plan*/

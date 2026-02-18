@@ -4,9 +4,16 @@
 > 每次开始开发前，请务必查看此文件以确认当前状态和目标。
 
 ## 📍 Current Status
-**Current Stage**: [Frontend Optimization - Stage 05/07: Detail Page & Navigation](./stage_plan_frontend/README.md)
+**Current Stage**: [Dev v2 - Stage 03/04: Fork/Branch 协作深化（含四步剧情流）](./stage_plan_dev_v2/README.md)
 **Status**: in_progress
-**Last Updated**: 2026-02-14
+**Last Updated**: 2026-02-18
+
+## ♻️ Continuous Optimization Loop
+- 执行入口: [optimization_loop.md](./optimization_loop.md)
+- 产品理念基线: [product_vision.md](./product_vision.md)
+- 架构边界与红线: [architecture_map.md](./architecture_map.md)
+- 任务评分规则: [optimization_rubric.md](./optimization_rubric.md)
+- 轮次日志（追加写入）: [loop_log.md](./loop_log.md)
 
 ## FAQ（阶段切换）
 ### Q: 为什么点击项目不再直接进入编辑器？
@@ -29,11 +36,12 @@
 
 ### Frontend Optimization v1（进行中）
 - 目标：把“视频编辑页面”做得足够高级与复杂（点子→剧本→人物→生成→时间轴联动）
-- 进展：已完成 Project Detail Page 重构、i18n 基础建设、首页布局修复。
+- 进展：基础能力已完成，当前主线已转入四步剧情流与分支协作（Dev v2 Stage 03）。
 - 计划：仅 3 个阶段，见 [stage_plan_frontend_v1/README](./stage_plan_frontend_v1/README.md)
 
-### Dev v2（计划中）
+### Dev v2（进行中）
 - 目标：把“创作 → 协作 → 发行”升级为可规模化模型（多平台投稿、主项目+分支协作、多世界线剧情与可视化）
+- 当前焦点：Stage 03（Fork/Branch 协作深化 + 编辑器四步剧情流联动）
 - 计划：4 个阶段，见 [stage_plan_dev_v2/README](./stage_plan_dev_v2/README.md)
 
 ## 📅 Stage Roadmap
@@ -61,7 +69,7 @@
 ## 🧭 Dev v2 Stage Plan
 - [ ] **Dev v2 - Stage 01**: 导出与投稿（B 站 / 抖音）
 - [x] **Dev v2 - Stage 02**: Galgame/VN → 多世界线番剧（截图 + 引擎脚本导入）
-- [ ] **Dev v2 - Stage 03**: Fork/Branch 协作深化（Merge、ClipSegment、归因）
+- [ ] **Dev v2 - Stage 03**: Fork/Branch 协作深化（Merge、ClipSegment、归因）`(in_progress)`
 - [ ] **Dev v2 - Stage 04**: 剧情关系图与剧情拓展线路（可视化 + 生成 + 贡献统计）
 
 ## 🎉 Project Milestones
