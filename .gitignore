@@ -55,6 +55,10 @@ storage/
 # Vercel
 .vercel/
 
+# Local large assets (not for git)
+models/
+third_party/
+
 # Plans (Keep stage_plan, ignore high-level docs)
 plan/*.md
 !plan/current_stage&FAQ.md
